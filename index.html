@@ -1,16 +1,3 @@
-# ==== SWIFT-TEC index.html を作って開くスクリプト ====
-# 1. このコードを Windows PowerShell にそのまま貼り付ける
-# 2. Enter を押す
-# 3. 自動で index.html を生成してブラウザで開く
-
-$folder = "C:\Users\ab243\tec_tool_globalgrid_f107_copy"
-if (!(Test-Path $folder)) {
-    New-Item -ItemType Directory -Path $folder | Out-Null
-}
-
-$path = Join-Path $folder "index.html"
-
-$html = @'
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -487,3 +474,4 @@ document.getElementById("copyBtn").addEventListener("click", () => {
 Set-Content -Path $path -Value $html -Encoding UTF8
 Write-Host "index.html を作成・更新しました: $path" -ForegroundColor Green
 start $path
+
