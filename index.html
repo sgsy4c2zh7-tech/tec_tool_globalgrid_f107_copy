@@ -1,0 +1,470 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>TEC予報ツール（世界1度格子・F10.7/Ap 3日分・頑丈版）</title>
+<style>
+body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 20px; background: #f7f7f7; }
+h1 { font-size: 22px; margin-bottom: 10px; color: #004b8d; }
+h2 { margin-top: 20px; font-size: 18px; color: #333; }
+h3 { margin-top: 14px; font-size: 16px; color: #333; }
+textarea { width: 100%; height: 220px; font-family: monospace; }
+pre { background: #fdfdfd; padding: 8px; max-height: 400px; overflow: auto; white-space: pre; border: 1px solid #ddd; }
+.box { border: 1px solid #ccc; padding: 10px 12px; margin-bottom: 16px; border-radius: 8px; background: #ffffff; box-shadow: 0 0 4px rgba(0,0,0,0.03); }
+input { width: 150px; }
+label { display:inline-block; width:120px; }
+button { margin-top: 5px; padding: 4px 10px; cursor: pointer; border-radius:4px; border:1px solid #888; background:#fafafa; }
+button:hover { background:#f0f0f0; }
+small { color:#555; }
+</style>
+</head>
+<body>
+<h1>TEC予報ツール（世界1度格子・F10.7/Ap 3日分＋コピー機能・頑丈版）</h1>
+
+<div class="box">
+  <h2>① TECデータ入力（World0000_tec.txt）</h2>
+  <p>
+    <b>https://downloads.sws.bom.gov.au/data/Satellite/World0000_tec.txt</b><br>
+    を開いて、内容をそのままコピペしてください（BOMの元データ）。<br>
+    コメント行（#～）も含めて全部貼ってOKです。
+  </p>
+  <textarea id="tecInput" placeholder="World0000_tec.txt の中身をそのまま貼り付け"></textarea>
+</div>
+
+<div class="box">
+  <h2>② 27-day Outlook の F10.7 / Ap をコピペ</h2>
+  <p>
+    NOAA の 27-day Space Weather Outlook Table（27DO.txt）の中身を<br>
+    この枠にそのままコピペしてください。
+  </p>
+  <textarea id="outlookInput" placeholder=":Product: 27-day Space Weather Outlook Table 27DO.txt
+...
+2025 Nov 10     175          18          5
+2025 Nov 11     180          35          6
+2025 Nov 12     180          25          6
+..."></textarea>
+  <button id="parseOutlook">上のテキストから 3日分の F10.7 / Ap を抽出</button>
+  <pre id="outlookStatus">未解析</pre>
+
+  <h3>抽出された F10.7 / Ap（編集も可）</h3>
+  <label>Day1 F10.7:</label><input id="f107_1" type="number" step="0.1"><br>
+  <label>Day1 Ap:</label><input id="ap_1" type="number" step="1"><br>
+  <label>Day2 F10.7:</label><input id="f107_2" type="number" step="0.1"><br>
+  <label>Day2 Ap:</label><input id="ap_2" type="number" step="1"><br>
+  <label>Day3 F10.7:</label><input id="f107_3" type="number" step="0.1"><br>
+  <label>Day3 Ap:</label><input id="ap_3" type="number" step="1"><br>
+
+  <small>
+    ※ 行の数字から「F10.7 は 50〜400 の範囲の値」「Ap は右から2番目の値」として自動抽出。<br>
+    ※ うまくいかないときは、ここへ手入力してもOKです。
+  </small>
+</div>
+
+<div class="box">
+  <h2>③ Dst / X-ray & モデル係数</h2>
+  <p>Dst / X-ray は3日間同じ値を使う簡略モデルです。</p>
+  <label>Dst [nT]:</label><input id="dst" type="number" step="1" value="-20"><br>
+  <label>X-ray:</label><input id="xray" type="number" step="0.0000001" value="0.000001"><br>
+  <hr>
+  <small>下の係数は「元のTECスケールを維持しつつ、1日で数TECU変化する」くらいに調整してあります。</small><br>
+  <label>α:</label><input id="alpha" type="number" value="0"><br>
+  <label>β_TEC:</label><input id="betaTec" type="number" value="1"><br>
+  <label>β_F10.7:</label><input id="betaF" type="number" value="0.0005"><br>
+  <label>β_Dst:</label><input id="betaDst" type="number" value="0.005"><br>
+  <label>β_Ap:</label><input id="betaAp" type="number" value="0.01"><br>
+  <label>β_Xray:</label><input id="betaX" type="number" value="1000"><br>
+  <small>
+    TEC<sub>forecast</sub>(t+Δt)
+    = α + β_TEC·TEC(t,lon,lat)
+    + Δt·(β_F·F10.7<sub>day*</sub> + β_Dst·Dst + β_Ap·Ap<sub>day*</sub> + β_X·Xray)<br>
+    ※ Δt によって Day1/2/3 のどれを使うか自動で切り替え。<br>
+    ※ β_TEC = 1 なので、Δt=0 のときは元のBOMマップとほぼ同じTECスケールになります。
+  </small>
+</div>
+
+<div class="box">
+  <h2>④ Δt を指定して世界1度格子の予報を出力</h2>
+  <p>経度 -180〜180 deg（1度刻み）が横軸、緯度 90〜-90 deg（1度刻み）が縦軸の表を出します。</p>
+  <label>Δt [h] (先):</label><input id="dtHour" type="number" step="1" value="1"><br>
+  <small>0〜24h → Day1 の F10.7/Ap, 24〜48h → Day2, 48〜72h → Day3（それ以上もDay3で固定）</small><br>
+  <button id="runGlobal">世界1度格子 TEC 予報を計算</button>
+
+  <h3>簡易情報</h3>
+  <pre id="infoBox">ここに元グリッドやΔtなどの情報が出ます</pre>
+
+  <h3>世界1度格子 TEC 予報（生データ）</h3>
+  <p>
+    先頭行：横方向の経度（-180〜180）<br>
+    2行目以降：行頭が緯度（90,89,...,-90）、続いてその緯度での各経度の TEC 予報値 [TECU]<br>
+    → 全部選択してコピーして、Excel に貼り付ければそのまま使えます。
+  </p>
+  <pre id="globalOutput">ここに表が表示されます</pre>
+  <button id="copyBtn">📋 この表をコピー</button>
+</div>
+
+<script>
+// ---------- ② 27-day Outlook から F10.7/Ap を3日分抽出 ----------
+document.getElementById("parseOutlook").addEventListener("click", () => {
+  const txt = document.getElementById("outlookInput").value;
+  const status = document.getElementById("outlookStatus");
+
+  if (!txt.trim()) {
+    alert("まず 27-day Outlook のテキストをコピペしてください。");
+    return;
+  }
+
+  const lines = txt.split(/\r?\n/);
+  const fList = [];
+  const apList = [];
+
+  for (const raw of lines) {
+    let line = raw.trim();
+    if (!line) continue;
+    if (!/[0-9]/.test(line)) continue;  // 数字がない行はスキップ
+
+    line = line
+      .replace(/\u3000/g, " ")
+      .replace(/,/g, " ")
+      .replace(/\t/g, " ");
+
+    const parts = line.split(/\s+/);
+    const nums = parts
+      .map(x => parseFloat(x))
+      .filter(v => !Number.isNaN(v));
+
+    if (nums.length < 3) continue;
+
+    const apCand = nums[nums.length - 2];
+    const fCandidates = nums.filter(v => v >= 50 && v <= 400 && v !== apCand && v < 1900);
+    if (!fCandidates.length) continue;
+    const f107 = fCandidates[fCandidates.length - 1];
+    const ap   = apCand;
+
+    fList.push(f107);
+    apList.push(ap);
+
+    if (fList.length >= 3) break;
+  }
+
+  if (fList.length === 0) {
+    status.textContent = "F10.7 / Ap が読み取れませんでした。";
+    status.style.color = "#cc0000";
+    return;
+  }
+
+  const fIds = ["f107_1","f107_2","f107_3"];
+  const aIds = ["ap_1","ap_2","ap_3"];
+  for (let i = 0; i < 3; i++) {
+    if (fList[i] != null) {
+      document.getElementById(fIds[i]).value = fList[i];
+      document.getElementById(aIds[i]).value = apList[i];
+    }
+  }
+
+  status.textContent =
+    "抽出完了: " +
+    `Day1 F10.7=${fList[0] ?? "?"}, Ap=${apList[0] ?? "?"} / ` +
+    `Day2 F10.7=${fList[1] ?? "?"}, Ap=${apList[1] ?? "?"} / ` +
+    `Day3 F10.7=${fList[2] ?? "?"}, Ap=${apList[2] ?? "?"}`;
+  status.style.color = "#008800";
+});
+
+// ---------- World0000_tec.txt を「格子」として読む（頑丈版） ----------
+function parseBomTec(text) {
+  const lines = text.split(/\r?\n/);
+
+  let latMin, latMax, latStep, latN;
+  let lonMin, lonMax, lonStep, lonN;
+
+  // 1) まずヘッダーから読みに行く（かなりゆるい正規表現＋大文字小文字無視）
+  for (let raw of lines) {
+    const line = raw.trim();
+    const latMatch = line.match(/latitude[^0-9\-+]*([-0-9.]+)\s+([-0-9.]+)\s+([-0-9.]+)\s+(\d+)/i);
+    if (latMatch) {
+      latMin  = parseFloat(latMatch[1]);
+      latMax  = parseFloat(latMatch[2]);
+      latStep = parseFloat(latMatch[3]);
+      latN    = parseInt(latMatch[4], 10);
+    }
+    const lonMatch = line.match(/longitude[^0-9\-+]*([-0-9.]+)\s+([-0-9.]+)\s+([-0-9.]+)\s+(\d+)/i);
+    if (lonMatch) {
+      lonMin  = parseFloat(lonMatch[1]);
+      lonMax  = parseFloat(lonMatch[2]);
+      lonStep = parseFloat(lonMatch[3]);
+      lonN    = parseInt(lonMatch[4], 10);
+    }
+  }
+
+  // 2) 数値だけ全部集める（#行とヘッダー行は除外）
+  const values = [];
+  for (let raw of lines) {
+    let line = raw;
+    if (/^\s*#/.test(line)) continue;
+    if (/latitude/i.test(line) || /longitude/i.test(line)) continue;
+    line = line.replace(/\u3000/g, " ").replace(/,/g, " ").replace(/\t/g, " ");
+    const nums = line.split(/\s+/)
+      .map(x => parseFloat(x))
+      .filter(v => !Number.isNaN(v));
+    if (nums.length) values.push(...nums);
+  }
+
+  const total = values.length;
+  if (total === 0) {
+    throw new Error("TEC 数値が一つも見つかりませんでした。");
+  }
+
+  // 3) ヘッダーで latN/lonN が取れなかったら、総数から推定する
+  if (!latN || !lonN) {
+    // よくあるパターン候補
+    const candidateLats = [
+      { n: 71, min: -87.5, step: 2.5 },
+      { n: 73, min: -90.0, step: 2.5 },
+      { n: 91, min: -90.0, step: 2.0 }
+    ];
+
+    let found = false;
+    for (const cand of candidateLats) {
+      if (total % cand.n === 0) {
+        latN   = cand.n;
+        latMin = cand.min;
+        latStep = cand.step;
+        lonN   = total / cand.n;
+        lonMin = -180;
+        lonStep = (360 / (lonN - 1)); // -180..180 の等間隔とみなす
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      throw new Error("LATITUDE/LONGITUDE GRID 情報が読めず、値の個数からも推定できませんでした。");
+    }
+  }
+
+  // 4) 緯度・経度配列を作成
+  const latGrid = [];
+  for (let i = 0; i < latN; i++) {
+    latGrid.push(latMin + i * latStep);
+  }
+  const lonGrid = [];
+  for (let j = 0; j < lonN; j++) {
+    lonGrid.push(lonMin + j * lonStep);
+  }
+
+  // 5) TEC 2次元配列に並べ替え（行＝緯度、列＝経度）とみなす
+  if (values.length < latN * lonN) {
+    console.warn("期待される値の数より少ないです: ", values.length, " / ", latN * lonN);
+  }
+
+  const tec = [];
+  let k = 0;
+  for (let i = 0; i < latN; i++) {
+    const row = [];
+    for (let j = 0; j < lonN; j++) {
+      row.push(values[k++]);
+    }
+    tec.push(row);
+  }
+
+  return { latGrid, lonGrid, tec };
+}
+
+// ---------- 元の格子から 1°×1° に補間する関数 ----------
+function makeBilinear(src) {
+  const { latGrid, lonGrid, tec } = src;
+  const ny = latGrid.length;
+  const nx = lonGrid.length;
+
+  return function sample(lat0, lon0) {
+    if (lat0 < latGrid[0]) lat0 = latGrid[0];
+    if (lat0 > latGrid[ny - 1]) lat0 = latGrid[ny - 1];
+    if (lon0 < lonGrid[0]) lon0 = lonGrid[0];
+    if (lon0 > lonGrid[nx - 1]) lon0 = lonGrid[nx - 1];
+
+    let iy1 = 0;
+    for (let i = 0; i < ny - 1; i++) {
+      if (latGrid[i] <= lat0 && lat0 <= latGrid[i + 1]) {
+        iy1 = i;
+        break;
+      }
+    }
+    let ix1 = 0;
+    for (let j = 0; j < nx - 1; j++) {
+      if (lonGrid[j] <= lon0 && lon0 <= lonGrid[j + 1]) {
+        ix1 = j;
+        break;
+      }
+    }
+    const iy2 = Math.min(iy1 + 1, ny - 1);
+    const ix2 = Math.min(ix1 + 1, nx - 1);
+
+    const y1 = latGrid[iy1], y2 = latGrid[iy2];
+    const x1 = lonGrid[ix1], x2 = lonGrid[ix2];
+
+    const f11 = tec[iy1][ix1];
+    const f21 = tec[iy1][ix2];
+    const f12 = tec[iy2][ix1];
+    const f22 = tec[iy2][ix2];
+
+    if ([f11,f21,f12,f22].some(v => Number.isNaN(v))) {
+      let best = null, bestD2 = Infinity;
+      for (let i = 0; i < ny; i++) {
+        for (let j = 0; j < nx; j++) {
+          const v = tec[i][j];
+          if (Number.isNaN(v)) continue;
+          const d2 = (latGrid[i] - lat0)**2 + (lonGrid[j] - lon0)**2;
+          if (d2 < bestD2) { bestD2 = d2; best = v; }
+        }
+      }
+      return best;
+    }
+
+    if (x2 === x1 || y2 === y1) return f11;
+
+    const tx = (lon0 - x1) / (x2 - x1);
+    const ty = (lat0 - y1) / (y2 - y1);
+
+    const fxy =
+      f11 * (1 - tx) * (1 - ty) +
+      f21 * tx       * (1 - ty) +
+      f12 * (1 - tx) * ty       +
+      f22 * tx       * ty;
+
+    return fxy;
+  };
+}
+
+// ---------- Δt に応じて Day1/2/3 の F10.7/Ap を選択 ----------
+function chooseDrivers(dtHour, f107_1,ap_1, f107_2,ap_2, f107_3,ap_3, dst,xray, betaF,betaDst,betaAp,betaX) {
+  let fUsed = f107_1;
+  let aUsed = ap_1;
+  let dayLabel = "Day1 (0–24h)";
+
+  if (dtHour > 24 && dtHour <= 48) {
+    fUsed = f107_2;
+    aUsed = ap_2;
+    dayLabel = "Day2 (24–48h)";
+  } else if (dtHour > 48) {
+    fUsed = f107_3;
+    aUsed = ap_3;
+    dayLabel = "Day3 (48–72h, それ以上もDay3を使用)";
+  }
+
+  const driver =
+    betaF   * fUsed +
+    betaDst * dst   +
+    betaAp  * aUsed +
+    betaX   * xray;
+
+  return { driver, fUsed, aUsed, dayLabel };
+}
+
+// ---------- 「世界1度格子 TEC 予報を計算」ボタン ----------
+document.getElementById("runGlobal").addEventListener("click", () => {
+  const tecText = document.getElementById("tecInput").value;
+  if (!tecText.trim()) {
+    alert("まず World0000_tec.txt の中身をコピペしてください。");
+    return;
+  }
+
+  let src;
+  try {
+    src = parseBomTec(tecText);
+  } catch (e) {
+    console.error(e);
+    alert("World0000_tec.txt の読み取りでエラー: " + e.message);
+    return;
+  }
+
+  const bilinear = makeBilinear(src);
+
+  const f107_1 = parseFloat(document.getElementById("f107_1").value);
+  const ap_1   = parseFloat(document.getElementById("ap_1").value);
+  const f107_2 = parseFloat(document.getElementById("f107_2").value);
+  const ap_2   = parseFloat(document.getElementById("ap_2").value);
+  const f107_3 = parseFloat(document.getElementById("f107_3").value);
+  const ap_3   = parseFloat(document.getElementById("ap_3").value);
+
+  const dst  = parseFloat(document.getElementById("dst").value);
+  const xray = parseFloat(document.getElementById("xray").value);
+  const alpha   = parseFloat(document.getElementById("alpha").value);
+  const betaTec = parseFloat(document.getElementById("betaTec").value);
+  const betaF   = parseFloat(document.getElementById("betaF").value);
+  const betaDst = parseFloat(document.getElementById("betaDst").value);
+  const betaAp  = parseFloat(document.getElementById("betaAp").value);
+  const betaX   = parseFloat(document.getElementById("betaX").value);
+  const dtHour  = parseFloat(document.getElementById("dtHour").value);
+
+  const nums = [f107_1,ap_1,f107_2,ap_2,f107_3,ap_3,dst,xray,alpha,betaTec,betaF,betaDst,betaAp,betaX,dtHour];
+  if (nums.some(v => Number.isNaN(v))) {
+    alert("F10.7 / Ap / Dst / X-ray / 係数 / Δt のどれかが不正です。");
+    return;
+  }
+
+  const { driver, fUsed, aUsed, dayLabel } = chooseDrivers(
+    dtHour, f107_1,ap_1, f107_2,ap_2, f107_3,ap_3,
+    dst,xray, betaF,betaDst,betaAp,betaX
+  );
+
+  const infoLines = [];
+  infoLines.push(`元グリッド: lat ${src.latGrid[0]}～${src.latGrid[src.latGrid.length-1]} (全 ${src.latGrid.length} 点)`);
+  infoLines.push(`           lon ${src.lonGrid[0]}～${src.lonGrid[src.lonGrid.length-1]} (全 ${src.lonGrid.length} 点)`);
+  infoLines.push(`Δt = ${dtHour} [h], 使用日: ${dayLabel}`);
+  infoLines.push(`使用 F10.7=${fUsed}, Ap=${aUsed}, Dst=${dst}, X-ray=${xray}`);
+  infoLines.push("");
+  infoLines.push("※ β_TEC = 1 のため、Δt=0 のときは元のBOMマップとほぼ同じTECスケールになります。");
+  document.getElementById("infoBox").textContent = infoLines.join("\n");
+
+  const lines = [];
+  const lonHeader = ["Lat/Lon"];
+  for (let lon = -180; lon <= 180; lon++) lonHeader.push(String(lon));
+  lines.push(lonHeader.join("\t"));
+
+  for (let lat = 90; lat >= -90; lat--) {
+    const row = [String(lat)];
+    for (let lon = -180; lon <= 180; lon++) {
+      const tec0 = bilinear(lat, lon);  // (lat, lon)
+      const fcst = Number.isNaN(tec0)
+        ? NaN
+        : alpha + betaTec * tec0 + dtHour * driver;
+      row.push(Number.isNaN(fcst) ? "NaN" : fcst.toFixed(3));
+    }
+    lines.push(row.join("\t"));
+  }
+
+  document.getElementById("globalOutput").textContent = lines.join("\n");
+});
+
+// ---------- コピー用ボタン ----------
+document.getElementById("copyBtn").addEventListener("click", () => {
+  const text = document.getElementById("globalOutput").textContent;
+  if (!text.trim()) {
+    alert("まだデータがありません。まず予報を計算してください。");
+    return;
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      alert("✅ TEC予報データをコピーしました！\nExcelにそのまま貼り付けできます。");
+    }).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+
+  function fallbackCopy(t) {
+    const ta = document.createElement("textarea");
+    ta.value = t;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      alert("✅ TEC予報データをコピーしました！（旧方式）");
+    } catch (e) {
+      alert("コピーに失敗しました… 手動で選択してコピーしてください。");
+    }
+    document.body.removeChild(ta);
+  }
+});
+</script>
+</body>
+</html>
