@@ -69,7 +69,7 @@
     button:hover {
       background: linear-gradient(90deg, #3473c0, #3ba4ff);
     }
-    input[type="number"], input[type="text"], input[type="datetime-local"] {
+    input[type="number"], input[type="text"], input[type="datetime-local"], input[type="file"] {
       background: #050813;
       color: #e0ecff;
       border: 1px solid #3a476e;
@@ -134,7 +134,9 @@
 <body>
   <h1>SWIFT-TEC v2 &mdash; BoM 4-snapshot + Space Weather</h1>
   <div class="small">
-    BoMのTEC生データを最大4つ貼り付けて昼夜変化の「型」を推定し、F10.7 / Ap / Dst / X-rayを重ねて72時間予報します。
+    BoMのTECグローバルマップ（IRI-2020ベース）を最大4枚貼り付けて昼夜変化の「型」を推定し、
+    F10.7 / Ap / Dst / X-ray を重ねて 72時間 TEC 予報を作成します。<br>
+    背景地図はブラウザ内に保存され、さらに <code>bg.png</code> を同じリポジトリに置くと、どのPCから開いても同じ初期背景になります。
   </div>
 
   <!-- ===== BoM TEC 入力（最大4枚） ===== -->
@@ -255,7 +257,8 @@
     </div>
     <canvas id="tecMapCanvas" width="1000" height="500"></canvas>
     <div class="small">
-      キャンバス上に地図画像をドラッグ＆ドロップ or 下のファイル選択から読み込み。色スケールと閾値は下で変更できます。
+      キャンバス上に地図画像をドラッグ＆ドロップするか、下のファイル選択から読み込み。<br>
+      読み込んだ背景地図はブラウザに保存され、さらに <code>bg.png</code> があればその画像が初期背景として使われます。
     </div>
 
     <div class="flex-row" style="margin-top:8px;">
@@ -288,13 +291,23 @@
         </table>
         <button onclick="drawTecMap()">この色設定で再描画</button>
         <div class="small">※120 TECU を上限として凡例を表示します。</div>
+
+        <h3 style="margin-top:8px;">表示設定の保存・読み込み</h3>
+        <div class="small">
+          色スケール＋地図の拡大・位置を JSON に保存して、別PCでも読み込めます。
+        </div>
+        <button onclick="downloadConfig()">設定を保存(JSON)</button><br />
+        <input type="file" id="configFile" accept="application/json" />
+        <button onclick="loadConfigFromFile()">設定を読み込み</button>
       </div>
 
       <!-- 地図オーバーレイ設定 -->
       <div style="flex:1; min-width:260px;">
-        <h3>ベース地図オーバーレイ（任意）</h3>
+        <h3>ベース地図オーバーレイ（保存機能付き）</h3>
         <div class="small">
-          世界地図などの画像をキャンバスへドラッグ＆ドロップするか、下のボタンで選択してください。拡大縮小・引き延ばし・位置調整ができます。
+          世界地図などの画像をキャンバスへドラッグ＆ドロップするか、下のボタンで選択してください。<br>
+          読み込んだ画像はブラウザ内（localStorage）にも保存されます。<br>
+          リポジトリに <code>bg.png</code> を置いた場合、それが初期背景になります。
         </div>
         <input type="file" id="mapFile" accept="image/*" />
         <div style="margin-top:4px;">
@@ -308,9 +321,11 @@
         <div style="margin-top:4px;">
           <label>map透明度</label><input id="mapAlpha" type="number" step="0.1" min="0" max="1" value="0.5" style="width:60px;" onchange="onMapParamChange()" />
         </div>
+        <button onclick="clearMapImage()">背景画像を削除</button>
         <div class="small" style="margin-top:4px;">
           ・scaleX / scaleY：地図の拡大縮小・引き伸ばし<br/>
-          ・offsetX / offsetY：マップの左右・上下位置調整
+          ・offsetX / offsetY：マップの左右・上下位置調整<br/>
+          ・これらの設定も JSON 保存 & 読み込みに含まれます。
         </div>
       </div>
     </div>
@@ -399,7 +414,6 @@
       }
       if (!grid.length) throw new Error("TEC グリッドが空です");
 
-      // 行列数を調整
       for (let i=0;i<grid.length;i++) {
         if (grid[i].length < lonN) {
           while (grid[i].length < lonN) grid[i].push(NaN);
@@ -415,7 +429,6 @@
         grid.length = latN;
       }
 
-      // 欠損を上下平均で補完
       for (let i=0;i<latN;i++) {
         for (let j=0;j<lonN;j++) {
           if (!isFinite(grid[i][j])) {
@@ -446,7 +459,7 @@
     function solarDeclination(d) {
       const N = dayOfYear(d);
       const B = 2*Math.PI*(N-81)/365;
-      return 23.44*Math.sin(B);  // [deg]
+      return 23.44*Math.sin(B);
     }
     function localSolarTime(utDate, lonDeg) {
       const utH = utDate.getUTCHours() + utDate.getUTCMinutes()/60 + utDate.getUTCSeconds()/3600;
@@ -494,7 +507,6 @@
         }
         if (!snaps.length) throw new Error("有効な BoM データが1つもありません。");
 
-        // グリッド仕様が同じか簡易チェック
         const ref = snaps[0];
         for (const s of snaps) {
           if (s.latMin!==ref.latMin || s.latStep!==ref.latStep || s.latN!==ref.latN ||
@@ -503,22 +515,19 @@
           }
         }
 
-        // 時刻順にソート
         snaps.sort((a,b)=>a.time - b.time);
         gBomSnaps = snaps;
-        gClimBaseTime = snaps[snaps.length-1].time; // 最新を基準時刻とする
+        gClimBaseTime = snaps[snaps.length-1].time;
         infos.push(`BoM スナップショット数: ${snaps.length}`);
         snaps.forEach((s, i)=>{
           infos.push(`  [${i}] index#${s.index}, VALID UTC = ${s.time.toISOString()}`);
         });
 
-        // 観測時刻入力に最新時刻を反映
         const pad = n => n.toString().padStart(2,"0");
         const t = gClimBaseTime;
         const isoLocal = `${t.getUTCFullYear()}-${pad(t.getUTCMonth()+1)}-${pad(t.getUTCDate())}T${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}`;
         document.getElementById("timeNow").value = isoLocal;
 
-        // a,b をフィット
         const latN = ref.latN;
         const lonN = ref.lonN;
         const latMin = ref.latMin;
@@ -526,12 +535,10 @@
         const latStep = ref.latStep;
         const lonStep = ref.lonStep;
 
-        // 事前に cosχ → x_k を計算
         const K = snaps.length;
         const xs = new Array(K);
-        for (let k=0;k<K;k++) {
-          xs[k] = [];
-        }
+        for (let k=0;k<K;k++) xs[k] = [];
+
         for (let k=0;k<K;k++) {
           const snap = snaps[k];
           xs[k].length = latN;
@@ -610,7 +617,7 @@
       document.getElementById("bomMultiInfo").textContent = infos.join("\n");
     }
 
-    // ========= BoM 検索（最新スナップのグリッド） =========
+    // ========= BoM 検索 =========
     function searchOnBom() {
       const out = document.getElementById("bomSearchInfo");
       try {
@@ -638,7 +645,6 @@
         lines.push(`BoM TEC ≒ ${val.toFixed(2)} TECU`);
         out.textContent = lines.join("\n");
 
-        // 1地点予報入力に反映
         document.getElementById("latForecast").value = lat;
         document.getElementById("lonForecast").value = lon;
         document.getElementById("tecNow").value = val.toFixed(2);
@@ -789,21 +795,21 @@
     function dstScale(latDeg, Dst) {
       const D0=0;
       const dD = (Dst-D0)/100;
-      const wLat = 0.3 + 0.7*Math.min(1, Math.abs(latDeg)/60); // 高緯度ほど効く
+      const wLat = 0.3 + 0.7*Math.min(1, Math.abs(latDeg)/60);
       let s = 1 + 0.4*wLat*dD;
       if (!isFinite(s)) s=1;
       return Math.max(0.6, Math.min(1.4, s));
     }
     function xrayScale(latDeg, cosChi, XeffLog) {
       if (!gXrayDaily) return 1;
-      const wDay = Math.max(cosChi,0);  // 昼側だけ
+      const wDay = Math.max(cosChi,0);
       const wLat = 0.5 + 0.5*Math.min(1, Math.abs(latDeg)/50);
       let s = 1 + 0.25*wDay*wLat*XeffLog;
       if (!isFinite(s)) s=1;
       return Math.max(0.7, Math.min(1.5, s));
     }
 
-    // ========= 1地点予報（a,b + 太陽活動） =========
+    // ========= 1地点予報 =========
     function runForecast() {
       const out = document.getElementById("forecastOut");
       try {
@@ -835,7 +841,6 @@
         const x0 = xFromCosChi(z0.cosChi);
         const xF = xFromCosChi(zF.cosChi);
 
-        // BoMのa,bから現況と未来の「BoMベース」を計算（最寄格子）
         const iLatRaw = (lat - gAB.latMin)/gAB.latStep;
         const iLonRaw = (lon - gAB.lonMin)/gAB.lonStep;
         let iLat = Math.round(iLatRaw);
@@ -847,7 +852,6 @@
         const Tclim_now = Math.max(a + b*x0, 0);
         const Tclim_fut = Math.max(a + b*xF, 0);
 
-        // 太陽活動のスケール
         const Ssolar = solarBackgroundScale(F107, Ap);
         const Sdst   = dstScale(lat, Dst);
         const Sxray  = xrayScale(lat, zF.cosChi, gXrayDaily.XeffLog);
@@ -875,7 +879,7 @@
       }
     }
 
-    // ========= 72時間・30分刻みのグローバル予報 =========
+    // ========= 72時間グローバル予報 =========
     function computeForecastFrames() {
       if (!gAB) { alert("先に BoM を解析してください。"); return; }
       if (!gXrayDaily) { alert("先に X-ray を解析してください。"); return; }
@@ -964,7 +968,7 @@
       }
     }
 
-    // ========= 色スケール（ユーザー設定） =========
+    // ========= 色スケール =========
     function hexToRgb(hex) {
       if (!/^#?[0-9A-Fa-f]{6}$/.test(hex)) return null;
       const h = hex.replace("#","");
@@ -974,7 +978,7 @@
       return {r,g,b};
     }
 
-    function readColorStops() {
+    function readColorStopsInputRaw() {
       const stops = [];
       for (let i=1;i<=5;i++) {
         const vStr = document.getElementById("csVal"+i)?.value;
@@ -985,9 +989,13 @@
         if (!isFinite(v) || !rgb) continue;
         stops.push({val:v, rgb, hex:cStr});
       }
-      stops.sort((a,b) => a.val - b.val);
-      // 最低2点なければデフォルト
-      if (stops.length < 2) {
+      stops.sort((a,b)=>a.val-b.val);
+      return stops;
+    }
+
+    function readColorStops() {
+      const raw = readColorStopsInputRaw();
+      if (raw.length < 2) {
         return [
           {val:0,   rgb:{r:0,g:0,b:90}},
           {val:30,  rgb:{r:0,g:136,b:0}},
@@ -997,7 +1005,23 @@
           {val:120, rgb:{r:255,g:0,b:0}}
         ];
       }
-      return stops;
+      return raw;
+    }
+
+    function applyColorStops(stops) {
+      if (!stops || !stops.length) return;
+      stops.sort((a,b)=>a.val-b.val);
+      for (let i=1;i<=5;i++) {
+        const vInput = document.getElementById("csVal"+i);
+        const cInput = document.getElementById("csColor"+i);
+        if (!vInput || !cInput) continue;
+        if (i-1 < stops.length) {
+          vInput.value = stops[i-1].val;
+          cInput.value = stops[i-1].hex || "#000000";
+        } else {
+          // 余りは何もしない
+        }
+      }
     }
 
     function colorForTEC(T, stops) {
@@ -1023,7 +1047,7 @@
       return last.rgb;
     }
 
-    // ========= 地図オーバーレイ =========
+    // ========= 地図オーバーレイ & 保存 =========
     function getMapParams() {
       const scaleX = parseFloat(document.getElementById("mapScaleX")?.value) || 1.0;
       const scaleY = parseFloat(document.getElementById("mapScaleY")?.value) || 1.0;
@@ -1039,24 +1063,107 @@
         alpha: Math.max(0, Math.min(1, a))
       };
     }
+
+    function setMapParamsToInputs(p) {
+      if (!p) return;
+      if (document.getElementById("mapScaleX")) document.getElementById("mapScaleX").value = p.scaleX;
+      if (document.getElementById("mapScaleY")) document.getElementById("mapScaleY").value = p.scaleY;
+      if (document.getElementById("mapOffsetX")) document.getElementById("mapOffsetX").value = p.offsetX;
+      if (document.getElementById("mapOffsetY")) document.getElementById("mapOffsetY").value = p.offsetY;
+      if (document.getElementById("mapAlpha"))   document.getElementById("mapAlpha").value   = p.alpha;
+    }
+
+    function saveMapParams() {
+      try {
+        const p = getMapParams();
+        localStorage.setItem("swifttec_map_params", JSON.stringify(p));
+      } catch(e) {
+        console.warn("map params save failed:", e);
+      }
+    }
+
     function onMapParamChange() {
+      saveMapParams();
       drawTecMap();
     }
+
     function loadMapFileFromFile(file) {
       const reader = new FileReader();
       reader.onload = e => {
+        const dataUrl = e.target.result;
+        try {
+          localStorage.setItem("swifttec_map_image", dataUrl);
+        } catch(err) {
+          console.warn("localStorage 保存に失敗しました（容量など）:", err);
+        }
         const img = new Image();
         img.onload = () => {
           gMapImage = img;
           drawTecMap();
         };
-        img.src = e.target.result;
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
     }
+
     function handleMapFileInput(e) {
       const file = e.target.files[0];
       if (file) loadMapFileFromFile(file);
+    }
+
+    function clearMapImage() {
+      gMapImage = null;
+      try {
+        localStorage.removeItem("swifttec_map_image");
+        // パラメータは残してもよいが、ここでは残す
+      } catch(e) {}
+      drawTecMap();
+    }
+
+    // ========= 設定保存・読み込み(JSON) =========
+    function downloadConfig() {
+      try {
+        const cfg = {
+          colorStops: readColorStopsInputRaw(),
+          mapParams: getMapParams()
+        };
+        const blob = new Blob([JSON.stringify(cfg,null,2)], {type:"application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "swifttec_config.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch(e) {
+        alert("設定保存に失敗しました: " + e.message);
+      }
+    }
+
+    function loadConfigFromFile() {
+      const input = document.getElementById("configFile");
+      if (!input || !input.files || !input.files[0]) {
+        alert("設定ファイルを選択してください。");
+        return;
+      }
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const cfg = JSON.parse(e.target.result);
+          if (cfg.colorStops) applyColorStops(cfg.colorStops);
+          if (cfg.mapParams) {
+            setMapParamsToInputs(cfg.mapParams);
+            saveMapParams();
+          }
+          drawTecMap();
+          alert("設定を読み込みました。");
+        } catch(err) {
+          alert("設定ファイルが不正です: " + err.message);
+        }
+      };
+      reader.readAsText(file);
     }
 
     // ========= ヒートマップ描画 =========
@@ -1066,17 +1173,6 @@
       ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.fillStyle = "#000000";
       ctx.fillRect(0,0,canvas.width,canvas.height);
-
-      if (!gForecastFrames || !gForecastFrames.length || !gAB) {
-        ctx.fillStyle = "#9fb5ff";
-        ctx.fillText("まだ予報が計算されていません。", 20, 20);
-        return;
-      }
-
-      const idx = parseInt(document.getElementById("timeSlider").value,10);
-      const frame = gForecastFrames[idx];
-      const latN = gAB.latN;
-      const lonN = gAB.lonN;
 
       const legendWidth = 80;
       const plotW = canvas.width - legendWidth;
@@ -1095,7 +1191,17 @@
         ctx.restore();
       }
 
-      // TECカラーマップ
+      if (!gForecastFrames || !gForecastFrames.length || !gAB) {
+        ctx.fillStyle = "#9fb5ff";
+        ctx.fillText("まだ予報が計算されていません。", 20, 20);
+        return;
+      }
+
+      const idx = parseInt(document.getElementById("timeSlider").value,10);
+      const frame = gForecastFrames[idx];
+      const latN = gAB.latN;
+      const lonN = gAB.lonN;
+
       const stops = readColorStops();
       const cellW = plotW / lonN;
       const cellH = plotH / latN;
@@ -1108,7 +1214,7 @@
           const c = colorForTEC(T, stops);
           ctx.fillStyle = `rgb(${c.r},${c.g},${c.b})`;
           const x = j*cellW;
-          const y = (latN-1-i)*cellH; // 北が上
+          const y = (latN-1-i)*cellH;
           ctx.fillRect(x,y,cellW+1,cellH+1);
         }
       }
@@ -1127,7 +1233,6 @@
       ctx.fillStyle = "#ffffff";
       ctx.font = "10px sans-serif";
 
-      // 緯度線 & ラベル（左側）
       for (let lat=-80; lat<=80; lat+=20) {
         const t = (lat - latMin)/(latMax - latMin);
         const y = (1-t)*plotH;
@@ -1138,7 +1243,6 @@
         ctx.fillText(`${lat}°`, 2, y-2);
       }
 
-      // 経度線 & ラベル（下側）
       for (let lon=-180; lon<=180; lon+=60) {
         const t = (lon - lonMin)/(lonMax - lonMin);
         const x = t*plotW;
@@ -1149,7 +1253,7 @@
         ctx.fillText(`${lon}°`, x-12, plotH-4);
       }
 
-      // 凡例（右側）
+      // 凡例
       const legendX = plotW + 10;
       const legendYTop = 20;
       const legendYBot = canvas.height - 40;
@@ -1170,7 +1274,6 @@
       ctx.font = "11px sans-serif";
       ctx.fillText("TEC (TECU)", legendX-5, legendYTop-6);
 
-      // 閾値ラベル
       const usedStops = readColorStops();
       ctx.font = "10px sans-serif";
       for (const s of usedStops) {
@@ -1231,7 +1334,7 @@
       }
     }
 
-    // ========= 地図ドラッグ＆ドロップ設定 =========
+    // ========= 地図ドラッグ＆ドロップ + bg.png + 保存の復元 =========
     window.addEventListener("load", () => {
       const fileInput = document.getElementById("mapFile");
       if (fileInput) {
@@ -1247,6 +1350,40 @@
           const file = ev.dataTransfer.files[0];
           if (file) loadMapFileFromFile(file);
         });
+      }
+
+      // 保存済み地図の復元 or bg.png ロード
+      try {
+        const savedImg = localStorage.getItem("swifttec_map_image");
+        if (savedImg) {
+          const img = new Image();
+          img.onload = () => {
+            gMapImage = img;
+            drawTecMap();
+          };
+          img.src = savedImg;
+        } else {
+          // リポジトリに bg.png があればそれを初期背景として読み込む
+          const img = new Image();
+          img.onload = () => {
+            gMapImage = img;
+            drawTecMap();
+          };
+          img.onerror = () => {
+            // bg.png が無い場合は何もしない
+            drawTecMap();
+          };
+          img.src = "bg.png";
+        }
+
+        const savedParams = localStorage.getItem("swifttec_map_params");
+        if (savedParams) {
+          const p = JSON.parse(savedParams);
+          setMapParamsToInputs(p);
+        }
+      } catch(e) {
+        console.warn("保存済み背景画像・パラメータの復元に失敗:", e);
+        drawTecMap();
       }
     });
   </script>
