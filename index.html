@@ -28,8 +28,7 @@
     }
     .page {
       display: flex;
-      height: 100vh;
-      overflow: hidden;
+      /* height 固定 & overflow hidden をやめて、縦スクロールできるようにする */
     }
     .sidebar {
       width: 420px;
@@ -130,8 +129,7 @@
     .canvas-row {
       display: flex;
       gap: 8px;
-      flex: 1;
-      min-height: 0;
+      /* 高さは JS 側で 420px に設定する */
     }
     #tecCanvas {
       flex: 3;
@@ -327,10 +325,58 @@
         </table>
       </div>
 
+      <!-- TEC heatmap color settings -->
+      <div class="card">
+        <div class="card-header">
+          <h2>4. TECヒートマップ色設定</h2>
+          <span>予報マップ用</span>
+        </div>
+        <div class="small">
+          TEC値と色を5点まで指定できます。指定した値の間は自動でグラデーションします。<br>
+          例: 0=濃緑, 45=緑, 55=白, 60=黄, 120=赤。
+        </div>
+        <table>
+          <thead>
+          <tr><th>点</th><th>TEC値</th><th>色</th></tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td>P1</td>
+            <td><input id="tcVal1" type="number" value="0" style="width:60px;"></td>
+            <td><input id="tcColor1" type="color" value="#003000"></td>
+          </tr>
+          <tr>
+            <td>P2</td>
+            <td><input id="tcVal2" type="number" value="45" style="width:60px;"></td>
+            <td><input id="tcColor2" type="color" value="#00ff00"></td>
+          </tr>
+          <tr>
+            <td>P3</td>
+            <td><input id="tcVal3" type="number" value="55" style="width:60px;"></td>
+            <td><input id="tcColor3" type="color" value="#ffffff"></td>
+          </tr>
+          <tr>
+            <td>P4</td>
+            <td><input id="tcVal4" type="number" value="60" style="width:60px;"></td>
+            <td><input id="tcColor4" type="color" value="#ffff00"></td>
+          </tr>
+          <tr>
+            <td>P5</td>
+            <td><input id="tcVal5" type="number" value="120" style="width:60px;"></td>
+            <td><input id="tcColor5" type="color" value="#ff0000"></td>
+          </tr>
+          </tbody>
+        </table>
+        <div class="row">
+          <button onclick="applyTecColorScale()">色設定を反映</button>
+          <button class="secondary" onclick="resetTecColorScale()">初期化</button>
+        </div>
+      </div>
+
       <!-- Verification inputs -->
       <div class="card">
         <div class="card-header">
-          <h2>4. 検証用 BoM TEC（最大4枚）</h2>
+          <h2>5. 検証用 BoM TEC（最大4枚）</h2>
           <span>予報期間中の実測</span>
         </div>
         <div class="row small">
@@ -360,8 +406,8 @@
       <!-- Color settings for verification -->
       <div class="card">
         <div class="card-header">
-          <h2>5. 検証マップ色設定</h2>
-          <span>誤差(%) → 色を任意設定</span>
+          <h2>6. 検証マップ色設定</h2>
+          <span>誤差(%) → 色</span>
         </div>
         <div class="small">
           誤差の上限と色を設定。<br>
@@ -403,7 +449,7 @@
       <!-- Advanced coefficients -->
       <div class="card">
         <div class="card-header">
-          <h2>6. 係数設定（Advanced）</h2>
+          <h2>7. 係数設定（Advanced）</h2>
           <span>バイアス提案の対象</span>
         </div>
         <div class="small">※いじり過ぎる前に現在値をメモ推奨。</div>
@@ -474,7 +520,7 @@
       <!-- Control buttons -->
       <div class="card">
         <div class="card-header">
-          <h2>7. 実行</h2>
+          <h2>8. 実行</h2>
           <span>予報＆描画</span>
         </div>
         <div class="row">
@@ -516,11 +562,11 @@
       <div class="card" style="flex:0 0 35%;">
         <div class="row">
           <div style="flex:2;">
-            <h3>8. 検証レポート & 係数提案</h3>
+            <h3>9. 検証レポート & 係数提案</h3>
             <pre id="verifyReport">(まだ検証されていません)</pre>
           </div>
           <div style="flex:1;">
-            <h3>9. 現在の TEC 値</h3>
+            <h3>10. 現在の TEC 値</h3>
             <pre id="pointInfo">マップ上をクリックすると、その格子点のTECと位置が表示されます。</pre>
           </div>
         </div>
@@ -545,8 +591,17 @@ let gVerifyColorScale = [
   { limit: 999, color: "#ff0000" }
 ];
 
+let gTecColorScale = [
+  { value: 0,   color: "#003000" },
+  { value: 45,  color: "#00ff00" },
+  { value: 55,  color: "#ffffff" },
+  { value: 60,  color: "#ffff00" },
+  { value: 120, color: "#ff0000" }
+];
+
 const STORAGE_KEY_CONFIG = "swifttec_config_v2";
 const STORAGE_KEY_VCOL = "swifttec_vcol_v2";
+const STORAGE_KEY_TCOL = "swifttec_teccol_v2";
 
 /* =========================
    ユーティリティ
@@ -558,11 +613,31 @@ function logInfo(msg) {
 function clamp(v, a, b) {
   return v < a ? a : (v > b ? b : v);
 }
+function hexToRgb(hex) {
+  const h = hex.replace("#","");
+  if (h.length === 3) {
+    const r = parseInt(h[0]+h[0],16);
+    const g = parseInt(h[1]+h[1],16);
+    const b = parseInt(h[2]+h[2],16);
+    return {r,g,b};
+  }
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return {r,g,b};
+}
+function lerpColor(c1, c2, t) {
+  const a = hexToRgb(c1);
+  const b = hexToRgb(c2);
+  const r = Math.round(a.r + (b.r - a.r)*t);
+  const g = Math.round(a.g + (b.g - a.g)*t);
+  const b2 = Math.round(a.b + (b.b - a.b)*t);
+  return `rgb(${r},${g},${b2})`;
+}
 
 /* 日付文字列 → Date UTC */
 function parseBomValidTime(text) {
-  // Header行: "# VALID DATE/TIME: 11/11/2025 00:00:00UTC"
-  const lines = text.split(/\r?\n/);
+  const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
   for (const line of lines) {
     const m = line.match(/VALID DATE\/TIME:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})/i);
     if (m) {
@@ -609,7 +684,6 @@ function parseBoM(text) {
     throw new Error("LATITUDE/LONGITUDE GRID 情報が見つかりません。");
   }
 
-  // 値行だけ抽出（#で始まらない行）
   const valLines = lines.filter(l => !l.trim().startsWith("#"));
   const values = [];
   for (const ln of valLines) {
@@ -652,15 +726,13 @@ function dayOfYearUTC(date) {
   return 1 + diff;
 }
 function solarDeclinationRad(date) {
-  // 簡易: δ ≈ 23.44° * sin(2π*(N-80)/365)
   const N = dayOfYearUTC(date);
   const rad = Math.PI/180;
   return 23.44*rad * Math.sin(2*Math.PI*(N-80)/365.0);
 }
 function subsolarLongitudeDeg(date) {
-  // 簡易: 正午に 0°、UTに応じて 15°/h ずらす
   const utH = date.getUTCHours() + date.getUTCMinutes()/60 + date.getUTCSeconds()/3600;
-  let lon = - (utH - 12)*15; // 正午で0°, 0UTで -180°
+  let lon = - (utH - 12)*15;
   while (lon < -180) lon += 360;
   while (lon > 180) lon -= 360;
   return lon;
@@ -671,7 +743,7 @@ function cosSolarZenith(date, latDeg, lonDeg) {
   const delta = solarDeclinationRad(date);
   const lonS = subsolarLongitudeDeg(date)*rad;
   const lam = lonDeg*rad;
-  const h = lam - lonS; // 簡易ローカル時角
+  const h = lam - lonS;
   const coschi = Math.sin(phi)*Math.sin(delta) + Math.cos(phi)*Math.cos(delta)*Math.cos(h);
   return coschi;
 }
@@ -711,7 +783,6 @@ function runForecast() {
       throw new Error("少なくとも BoM を1枚入力してください。");
     }
 
-    // グリッド共通性チェック（簡易）
     const base = snaps[0];
     const { nLat, nLon, latArr, lonArr } = base;
     for (const s of snaps) {
@@ -721,7 +792,6 @@ function runForecast() {
     }
     gGrid = { nLat, nLon, latArr, lonArr };
 
-    // 時刻
     snaps.sort((a,b) => {
       const ta = a.validTime ? a.validTime.getTime() : 0;
       const tb = b.validTime ? b.validTime.getTime() : 0;
@@ -735,21 +805,16 @@ function runForecast() {
     gForecastFrames = new Array(nSteps+1);
     gForecastTimes = new Array(nSteps+1);
 
-    // 係数設定読み込み
     const cfg = getConfigFromUI();
 
-    // 太陽活動スケール
     const F107 = parseFloat(document.getElementById("inpF107").value) || 150;
     const Ap = parseFloat(document.getElementById("inpAp").value) || 10;
     const Dst = parseFloat(document.getElementById("inpDst").value) || -20;
     const Xray = parseFloat(document.getElementById("inpXray").value) || 1e-6;
 
     const Ssolar = computeSolarScale(F107, Ap, Dst, Xray, cfg);
-
-    // Deep Flare Net 8領域からフレア係数
     const Sflare = computeFlareScale(cfg);
 
-    // === 1. BoMスナップから T0, A を推定（各格子ごとに最小二乗） ===
     const K = snaps.length;
     const T0 = new Array(nLat);
     const Aamp = new Array(nLat);
@@ -758,7 +823,6 @@ function runForecast() {
       Aamp[i] = new Array(nLon);
     }
 
-    // 各スナップ時間の cosχ を準備: coschi[k][i][j]
     const coschi = [];
     for (let k=0;k<K;k++) {
       const snap = snaps[k];
@@ -806,7 +870,6 @@ function runForecast() {
       }
     }
 
-    // === 2. 48時間・15分刻みで予報を生成 ===
     for (let step=0; step<=nSteps; step++) {
       const frame = new Array(nLat);
       const t = new Date(gForecastStart.getTime() + step*dtMin*60000);
@@ -820,7 +883,6 @@ function runForecast() {
         const phi = lat*rad;
         const sinphi = Math.sin(phi);
         const cosphi = Math.cos(phi);
-        // 緯度補正 wLat（赤道異常と高緯度減衰）
         const wLat = computeLatWeight(lat, cfg);
 
         for (let j=0;j<nLon;j++) {
@@ -833,7 +895,6 @@ function runForecast() {
           let T = T0[i][j] + Aamp[i][j]*fDay;
           if (T < 0) T = 0;
 
-          // 太陽活動・フレア・緯度補正
           const scale = cfg.kGlobal * Ssolar * Sflare * wLat;
           frame[i][j] = T * scale;
         }
@@ -854,15 +915,14 @@ function runForecast() {
   }
 }
 
-/* 太陽活動スケール（かなり簡易） */
+/* 太陽活動スケール（簡易） */
 function computeSolarScale(F107, Ap, Dst, Xray, cfg) {
   const F0 = 100;
   const dF = (F107 - F0);
   let S = 1.0 + cfg.wF107 * dF;
   S += cfg.wAp * (Ap - 10);
-  S += cfg.wDst * Dst; // Dst<0 で減衰・増加どちらかはチューニング
+  S += cfg.wDst * Dst;
 
-  // X-rayをログスケールで弱く反映
   if (Xray > 0) {
     const X0 = 1e-7;
     const lx = Math.log10(Xray / X0);
@@ -875,14 +935,14 @@ function computeSolarScale(F107, Ap, Dst, Xray, cfg) {
 
 /* 緯度補正: 赤道異常＋高緯度減衰 */
 function computeLatWeight(latDeg, cfg) {
-  const x = Math.abs(latDeg)/40; // ±40付近にピーク
-  let w = 1 + cfg.latShape * (1 - (x-1)*(x-1)); // 赤道異常イメージ
+  const x = Math.abs(latDeg)/40;
+  let w = 1 + cfg.latShape * (1 - (x-1)*(x-1));
   if (w < 0.3) w = 0.3;
 
   if (Math.abs(latDeg) > 60) {
-    const f = (Math.abs(latDeg)-60)/30; // 60〜90
+    const f = (Math.abs(latDeg)-60)/30;
     const gh = cfg.latHighCut;
-    w *= (1 - f*(1-gh)); // 60で1、90でgh
+    w *= (1 - f*(1-gh));
   }
   return w;
 }
@@ -937,7 +997,6 @@ function computeFlareScale(cfg) {
     const Pm = parseFloat(document.getElementById("fm"+r).value) || 0;
     const Fx = cfg.kX * (Px/100);
     const Fm = cfg.kM * (Pm/100);
-    // 簡易な visibility 重み: 中心(R8)=1, 他は0.6
     const wVis = (r===8) ? 1.0 : 0.6;
     I += (Fx + Fm) * wVis;
   }
@@ -1000,13 +1059,64 @@ function loadConfig(fromStoredOnly=false) {
 }
 
 /* =========================
+   TEC カラースケール設定
+   ========================= */
+function applyTecColorScale() {
+  const vals = [
+    parseFloat(document.getElementById("tcVal1").value),
+    parseFloat(document.getElementById("tcVal2").value),
+    parseFloat(document.getElementById("tcVal3").value),
+    parseFloat(document.getElementById("tcVal4").value),
+    parseFloat(document.getElementById("tcVal5").value)
+  ];
+  const cols = [
+    document.getElementById("tcColor1").value,
+    document.getElementById("tcColor2").value,
+    document.getElementById("tcColor3").value,
+    document.getElementById("tcColor4").value,
+    document.getElementById("tcColor5").value
+  ];
+  const arr = [];
+  for (let i=0;i<5;i++) {
+    if (isNaN(vals[i])) continue;
+    arr.push({value: vals[i], color: cols[i]});
+  }
+  arr.sort((a,b)=>a.value-b.value);
+  if (!arr.length) return;
+  gTecColorScale = arr;
+  localStorage.setItem(STORAGE_KEY_TCOL, JSON.stringify(gTecColorScale));
+  drawTecMap();
+}
+function resetTecColorScale() {
+  gTecColorScale = [
+    { value: 0,   color: "#003000" },
+    { value: 45,  color: "#00ff00" },
+    { value: 55,  color: "#ffffff" },
+    { value: 60,  color: "#ffff00" },
+    { value: 120, color: "#ff0000" }
+  ];
+  document.getElementById("tcVal1").value = 0;
+  document.getElementById("tcVal2").value = 45;
+  document.getElementById("tcVal3").value = 55;
+  document.getElementById("tcVal4").value = 60;
+  document.getElementById("tcVal5").value = 120;
+  document.getElementById("tcColor1").value = "#003000";
+  document.getElementById("tcColor2").value = "#00ff00";
+  document.getElementById("tcColor3").value = "#ffffff";
+  document.getElementById("tcColor4").value = "#ffff00";
+  document.getElementById("tcColor5").value = "#ff0000";
+  localStorage.removeItem(STORAGE_KEY_TCOL);
+  drawTecMap();
+}
+
+/* =========================
    TEC マップ描画
    ========================= */
 function getTecCanvasSize() {
   const canvas = document.getElementById("tecCanvas");
   const parent = canvas.parentElement;
   const w = parent.clientWidth * 0.75;
-  const h = parent.clientHeight-4;
+  const h = 420; // 固定高さ
   return {w, h};
 }
 function resizeCanvases() {
@@ -1015,16 +1125,13 @@ function resizeCanvases() {
   const sz = getTecCanvasSize();
   tecCanvas.width = sz.w;
   tecCanvas.height = sz.h;
-
-  const pv = verifyCanvas.parentElement;
-  const vh = pv.clientHeight-4;
-  verifyCanvas.width = 200;
-  verifyCanvas.height = vh;
+  verifyCanvas.width = 220;
+  verifyCanvas.height = sz.h;
+  drawTecMap();
+  drawVerifyMap();
 }
 window.addEventListener("resize", () => {
   resizeCanvases();
-  drawTecMap();
-  drawVerifyMap();
 });
 
 function onSliderChange() {
@@ -1044,35 +1151,22 @@ function updateTimeLabel() {
   document.getElementById("timeLabel").textContent = label;
 }
 
-/* TEC カラースケール（固定: 0〜120 TECU） */
+/* TEC カラーマップ */
 function tecColor(val) {
-  const vmax = 120;
-  const v = clamp(val, 0, vmax)/vmax;
-  // 0-0.4: green系, 0.4-0.55: white, 0.55-0.7: yellow, 0.7-1: orange→red
-  let r=0,g=0,b=0;
-  if (v<=0.4) {
-    // dark green → bright green
-    const t = v/0.4;
-    r = 0;
-    g = 60 + 195*t;
-    b = 0;
-  } else if (v<=0.55) {
-    const t = (v-0.4)/0.15;
-    r = 200 + 55*t;
-    g = 200 + 55*t;
-    b = 200 + 55*t;
-  } else if (v<=0.7) {
-    const t = (v-0.55)/0.15;
-    r = 255;
-    g = 255;
-    b = 255*(1-t);
-  } else {
-    const t = (v-0.7)/0.3;
-    r = 255;
-    g = 200*(1-t);
-    b = 0;
+  if (!gTecColorScale || !gTecColorScale.length) return "#ffffff";
+  const scale = gTecColorScale;
+  if (val <= scale[0].value) return scale[0].color;
+  const last = scale[scale.length-1];
+  if (val >= last.value) return last.color;
+  for (let i=0;i<scale.length-1;i++) {
+    const a = scale[i];
+    const b = scale[i+1];
+    if (val >= a.value && val <= b.value) {
+      const t = (val - a.value)/(b.value - a.value);
+      return lerpColor(a.color, b.color, t);
+    }
   }
-  return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+  return last.color;
 }
 
 function drawTecMap() {
@@ -1087,7 +1181,6 @@ function drawTecMap() {
   const frame = gForecastFrames[idx];
   const {nLat, nLon, latArr, lonArr} = gGrid;
 
-  // 背景画像
   if (gBgImage) {
     const alpha = parseFloat(document.getElementById("bgAlpha").value) || 0.4;
     const scale = parseFloat(document.getElementById("bgScale").value) || 1.0;
@@ -1102,23 +1195,11 @@ function drawTecMap() {
     ctx.restore();
   }
 
-  // グリッド描画
   const padL = 40, padR = 30, padT = 20, padB = 20;
   const plotW = canvas.width - padL - padR;
   const plotH = canvas.height - padT - padB;
   const cellW = plotW / nLon;
   const cellH = plotH / nLat;
-
-  // TEC min/max for scaling legend
-  let minT = Infinity, maxT = -Infinity;
-  for (let i=0;i<nLat;i++) {
-    for (let j=0;j<nLon;j++) {
-      const v = frame[i][j];
-      if (!isFinite(v)) continue;
-      if (v<minT) minT=v;
-      if (v>maxT) maxT=v;
-    }
-  }
 
   for (let i=0;i<nLat;i++) {
     for (let j=0;j<nLon;j++) {
@@ -1127,12 +1208,11 @@ function drawTecMap() {
       const col = tecColor(v);
       ctx.fillStyle = col;
       const x = padL + j*cellW;
-      const y = padT + (nLat-1-i)*cellH; // lat -90 bottom, +90 top
+      const y = padT + (nLat-1-i)*cellH;
       ctx.fillRect(x, y, cellW+0.5, cellH+0.5);
     }
   }
 
-  // 緯度経度ラベル（5度刻み）
   ctx.strokeStyle = "rgba(255,255,255,0.15)";
   ctx.lineWidth = 1;
   ctx.font = "10px system-ui";
@@ -1159,13 +1239,14 @@ function drawTecMap() {
     ctx.fillText(`${lat}°`, 4, y+3);
   }
 
-  // カラーバー
   const barX = canvas.width - 24;
   const barY = padT;
   const barH = plotH;
   const barW = 12;
+  const maxV = gTecColorScale[gTecColorScale.length-1].value;
+  const minV = gTecColorScale[0].value;
   for (let k=0;k<barH;k++) {
-    const vv = (barH-1-k)/barH * 120;
+    const vv = (barH-1-k)/barH * maxV;
     ctx.fillStyle = tecColor(vv);
     ctx.fillRect(barX, barY+k, barW, 1);
   }
@@ -1174,10 +1255,9 @@ function drawTecMap() {
   ctx.font = "9px system-ui";
   ctx.fillStyle = "#e5e7eb";
   ctx.fillText("TECU", barX-4, barY-4);
-  ctx.fillText("0", barX+barW+2, barY+barH);
-  ctx.fillText("120", barX+barW+2, barY+8);
+  ctx.fillText(String(minV), barX+barW+2, barY+barH);
+  ctx.fillText(String(maxV), barX+barW+2, barY+8);
 
-  // クリックで格子点情報
   canvas.onclick = function(ev) {
     const rect = canvas.getBoundingClientRect();
     const x = ev.clientX - rect.left;
@@ -1250,7 +1330,6 @@ function runVerification() {
 
     const {nLat, nLon, latArr, lonArr} = gGrid;
 
-    // 9領域集計
     const sumAbs = Array(9).fill(0);
     const sumRef = Array(9).fill(0);
     const sumBias = Array(9).fill(0);
@@ -1258,7 +1337,6 @@ function runVerification() {
 
     let sumAbsAll=0, sumRefAll=0, sumBiasAll=0, countAll=0;
 
-    // カテゴリバイアス
     let sumBiasLowDay=0, sumRefLowDay=0, cntLowDay=0;
     let sumBiasHigh=0, sumRefHigh=0, cntHigh=0;
 
@@ -1267,7 +1345,6 @@ function runVerification() {
 
     for (let k=0;k<gForecastFrames.length;k++) {
       const t = gForecastTimes[k];
-      // 一番近い verify snap を探す
       let best=null, bestDt=1e15;
       for (const s of snaps) {
         if (!s.validTime) continue;
@@ -1278,7 +1355,6 @@ function runVerification() {
         }
       }
       if (!best) continue;
-      // 2時間以上離れていたらスキップ（適宜調整）
       if (bestDt > 2*3600*1000) continue;
 
       const frame = gForecastFrames[k];
@@ -1303,7 +1379,6 @@ function runVerification() {
           sumBiasAll += bias;
           countAll++;
 
-          // 9領域index
           const latBand = (lat>=30) ? 0 : (lat<=-30 ? 2 : 1);
           const lonDeg = lonArr[j];
           let lonBand;
@@ -1317,7 +1392,6 @@ function runVerification() {
           sumBias[idx] += bias;
           count[idx]++;
 
-          // 日中/夜間分類
           const lam = lonDeg*rad;
           const h = lam - lonS;
           const coschi_t = sinphi*Math.sin(delta) + cosphi*Math.cos(delta)*Math.cos(h);
@@ -1346,10 +1420,8 @@ function runVerification() {
       biasPct[r] = sumRef[r]>0 ? (sumBias[r]/sumRef[r]*100) : 0;
     }
 
-    // 9マスマップを描画
     drawVerifyMap(errPct, biasPct);
 
-    // 係数提案
     const lines = [];
     lines.push(`Global: MAPE=${mapeAll.toFixed(1)}%, Bias=${biasAll.toFixed(1)}%`);
 
@@ -1428,7 +1500,6 @@ function drawVerifyMap(errPct=null, biasPct=null) {
   const cellW = gridW/3;
   const cellH = gridH/3;
 
-  // 枠とラベル
   ctx.strokeStyle = "#9ca3af";
   ctx.lineWidth = 1;
   ctx.strokeRect(pad, pad, gridW, gridH);
@@ -1492,7 +1563,7 @@ function applyVerifyColorScale() {
     gVerifyColorScale.push({limit: limits[i], color: colors[i]});
   }
   localStorage.setItem(STORAGE_KEY_VCOL, JSON.stringify(gVerifyColorScale));
-  drawVerifyMap([0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]); // 軽く再描画
+  drawVerifyMap([0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]);
 }
 function resetVerifyColorScale() {
   gVerifyColorScale = [
@@ -1531,10 +1602,10 @@ function resetAll() {
 window.addEventListener("load", () => {
   resizeCanvases();
   loadConfig(false);
-  const s = localStorage.getItem(STORAGE_KEY_VCOL);
-  if (s) {
+  const sv = localStorage.getItem(STORAGE_KEY_VCOL);
+  if (sv) {
     try {
-      gVerifyColorScale = JSON.parse(s);
+      gVerifyColorScale = JSON.parse(sv);
       document.getElementById("vLimit1").value = gVerifyColorScale[0].limit;
       document.getElementById("vLimit2").value = gVerifyColorScale[1].limit;
       document.getElementById("vLimit3").value = gVerifyColorScale[2].limit;
@@ -1543,6 +1614,24 @@ window.addEventListener("load", () => {
       document.getElementById("vColor2").value = gVerifyColorScale[1].color;
       document.getElementById("vColor3").value = gVerifyColorScale[2].color;
       document.getElementById("vColor4").value = gVerifyColorScale[3].color;
+    } catch(e) {
+      console.warn(e);
+    }
+  }
+  const st = localStorage.getItem(STORAGE_KEY_TCOL);
+  if (st) {
+    try {
+      gTecColorScale = JSON.parse(st);
+      const arr = gTecColorScale;
+      // 最大5個をUIに反映（足りなければそのまま）
+      const vals = ["tcVal1","tcVal2","tcVal3","tcVal4","tcVal5"];
+      const cols = ["tcColor1","tcColor2","tcColor3","tcColor4","tcColor5"];
+      for (let i=0;i<5;i++) {
+        if (arr[i]) {
+          document.getElementById(vals[i]).value = arr[i].value;
+          document.getElementById(cols[i]).value = arr[i].color;
+        }
+      }
     } catch(e) {
       console.warn(e);
     }
