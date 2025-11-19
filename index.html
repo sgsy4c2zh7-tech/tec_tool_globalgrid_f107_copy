@@ -2,11 +2,23 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool</title>
+  <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool (Leaflet版)</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -41,6 +53,7 @@
       flex-direction: column;
       padding: 10px;
       gap: 8px;
+      min-width: 0;
     }
     .card {
       background: rgba(10, 16, 32, 0.96);
@@ -128,11 +141,12 @@
       flex: 1;
       min-height: 0;
     }
-    #tecCanvas {
+    #tecMap {
       flex: 3;
       border-radius: 8px;
       border: 1px solid #222b3f;
       background: #000;
+      min-height: 360px;
     }
     #verifyCanvas {
       flex: 1;
@@ -146,6 +160,7 @@
       align-items: center;
       gap: 8px;
       font-size: 11px;
+      flex-wrap: wrap;
     }
     #timeSlider {
       flex: 1;
@@ -191,13 +206,14 @@
       <div class="card">
         <div class="card-header">
           <h1>SWIFT-TEC v3</h1>
-          <span>Global TEC Forecast & Verification</span>
+          <span>Global TEC Forecast & Verification (Leaflet版)</span>
         </div>
         <div class="small">
           ・BoM TEC（最大6枚）から 48h / 15min 予報を生成<br>
           ・F10.7 / Ap / Dst / X-ray / Deep Flare Net を反映<br>
           ・BoM 実測（最大4枚）で 3×3 領域ごとの誤差検証<br>
-          ・地図・色・係数・BoM はブラウザ内に保存可能
+          ・BoM / 係数 / 検証色はブラウザに保存・復元可能<br>
+          ・地図は Leaflet + OSM。ズーム/パンで局所 TEC を確認可能。
         </div>
       </div>
 
@@ -255,13 +271,13 @@
         </div>
         <div class="row">
           <div>
-            <label>X-ray (代表値 W/m²)</label><br>
+            <label>GOES Soft X-ray (W/m²)</label><br>
             <input id="inpXray" type="number" value="1e-6" step="1e-7">
           </div>
         </div>
         <div class="small">
-          ※将来的に 27DO.txt / Kyoto Dst / GOES テキストから自動抽出も追加可能。<br>
-          まずは代表値を手入力して挙動を確認。
+          F10.7 / Ap / Dst は「背景電離圏」のスケールに反映。<br>
+          GOES 軟X線はフレア増大分のスケールに使用。
         </div>
       </div>
 
@@ -273,7 +289,7 @@
         </div>
         <div class="small">
           8領域ごとに Xクラス / Mクラス発生確率 [%] を入力。<br>
-          同じ場所に複数領域がある場合は「特異なもののみ」入力。
+          論文の結果を踏まえ、Mクラス確率をやや重めに TEC に反映。
         </div>
         <table>
           <thead>
@@ -398,7 +414,7 @@
         </div>
       </div>
 
-      <!-- 6. Advanced 係数 -->
+      <!-- 6. 係数 -->
       <div class="card">
         <div class="card-header">
           <h2>6. 係数設定（Advanced）</h2>
@@ -444,14 +460,14 @@
               <input id="cfg_betaFlare" type="number" value="0.5" step="0.05">
             </div>
             <div>
-              <label>k_X</label><br>
-              <input id="cfg_kX" type="number" value="1.0" step="0.1">
+              <label>k_X（軟X線感度）</label><br>
+              <input id="cfg_kX" type="number" value="0.6" step="0.1">
             </div>
           </div>
           <div class="row">
             <div>
-              <label>k_M</label><br>
-              <input id="cfg_kM" type="number" value="0.3" step="0.1">
+              <label>k_M（M確率感度）</label><br>
+              <input id="cfg_kM" type="number" value="1.0" step="0.1">
             </div>
             <div>
               <label>biasThresh%（提案閾値）</label><br>
@@ -489,36 +505,23 @@
         <div class="slider-row">
           <span>時間スライダー（0〜48h / 15分刻み）</span>
           <input type="range" id="timeSlider" min="0" max="192" value="0" oninput="onSliderChange()">
-          <span id="timeLabel">t = 0.00 h (UTC ?)</span>
+          <span id="timeLabel">t = 0.00 h (UTC)</span>
         </div>
-        <div class="row small">
-          <div>
-            背景画像（地図）:
-            <input type="file" id="bgFile" accept="image/png,image/jpeg,image/svg+xml">
-          </div>
+        <div class="row small" style="margin-top:4px;">
           <div>
             TEC透明度:
-            <input id="tecAlpha" type="range" min="0.2" max="1" step="0.05" value="0.8" style="width:90px;" oninput="drawTecMap()">
+            <input id="tecAlpha" type="range" min="0.2" max="1" step="0.05" value="0.8"
+                   style="width:120px;" oninput="redrawTecLayer()">
           </div>
           <div>
-            地図の保存:
-            <button class="secondary" onclick="saveBackgroundMap()">保存</button>
-            <button class="secondary" onclick="clearBackgroundMap()">削除</button>
-          </div>
-        </div>
-        <div class="row small">
-          <div>
-            地図スケール（ホイールでも拡大縮小可）:
-            <input id="bgScale" type="range" min="0.5" max="2.5" step="0.05" value="1.0" style="width:160px;" oninput="onBgScaleSliderChange(this.value)">
-          </div>
-          <div>
-            <span class="small">※地図はキャンバス上でドラッグして移動できます。</span>
+            Leaflet地図:
+            <span>ホイール: ズーム / ドラッグ: 移動 / クリック: 格子点TEC表示</span>
           </div>
         </div>
       </div>
 
       <div class="canvas-row">
-        <canvas id="tecCanvas"></canvas>
+        <div id="tecMap"></div>
         <canvas id="verifyCanvas"></canvas>
       </div>
 
@@ -530,7 +533,7 @@
           </div>
           <div style="flex:1;">
             <h3>9. 現在の TEC 値</h3>
-            <pre id="pointInfo">マップ上をクリックすると、その格子点のTECと位置が表示されます。</pre>
+            <pre id="pointInfo">マップ上をクリックすると、その近傍格子点のTECと位置が表示されます。</pre>
           </div>
         </div>
       </div>
@@ -551,21 +554,15 @@
       { limit: 999, color: "#ff0000" }
     ];
 
-    let gBgImage = null;
-    let bgOffsetX = 0;
-    let bgOffsetY = 0;
-    let bgScale   = 1.0;
     let tecAlpha  = 0.8;
 
-    let isDraggingBg = false;
-    let dragLastX = 0;
-    let dragLastY = 0;
-    let dragMoved = false;
+    // Leaflet 関連
+    let map = null;
+    let tecLayerGroup = null;
 
-    const STORAGE_KEY_CONFIG = "swifttec_config_v3";
-    const STORAGE_KEY_VCOL   = "swifttec_vcol_v3";
-    const STORAGE_KEY_BOM    = "swifttec_bom_inputs_v3";
-    const STORAGE_KEY_BG     = "swifttec_bg_state_v3";
+    const STORAGE_KEY_CONFIG = "swifttec_config_v3_leaflet";
+    const STORAGE_KEY_VCOL   = "swifttec_vcol_v3_leaflet";
+    const STORAGE_KEY_BOM    = "swifttec_bom_inputs_v3_leaflet";
 
     function logInfo(msg) {
       const div = document.getElementById("runInfo");
@@ -700,8 +697,8 @@
         latShape:    parseFloat(document.getElementById("cfg_latShape").value) || 0.4,
         latHighCut:  parseFloat(document.getElementById("cfg_latHighCut").value) || 0.5,
         betaFlare:   parseFloat(document.getElementById("cfg_betaFlare").value)|| 0.5,
-        kX:          parseFloat(document.getElementById("cfg_kX").value)       || 1.0,
-        kM:          parseFloat(document.getElementById("cfg_kM").value)       || 0.3,
+        kX:          parseFloat(document.getElementById("cfg_kX").value)       || 0.6,
+        kM:          parseFloat(document.getElementById("cfg_kM").value)       || 1.0,
         biasThresh:  parseFloat(document.getElementById("cfg_biasThresh").value)|| 15,
         suggestGain: parseFloat(document.getElementById("cfg_suggestGain").value)|| 0.5
       };
@@ -806,7 +803,8 @@
         console.warn("検証色スケール復元に失敗:", e);
       }
     }
-    /* ====== 太陽位置（簡易 IRI-風味）====== */
+
+    /* ====== 太陽位置・背景スケール ====== */
     function dayOfYearUTC(date) {
       const start = new Date(Date.UTC(date.getUTCFullYear(),0,1,0,0,0));
       return 1 + (date - start)/86400000;
@@ -824,17 +822,13 @@
       return lon;
     }
 
-    function computeSolarScale(F107, Ap, Dst, Xray, cfg) {
+    // 背景スケール（F10.7 / Ap / Dst）
+    function computeSolarScale(F107, Ap, Dst, cfg) {
       const F0 = 100;
       const dF = F107 - F0;
       let S = 1 + cfg.wF107*dF;
       S += cfg.wAp*(Ap - 10);
       S += cfg.wDst*Dst;
-      if (Xray > 0) {
-        const X0 = 1e-7;
-        const lx = Math.log10(Xray / X0);
-        S += 0.05*lx;
-      }
       if (S < 0.2) S = 0.2;
       if (S > 3.0) S = 3.0;
       return S;
@@ -853,22 +847,47 @@
       return w;
     }
 
+    // フレアスケール（X線 + Deep Flare Net）
     function computeFlareScale(cfg) {
-      let I = 0;
-      for (let r=1;r<=8;r++) {
-        const use = document.getElementById("fu"+r).checked;
+      // 1. GOES 軟 X 線（M1=1e-5, ここでは 1e-6 を基準にして相対値）
+      const Xray = parseFloat(document.getElementById("inpXray").value) || 1e-6;
+      const F0 = 1e-6;
+      const logFx = Math.log10(Xray / F0); // M1 とか X1 で±1程度
+
+      let Sx = 1 + cfg.kX * logFx;
+      Sx = clamp(Sx, 0.5, 3.0);
+
+      // 2. Deep Flare Net の確率（M確率をやや重め）
+      let sumProbM = 0;
+      let sumProbX = 0;
+      let weightSum = 0;
+
+      for (let r = 1; r <= 8; r++) {
+        const use = document.getElementById("fu" + r).checked;
         if (!use) continue;
-        const px = parseFloat(document.getElementById("fx"+r).value) || 0;
-        const pm = parseFloat(document.getElementById("fm"+r).value) || 0;
+
+        const px = parseFloat(document.getElementById("fx" + r).value) || 0;
+        const pm = parseFloat(document.getElementById("fm" + r).value) || 0;
+
         let wvis = 0.7;
         if (r === 8) wvis = 1.0;
         if (r === 4 || r === 5) wvis = 0.85;
-        const Fx = cfg.kX * (px/100);
-        const Fm = cfg.kM * (pm/100);
-        I += (Fx + Fm)*wvis;
+
+        sumProbM += pm * wvis;
+        sumProbX += px * wvis;
+        weightSum += wvis;
       }
-      const Sflare = 1 + cfg.betaFlare*I;
-      return clamp(Sflare, 0.7, 3.0);
+
+      const meanProbM = weightSum ? (sumProbM / weightSum) : 0;
+      const meanProbX = weightSum ? (sumProbX / weightSum) : 0;
+
+      const Iflare = (meanProbM + 0.5 * meanProbX) / 100.0;
+
+      let Seuv = 1 + cfg.kM * Iflare * cfg.betaFlare;
+      Seuv = clamp(Seuv, 0.7, 3.0);
+
+      const Sflare = clamp(Sx * Seuv, 0.5, 4.0);
+      return Sflare;
     }
 
     function fixLocalVShape(frame, nLat, nLon, threshold) {
@@ -898,6 +917,36 @@
         }
       }
       return out;
+    }
+
+    /* ===== TEC 用カラーマップ（HEX） ===== */
+    function tecColorHex(val) {
+      const vmax = 120;
+      const v = clamp(val, 0, vmax) / vmax;
+      let r=0,g=0,b=0;
+      if (v<=0.4) { // 緑系
+        const t=v/0.4;
+        r=0;
+        g=60+195*t;
+        b=0;
+      } else if (v<=0.55) { // 白
+        const t=(v-0.4)/0.15;
+        r=200+55*t;
+        g=200+55*t;
+        b=200+55*t;
+      } else if (v<=0.7) { // 黄
+        const t=(v-0.55)/0.15;
+        r=255;
+        g=255;
+        b=255*(1-t);
+      } else { // オレンジ〜赤
+        const t=(v-0.7)/0.3;
+        r=255;
+        g=200*(1-t);
+        b=0;
+      }
+      const toHex = (x)=>x.toString(16).padStart(2,"0");
+      return "#" + toHex(Math.round(r)) + toHex(Math.round(g)) + toHex(Math.round(b));
     }
 
     /* ============ 予報計算本体 ============ */
@@ -951,16 +1000,15 @@
         const F107 = parseFloat(document.getElementById("inpF107").value) || 150;
         const Ap   = parseFloat(document.getElementById("inpAp").value)   || 10;
         const Dst  = parseFloat(document.getElementById("inpDst").value)  || -20;
-        const Xray = parseFloat(document.getElementById("inpXray").value) || 1e-6;
 
-        const Ssolar = computeSolarScale(F107, Ap, Dst, Xray, cfg);
+        const Ssolar = computeSolarScale(F107, Ap, Dst, cfg);
         const Sflare = computeFlareScale(cfg);
 
         const K = snaps.length;
         const T0  = new Array(nLat);
         const Aamp= new Array(nLat);
-        const coschi = [];
 
+        const coschi = [];
         for (let k=0;k<K;k++) {
           const snap = snaps[k];
           const t = snap.validTime || gForecastStart;
@@ -1056,52 +1104,14 @@
         slider.min=0; slider.max=nSteps; slider.value=0;
         updateTimeLabel();
         logInfo(`予報計算完了: frames=${gForecastFrames.length}, grid=${nLat}×${nLon}`);
-        drawTecMap();
+        redrawTecLayer();
       } catch(e) {
         logInfo("エラー: "+e.message);
         console.error(e);
       }
     }
-    /* ===== TEC 用カラーマップ（rgba） ===== */
-    function tecColorRGBA(val, alpha) {
-      const vmax = 120;
-      const v = clamp(val,0,vmax)/vmax;
-      let r=0,g=0,b=0;
-      if (v<=0.4) { // 緑系
-        const t=v/0.4;
-        r=0;
-        g=60+195*t;
-        b=0;
-      } else if (v<=0.55) { // 白
-        const t=(v-0.4)/0.15;
-        r=200+55*t;
-        g=200+55*t;
-        b=200+55*t;
-      } else if (v<=0.7) { // 黄
-        const t=(v-0.55)/0.15;
-        r=255;
-        g=255;
-        b=255*(1-t);
-      } else { // オレンジ〜赤
-        const t=(v-0.7)/0.3;
-        r=255;
-        g=200*(1-t);
-        b=0;
-      }
-      return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${alpha})`;
-    }
 
-    function drawBackgroundImage(ctx, canvas) {
-      if (!gBgImage) return;
-      const iw = gBgImage.width * bgScale;
-      const ih = gBgImage.height* bgScale;
-      const cx = canvas.width/2 + bgOffsetX;
-      const cy = canvas.height/2 + bgOffsetY;
-      ctx.save();
-      ctx.drawImage(gBgImage, cx - iw/2, cy - ih/2, iw, ih);
-      ctx.restore();
-    }
-
+    /* ===== Leaflet マップ描画 ===== */
     function updateTimeLabel() {
       const slider = document.getElementById("timeSlider");
       const idx = parseInt(slider.value,10);
@@ -1113,182 +1123,94 @@
       document.getElementById("timeLabel").textContent = label;
     }
 
-    function drawTecMap() {
-      const canvas = document.getElementById("tecCanvas");
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle="#000";
-      ctx.fillRect(0,0,canvas.width,canvas.height);
+    function redrawTecLayer() {
+      if (!map || !tecLayerGroup || !gForecastFrames.length || !gGrid) return;
 
-      drawBackgroundImage(ctx, canvas);
+      tecLayerGroup.clearLayers();
 
-      if (!gForecastFrames.length || !gGrid) {
-        return;
-      }
       const slider = document.getElementById("timeSlider");
-      const idx = parseInt(slider.value,10);
+      const idx = parseInt(slider.value, 10);
       const frame = gForecastFrames[idx];
-      const {nLat,nLon,latArr,lonArr} = gGrid;
+      const { nLat, nLon, latArr, lonArr } = gGrid;
 
-      const padL=50,padR=40,padT=20,padB=30;
-      const plotW = canvas.width - padL - padR;
-      const plotH = canvas.height - padT - padB;
-      const cellW = plotW/nLon;
-      const cellH = plotH/nLat;
+      const dLat = (nLat > 1) ? (latArr[1] - latArr[0]) : 1;
+      const dLon = (nLon > 1) ? (lonArr[1] - lonArr[0]) : 1;
 
       const alphaSlider = document.getElementById("tecAlpha");
-      tecAlpha = alphaSlider ? parseFloat(alphaSlider.value)||0.8 : 0.8;
+      tecAlpha = alphaSlider ? (parseFloat(alphaSlider.value) || 0.8) : 0.8;
 
-      for (let i=0;i<nLat;i++) {
-        for (let j=0;j<nLon;j++) {
+      for (let i = 0; i < nLat; i++) {
+        for (let j = 0; j < nLon; j++) {
           const v = frame[i][j];
           if (!isFinite(v)) continue;
-          const col = tecColorRGBA(v, tecAlpha);
-          const x = padL + j*cellW;
-          const y = padT + (nLat-1-i)*cellH;
-          ctx.fillStyle = col;
-          ctx.fillRect(x,y,cellW+0.5,cellH+0.5);
+
+          const lat = latArr[i];
+          const lon = lonArr[j];
+
+          const bounds = [
+            [lat - dLat / 2, lon - dLon / 2],
+            [lat + dLat / 2, lon + dLon / 2]
+          ];
+
+          const color = tecColorHex(v);
+
+          const rect = L.rectangle(bounds, {
+            stroke: false,
+            fill: true,
+            fillColor: color,
+            fillOpacity: tecAlpha
+          });
+
+          rect.addTo(tecLayerGroup);
         }
       }
-
-      ctx.strokeStyle="rgba(255,255,255,0.2)";
-      ctx.lineWidth = 0.5;
-      ctx.font="10px system-ui";
-      ctx.fillStyle="#ddd";
-      ctx.textAlign="center";
-
-      for (let lon=-180; lon<=180; lon+=60) {
-        let j = (lon - gGrid.lonArr[0])/(gGrid.lonArr[1]-gGrid.lonArr[0]);
-        const x = padL + (j+0.5)*cellW;
-        ctx.beginPath();
-        ctx.moveTo(x,padT);
-        ctx.lineTo(x,padT+plotH);
-        ctx.stroke();
-        ctx.fillText(`${lon}°`, x, padT+plotH+12);
-      }
-
-      ctx.textAlign="right";
-      for (let lat=-60; lat<=60; lat+=30) {
-        let i = (lat - gGrid.latArr[0])/(gGrid.latArr[1]-gGrid.latArr[0]);
-        const y = padT + (nLat-1-i)*cellH;
-        ctx.beginPath();
-        ctx.moveTo(padL,y);
-        ctx.lineTo(padL+plotW,y);
-        ctx.stroke();
-        ctx.fillText(`${lat}°`, padL-4, y+3);
-      }
-
-      const cbarX = canvas.width-30;
-      const cbarY = padT;
-      const cbarH = plotH;
-      const steps=60;
-      for (let k=0;k<steps;k++) {
-        const f=k/(steps-1);
-        const tec = 120*f;
-        ctx.fillStyle = tecColorRGBA(tec,1.0);
-        const y=cbarY + cbarH*(1-f);
-        ctx.fillRect(cbarX,y,cbarX+10-cbarX, cbarH/steps+1);
-      }
-      ctx.strokeStyle="#fff";
-      ctx.strokeRect(cbarX,cbarY,10,cbarH);
-      ctx.fillStyle="#fff";
-      ctx.font="9px system-ui";
-      ctx.textAlign="left";
-      ctx.fillText("120", cbarX+14, cbarY+6);
-      ctx.fillText("0", cbarX+14, cbarY+cbarH+3);
 
       updateTimeLabel();
     }
 
-    /* ===== TEC値クリック表示 ===== */
-    function handleTecClick(ev) {
+    function onSliderChange() {
+      updateTimeLabel();
+      redrawTecLayer();
+    }
+
+    // Leaflet マップクリック → TEC値表示
+    function onMapClick(ev) {
       if (!gForecastFrames.length || !gGrid) return;
-      const canvas = document.getElementById("tecCanvas");
-      const rect = canvas.getBoundingClientRect();
-      const x = ev.clientX - rect.left;
-      const y = ev.clientY - rect.top;
 
-      const {nLat,nLon,latArr,lonArr} = gGrid;
-      const padL=50,padR=40,padT=20,padB=30;
-      const plotW = canvas.width - padL - padR;
-      const plotH = canvas.height - padT - padB;
-      const cellW = plotW/nLon;
-      const cellH = plotH/nLat;
+      const latClick = ev.latlng.lat;
+      const lonClick = ev.latlng.lng;
 
-      if (x<padL || x>padL+plotW || y<padT || y>padT+plotH) return;
-
-      const j = Math.floor((x-padL)/cellW);
-      const iInv = Math.floor((y-padT)/cellH);
-      const i = nLat-1 - iInv;
-
+      const { nLat, nLon, latArr, lonArr } = gGrid;
       const slider = document.getElementById("timeSlider");
-      const idx = parseInt(slider.value,10);
+      const idx = parseInt(slider.value, 10);
       const frame = gForecastFrames[idx];
 
-      const lat = latArr[i];
-      const lon = lonArr[j];
-      const v   = frame[i][j];
-      const t   = gForecastTimes[idx];
+      let bestI = 0, bestJ = 0;
+      let bestDist = 1e9;
+      for (let i = 0; i < nLat; i++) {
+        for (let j = 0; j < nLon; j++) {
+          const dLat = latArr[i] - latClick;
+          let dLon = lonArr[j] - lonClick;
+          if (dLon > 180) dLon -= 360;
+          if (dLon < -180) dLon += 360;
+          const dist = dLat * dLat + dLon * dLon;
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestI = i;
+            bestJ = j;
+          }
+        }
+      }
+
+      const lat = latArr[bestI];
+      const lon = lonArr[bestJ];
+      const v = frame[bestI][bestJ];
+      const t = gForecastTimes[idx];
 
       const info = `lat=${lat.toFixed(1)}°, lon=${lon.toFixed(1)}°\n` +
                    `TEC ≈ ${v.toFixed(2)} TECU\n` +
                    `t(UTC) = ${t.toISOString().replace("T"," ").replace(".000Z","Z")}`;
       document.getElementById("pointInfo").textContent = info;
-    }
-
-    function onSliderChange() {
-      updateTimeLabel();
-      drawTecMap();
-    }
-
-    /* ===== 背景地図のロード & 保存 ===== */
-    document.getElementById("bgFile").addEventListener("change", (ev)=>{
-      const file = ev.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e=>{
-        const img = new Image();
-        img.onload = ()=>{
-          gBgImage = img;
-          bgOffsetX=0; bgOffsetY=0;
-          bgScale = parseFloat(document.getElementById("bgScale").value)||1.0;
-          drawTecMap();
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-
-    function saveBackgroundMap() {
-      if (!gBgImage) {
-        logInfo("地図が読み込まれていません。");
-        return;
-      }
-      const state = {
-        src: gBgImage.src,
-        offsetX: bgOffsetX,
-        offsetY: bgOffsetY,
-        scale: bgScale
-      };
-      localStorage.setItem(STORAGE_KEY_BG, JSON.stringify(state));
-      logInfo("地図と位置・スケールを保存しました。");
-    }
-
-    function clearBackgroundMap() {
-      localStorage.removeItem(STORAGE_KEY_BG);
-      gBgImage = null;
-      bgOffsetX=0; bgOffsetY=0;
-      bgScale=1.0;
-      const s = document.getElementById("bgScale");
-      if (s) s.value="1.0";
-      drawTecMap();
-      logInfo("保存されていた地図を削除しました。");
-    }
-
-    function onBgScaleSliderChange(val) {
-      bgScale = parseFloat(val)||1.0;
-      drawTecMap();
     }
 
     /* ===== 検証ロジック ===== */
@@ -1404,8 +1326,6 @@
       const cfg=getConfigFromUI();
       let sumBiasAll=0,sumObsAll=0, nAll=0;
       for (const z of zones) {
-        if (!isFinite(z.Bias) || !isFinite(z.MAPE)) continue;
-        const idx = z.il*3+z.jl;
         const c=count[z.il][z.jl];
         if (!c) continue;
         sumBiasAll += sumBias[z.il][z.jl];
@@ -1416,20 +1336,19 @@
       reportLines.push("=== 係数調整の簡易提案 ===");
       if (nAll>0 && sumObsAll>0) {
         const avgBias = sumBiasAll/nAll;
-        const relBias = avgBias/(sumObsAll/nAll); // 正→過大評価
+        const avgObs  = sumObsAll/nAll;
+        const relBias = avgBias/avgObs;
         const thr = cfg.biasThresh/100;
         if (Math.abs(relBias) < thr) {
           reportLines.push("・全体として大きなバイアスはありません。係数はそのままでOK。");
         } else {
           if (relBias>0) {
             reportLines.push("・全体的に TEC をやや過大評価しています。");
-            const newK = cfg.kGlobal*(1 - cfg.suggestGain*relBias);
-            reportLines.push(`  → kGlobal を ${cfg.kGlobal.toFixed(3)} → ${newK.toFixed(3)} 方向で調整するとよいかもしれません。`);
           } else {
             reportLines.push("・全体的に TEC をやや過小評価しています。");
-            const newK = cfg.kGlobal*(1 - cfg.suggestGain*relBias);
-            reportLines.push(`  → kGlobal を ${cfg.kGlobal.toFixed(3)} → ${newK.toFixed(3)} 方向で調整するとよいかもしれません。`);
           }
+          const newK = cfg.kGlobal*(1 - cfg.suggestGain*relBias);
+          reportLines.push(`  → kGlobal を ${cfg.kGlobal.toFixed(3)} → ${newK.toFixed(3)} 方向で調整するとよいかもしれません。`);
         }
       } else {
         reportLines.push("・有効なデータ点が少ないため、明確な提案は出せません。");
@@ -1507,7 +1426,7 @@
       ctx.fillText("検証 3×3 誤差マップ", 4,10);
     }
 
-    /* ===== リセット ===== */
+    /* ===== リセット & レイアウト ===== */
     function resetAll() {
       gGrid=null;
       gForecastFrames=[];
@@ -1515,99 +1434,56 @@
       gForecastStart=null;
       document.getElementById("timeSlider").value=0;
       updateTimeLabel();
-      drawTecMap();
+      redrawTecLayer();
       clearVerification();
       logInfo("内部状態をリセットしました。（BoM/係数の保存値は残っています）");
     }
 
-    /* ===== レイアウト & イベント ===== */
     function resizeCanvases() {
-      const tec=document.getElementById("tecCanvas");
       const ver=document.getElementById("verifyCanvas");
-      const main=document.querySelector(".canvas-row");
-      if (!tec||!ver||!main) return;
-      const rect = main.getBoundingClientRect();
-      tec.width  = Math.max(600, rect.width-250);
-      tec.height = Math.max(360, rect.height-10);
+      const mainRow=document.querySelector(".canvas-row");
+      if (!ver || !mainRow) return;
+      const rect = mainRow.getBoundingClientRect();
       ver.width  = 220;
       ver.height = 220;
-      drawTecMap();
       drawVerifyMap(lastVerifyResult);
+      if (map) {
+        map.invalidateSize();
+      }
     }
 
     window.addEventListener("resize", resizeCanvases);
 
-    function initCanvasInteractions() {
-      const tecCanvas = document.getElementById("tecCanvas");
-      if (!tecCanvas) return;
-      tecCanvas.addEventListener("mousedown",(ev)=>{
-        isDraggingBg=true;
-        dragMoved=false;
-        dragLastX=ev.clientX;
-        dragLastY=ev.clientY;
-      });
-      document.addEventListener("mousemove",(ev)=>{
-        if (!isDraggingBg) return;
-        const dx=ev.clientX-dragLastX;
-        const dy=ev.clientY-dragLastY;
-        if (Math.abs(dx)>2 || Math.abs(dy)>2) dragMoved=true;
-        dragLastX=ev.clientX;
-        dragLastY=ev.clientY;
-        bgOffsetX+=dx;
-        bgOffsetY+=dy;
-        drawTecMap();
-      });
-      document.addEventListener("mouseup",(ev)=>{
-        if (!isDraggingBg) return;
-        isDraggingBg=false;
-        if (!dragMoved) {
-          handleTecClick(ev);
-        }
-      });
-      tecCanvas.addEventListener("mouseleave",()=>{
-        isDraggingBg=false;
-      });
-      tecCanvas.addEventListener("wheel",(ev)=>{
-        ev.preventDefault();
-        const factor = (ev.deltaY<0) ? 1.05 : 0.95;
-        bgScale*=factor;
-        bgScale=clamp(bgScale,0.5,2.5);
-        const s=document.getElementById("bgScale");
-        if (s) s.value=bgScale.toFixed(2);
-        drawTecMap();
-      });
-    }
+    function initLeafletMap() {
+      const mapDiv = document.getElementById("tecMap");
+      if (!mapDiv) return;
 
-    function restoreBackgroundFromStorage() {
-      const s = localStorage.getItem(STORAGE_KEY_BG);
-      if (!s) return;
-      try {
-        const st = JSON.parse(s);
-        bgOffsetX = st.offsetX || 0;
-        bgOffsetY = st.offsetY || 0;
-        bgScale   = st.scale   || 1.0;
-        const slider=document.getElementById("bgScale");
-        if (slider) slider.value = bgScale.toString();
-        const img=new Image();
-        img.onload=()=>{
-          gBgImage=img;
-          drawTecMap();
-        };
-        img.src=st.src;
-      } catch(e) {
-        console.warn("背景地図の復元に失敗:", e);
-      }
+      map = L.map("tecMap", {
+        worldCopyJump: true,
+        center: [0, 135],
+        zoom: 2
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 8,
+        minZoom: 1,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(map);
+
+      tecLayerGroup = L.layerGroup().addTo(map);
+      map.on("click", onMapClick);
+
+      setTimeout(()=>map.invalidateSize(), 200);
     }
 
     window.addEventListener("load", ()=>{
       loadConfig(true);
       loadVerifyColorScaleFromStorage();
       loadBomInputsFromStorage();
-      restoreBackgroundFromStorage();
       resizeCanvases();
-      initCanvasInteractions();
+      initLeafletMap();
       updateTimeLabel();
-      logInfo("SWIFT-TEC v3 準備完了。まず BoM TEC を貼り付けてください。");
+      logInfo("SWIFT-TEC v3 Leaflet版 準備完了。まず BoM TEC を貼り付けてください。");
     });
   </script>
 </body>
