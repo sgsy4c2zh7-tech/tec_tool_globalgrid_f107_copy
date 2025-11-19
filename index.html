@@ -35,7 +35,7 @@
 
     .page {
       display: flex;
-      min-height: 100vh;     /* ← 高さ固定にしない */
+      min-height: 100vh;     /* 右側をスクロールさせるために高さ固定しない */
     }
 
     .sidebar {
@@ -54,7 +54,7 @@
       flex-direction: column;
       padding: 10px;
       gap: 8px;
-      overflow-y: auto;      /* ← 右側をスクロール可能に */
+      overflow-y: auto;      /* 右側も縦スクロール可能 */
     }
 
     .card {
@@ -161,6 +161,7 @@
     #mapContainer {
       position: relative;
       flex: 3;
+      height: 520px;           /* 確実に縦サイズを確保 */
       border-radius: 8px;
       border: 1px solid #222b3f;
       overflow: hidden;
@@ -1200,13 +1201,14 @@ function updateTimeLabel() {
 function drawTecMap() {
   const canvas = document.getElementById("tecCanvas");
   if (!canvas || !leafletMap) return;
-  const ctx = canvas.getContext("2d");
 
-  // Canvas サイズを Leaflet マップに合わせる
   const size = leafletMap.getSize();
+  if (!size || size.x <= 0 || size.y <= 0) return;  // サイズが確定していないときは描画しない
+
   canvas.width  = size.x;
   canvas.height = size.y;
 
+  const ctx = canvas.getContext("2d");
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   if (!gForecastFrames.length || !gGrid) return;
@@ -1234,7 +1236,7 @@ function drawTecMap() {
       const lon1 = lonCenter - lonStep/2;
       const lon2 = lonCenter + lonStep/2;
 
-      // 簡易的な範囲チェック（経度は -180〜180 前提）
+      // 経度は -180〜180 前提（簡易チェック）
       if (lon2 < bounds.getWest() || lon1 > bounds.getEast()) continue;
 
       const v = frame[i][j];
@@ -1276,7 +1278,7 @@ function handleMapClick(e) {
   for (let i=0; i<nLat; i++) {
     const dLat = latArr[i] - lat;
     const dLat2 = dLat*dLat;
-    if (dLat2 > bestD2) continue; // 粗いフィルタ（緯度が大きく外れてたらスキップ）
+    if (dLat2 > bestD2) continue;
     for (let j=0; j<nLon; j++) {
       const dLon = lonArr[j] - lon;
       const d2   = dLat2 + dLon*dLon;
@@ -1575,8 +1577,11 @@ function initLeaflet() {
   leafletMap.on("zoomend", drawTecMap);
   leafletMap.on("click", handleMapClick);
 
-  // 初期描画
-  drawTecMap();
+  // レイアウトが落ち着いてからサイズ確定 & 描画
+  setTimeout(() => {
+    leafletMap.invalidateSize();
+    drawTecMap();
+  }, 200);
 }
 
 /* ===== 起動時処理 ===== */
@@ -1587,6 +1592,7 @@ window.addEventListener("load", () => {
   initLeaflet();
   updateTimeLabel();
   logInfo("SWIFT-TEC v3 (Leaflet版) 準備完了。まず BoM TEC を貼り付けてください。");
+
   window.addEventListener("resize", () => {
     if (leafletMap) leafletMap.invalidateSize();
     drawTecMap();
