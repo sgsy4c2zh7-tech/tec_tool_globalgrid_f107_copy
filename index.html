@@ -4,18 +4,11 @@
   <meta charset="UTF-8" />
   <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool (Leaflet版)</title>
 
-  <!-- Leaflet -->
+  <!-- Leaflet CSS -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-sA+e2atXgCw8wEfr2E1V8kR7QmDg2z8m6Q6vZ8vlXgI="
-    crossorigin=""
   />
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-o9N1j7kGStGAd0N5r0u7dWv5wV9UjIuVbE7C0R0Xv6s="
-    crossorigin=""
-  ></script>
 
   <style>
     * {
@@ -55,14 +48,14 @@
       flex-direction: column;
       padding: 10px;
       gap: 8px;
-      overflow: hidden;
+      min-width: 0;
     }
     .card {
       background: rgba(10, 16, 32, 0.96);
       border: 1px solid #222b3f;
       border-radius: 8px;
       padding: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
     }
     .card-header {
@@ -137,34 +130,6 @@
       font-size: 10px;
       opacity: 0.8;
     }
-    .map-card {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      margin-bottom: 4px;
-    }
-    #map {
-      flex: 1;
-      min-height: 360px;
-      border-radius: 8px;
-      border: 1px solid #222b3f;
-      overflow: hidden;
-    }
-    .legend-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 6px;
-    }
-    #tecLegend {
-      width: 220px;
-      height: 32px;
-      border-radius: 4px;
-      border: 1px solid #222b3f;
-      background: #050814;
-    }
-
     pre {
       font-size: 11px;
       background: #050814;
@@ -198,28 +163,106 @@
       margin-bottom: 2px;
     }
 
-    .outputs-row {
+    /* === メイン領域レイアウト === */
+    .slider-card {
+      flex: 0 0 auto;
+    }
+    .map-card {
+      flex: 1 1 auto;
+      min-height: 55vh;
       display: flex;
+    }
+    .output-card {
+      flex: 0 0 auto;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
       gap: 8px;
-      align-items: stretch;
+      font-size: 11px;
     }
-    .outputs-row > div {
+    #timeSlider {
       flex: 1;
-      min-width: 0;
     }
+
+    /* Leaflet マップコンテナ */
+    #tecMap {
+      flex: 1;
+      height: 100%;
+      min-height: 360px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* Leaflet 自体の z-index 調整用 */
+    .leaflet-container {
+      background: #000;
+    }
+
+    /* TEC Canvas Overlay */
+    .tec-canvas-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none; /* クリックは Leaflet の map に通す */
+    }
+
+    /* Leaflet TEC 凡例 */
+    .leaflet-control.tec-legend {
+      background: rgba(5, 8, 20, 0.95);
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #222b3f;
+      color: #f5f5f5;
+      font-size: 10px;
+      line-height: 1.3;
+      box-shadow: 0 0 6px rgba(0,0,0,0.5);
+    }
+    .tec-legend-title {
+      text-align: center;
+      margin-bottom: 4px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+    .tec-legend-bar {
+      width: 18px;
+      height: 130px;
+      margin: 0 auto 4px auto;
+      border-radius: 4px;
+      border: 1px solid #444;
+    }
+    .tec-legend-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+    }
+
+    /* 検証 3x3 マップ用 */
     #verifyCanvas {
       width: 220px;
       height: 220px;
-      border-radius: 8px;
+      background: #050814;
+      border-radius: 6px;
       border: 1px solid #222b3f;
-      background: #000;
-      display: block;
+    }
+
+    .output-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+    .output-col {
+      flex: 1;
+      min-width: 200px;
+      display: flex;
+      flex-direction: column;
     }
   </style>
 </head>
 <body>
   <div class="page">
-    <!-- ================== サイドバー ================== -->
+    <!-- ============= サイドバー ============= -->
     <div class="sidebar">
       <div class="card">
         <div class="card-header">
@@ -230,7 +273,8 @@
           ・BoM TEC（最大6枚）から 48h / 15min 予報を生成<br>
           ・F10.7 / Ap / Dst / X-ray / Deep Flare Net を反映<br>
           ・BoM 実測（最大4枚）で 3×3 領域ごとの誤差検証<br>
-          ・係数・BoM・TEC色設定はブラウザ内に保存可能
+          ・地図・色・係数・BoM はブラウザ内に保存可能<br>
+          ・Leaflet 地図で好きな地域をズームして TEC を確認
         </div>
       </div>
 
@@ -389,7 +433,7 @@
         </div>
       </div>
 
-      <!-- 5. 検証色設定 -->
+      <!-- 5. 検証マップ色設定 -->
       <div class="card">
         <div class="card-header">
           <h2>5. 検証マップ色設定</h2>
@@ -431,40 +475,39 @@
         </div>
       </div>
 
-      <!-- 6. TEC カラー設定 -->
+      <!-- 6. TEC カラーマップ設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>6. TEC カラー設定</h2>
-          <span>TECU → 色 & 凡例</span>
+          <h2>6. TEC カラーマップ設定</h2>
+          <span>TEC値 → 色を任意設定</span>
         </div>
         <div class="small">
-          TECU に応じた色を4分割で設定。<br>
-          値の間は自動でグラデーションします。
+          TEC [TECU] の上限と色を設定。色は Leaflet 地図と凡例に反映されます。
         </div>
         <table>
           <thead>
-            <tr><th>レベル</th><th>TECU</th><th>色</th></tr>
+            <tr><th>レベル</th><th>TEC上限[TECU]</th><th>色</th></tr>
           </thead>
           <tbody>
             <tr>
-              <td>T1</td>
-              <td><input id="tTec1" type="number" value="0" style="width:60px;"></td>
-              <td><input id="cTec1" type="color" value="#003300"></td>
+              <td>L1</td>
+              <td><input id="tLimit1" type="number" value="10" style="width:60px;"></td>
+              <td><input id="tColor1" type="color" value="#00ff00"></td>
             </tr>
             <tr>
-              <td>T2</td>
-              <td><input id="tTec2" type="number" value="30" style="width:60px;"></td>
-              <td><input id="cTec2" type="color" value="#00ff00"></td>
+              <td>L2</td>
+              <td><input id="tLimit2" type="number" value="30" style="width:60px;"></td>
+              <td><input id="tColor2" type="color" value="#ffff00"></td>
             </tr>
             <tr>
-              <td>T3</td>
-              <td><input id="tTec3" type="number" value="60" style="width:60px;"></td>
-              <td><input id="cTec3" type="color" value="#ffff00"></td>
+              <td>L3</td>
+              <td><input id="tLimit3" type="number" value="60" style="width:60px;"></td>
+              <td><input id="tColor3" type="color" value="#ff9900"></td>
             </tr>
             <tr>
-              <td>T4</td>
-              <td><input id="tTec4" type="number" value="120" style="width:60px;"></td>
-              <td><input id="cTec4" type="color" value="#ff0000"></td>
+              <td>L4</td>
+              <td><input id="tLimit4" type="number" value="120" style="width:60px;"></td>
+              <td><input id="tColor4" type="color" value="#ff0000"></td>
             </tr>
           </tbody>
         </table>
@@ -559,57 +602,53 @@
       </div>
     </div>
 
-    <!-- ================== メイン領域 ================== -->
+    <!-- ============= メイン領域 ============= -->
     <div class="main">
-      <!-- 時間スライダー & TEC透明度 -->
-      <div class="card" style="flex:0 0 auto;">
-        <div class="row" style="align-items:center;">
-          <div style="flex:3;">
-            <div class="row" style="margin-bottom:4px;">
-              <span>時間スライダー（0〜48h / 15分刻み）</span>
-            </div>
-            <div class="row">
-              <input type="range" id="timeSlider" min="0" max="192" value="0" style="flex:1;" oninput="onSliderChange()">
-              <span id="timeLabel" class="small">t = 0.00 h</span>
-            </div>
-          </div>
+      <!-- 上段：時間スライダー＋透明度 -->
+      <div class="card slider-card">
+        <div class="slider-row">
+          <span>時間スライダー（0〜48h / 15分刻み）</span>
+          <input type="range" id="timeSlider" min="0" max="192" value="0" oninput="onSliderChange()">
+          <span id="timeLabel">t = 0.00 h</span>
+        </div>
+        <div class="row small" style="margin-top:4px;">
           <div style="flex:1;">
-            TEC透明度：
-            <input id="tecAlpha" type="range" min="0.2" max="1" step="0.05" value="0.8" style="width:110px;" oninput="onTecAlphaChange()">
+            TEC透明度:
+            <input id="tecAlpha" type="range" min="0.2" max="1" step="0.05" value="0.8" style="width:140px;" oninput="onTecAlphaChange()">
+          </div>
+          <div style="flex:2;">
+            <span class="small">※地図をズーム／ドラッグして、任意の地域の TEC 分布を確認できます。</span>
           </div>
         </div>
-        <div class="small">
-          ・地図はドラッグで移動、ホイールでズーム<br>
-          ・クリックした場所の最近傍格子点のTECを下段に表示
-        </div>
       </div>
 
-      <!-- 地図 + 凡例 -->
-      <div class="map-card card">
-        <div id="map"></div>
-        <div class="legend-row">
-          <span class="small">TEC カラー凡例：</span>
-          <canvas id="tecLegend"></canvas>
-          <span id="tecLegendLabel" class="small"></span>
-        </div>
+      <!-- 中段：大きな Leaflet 地図 -->
+      <div class="card map-card">
+        <div id="tecMap"></div>
       </div>
 
-      <!-- 出力（地図の下） -->
-      <div class="card" style="flex:0 0 38%;">
-        <div class="outputs-row">
-          <div>
-            <h3>検証レポート & 係数提案</h3>
+      <!-- 下段：検証マップ＋レポート＋クリックTEC値 -->
+      <div class="card output-card">
+        <div class="output-row">
+          <div class="output-col" style="flex:0 0 240px; max-width:260px;">
+            <h3>9. 検証 3×3 マップ</h3>
+            <canvas id="verifyCanvas"></canvas>
+          </div>
+          <div class="output-col" style="flex:2;">
+            <h3>10. 検証レポート & 係数提案</h3>
             <pre id="verifyReport">(まだ検証されていません)</pre>
           </div>
-          <div>
-            <h3>現在の TEC 値</h3>
+          <div class="output-col" style="flex:1;">
+            <h3>11. 現在の TEC 値</h3>
             <pre id="pointInfo">地図上をクリックすると、その格子点のTECと位置が表示されます。</pre>
-            <canvas id="verifyCanvas"></canvas>
           </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Leaflet JS（本体） -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
     /* ============ グローバル状態 ============ */
@@ -617,6 +656,7 @@
     let gForecastFrames = [];      // [step][iLat][iLon]
     let gForecastTimes = [];       // Date[]
     let gForecastStart = null;     // Date (UTC, from first BoM)
+    let currentStepIndex = 0;
 
     let gVerifyColorScale = [
       { limit: 10,  color: "#00ff00" },
@@ -625,18 +665,27 @@
       { limit: 999, color: "#ff0000" }
     ];
 
-    // TEC カラー（グラデーション用）
-    let gTecColorStops = [
-      { value: 0,   color: "#003300" },
-      { value: 30,  color: "#00ff00" },
-      { value: 60,  color: "#ffff00" },
-      { value: 120, color: "#ff0000" }
+    // TEC カラー（ユーザー設定可能）
+    let gTecColorScale = [
+      { limit: 10,  color: "#00ff00" },
+      { limit: 30,  color: "#ffff00" },
+      { limit: 60,  color: "#ff9900" },
+      { limit: 120, color: "#ff0000" }
     ];
 
-    const STORAGE_KEY_CONFIG   = "swifttec_config_v3";
-    const STORAGE_KEY_VCOL     = "swifttec_vcol_v3";
-    const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v3";
-    const STORAGE_KEY_TEC_COL  = "swifttec_tec_col_v1";
+    // Leaflet 関連
+    let map = null;
+    let tecCanvas = null;
+    let tecCtx = null;
+    let tecLegendControl = null;
+    let tecAlpha = 0.8;
+
+    let lastVerifyResult = null;
+
+    const STORAGE_KEY_CONFIG = "swifttec_config_v3";
+    const STORAGE_KEY_VCOL   = "swifttec_vcol_v3";
+    const STORAGE_KEY_BOM    = "swifttec_bom_inputs_v3";
+    const STORAGE_KEY_TCOL   = "swifttec_teccol_v3";
 
     function logInfo(msg) {
       const div = document.getElementById("runInfo");
@@ -760,7 +809,7 @@
       logInfo("保存されていた BoM 入力を削除しました。（テキスト内容はそのまま）");
     }
 
-    /* ============ Config（係数・色） ============ */
+    /* ============ Config（係数） ============ */
     function getConfigFromUI() {
       return {
         kGlobal:     parseFloat(document.getElementById("cfg_kGlobal").value)  || 1.0,
@@ -815,6 +864,7 @@
       }
     }
 
+    /* ============ 検証マップ色設定 ============ */
     function applyVerifyColorScale() {
       const limits = [
         parseFloat(document.getElementById("vLimit1").value) || 10,
@@ -878,103 +928,73 @@
       }
     }
 
-    /* ===== TEC カラー設定 ===== */
-    function hexToRgb(hex) {
-      const m = hex.replace("#","").match(/.{1,2}/g);
-      if (!m || m.length < 3) return {r:255,g:255,b:255};
-      return {
-        r: parseInt(m[0],16),
-        g: parseInt(m[1],16),
-        b: parseInt(m[2],16)
-      };
-    }
-
-    function tecColorRGBA(val, alpha) {
-      const stops = gTecColorStops;
-      if (!stops || !stops.length) return `rgba(255,255,255,${alpha})`;
-      let v = val;
-      if (v <= stops[0].value) {
-        const c = hexToRgb(stops[0].color);
-        return `rgba(${c.r},${c.g},${c.b},${alpha})`;
-      }
-      for (let i=0;i<stops.length-1;i++) {
-        const s0 = stops[i], s1 = stops[i+1];
-        if (v >= s0.value && v <= s1.value) {
-          const t = (v - s0.value) / (s1.value - s0.value || 1);
-          const c0 = hexToRgb(s0.color);
-          const c1 = hexToRgb(s1.color);
-          const r = Math.round(c0.r + (c1.r-c0.r)*t);
-          const g = Math.round(c0.g + (c1.g-c0.g)*t);
-          const b = Math.round(c0.b + (c1.b-c0.b)*t);
-          return `rgba(${r},${g},${b},${alpha})`;
-        }
-      }
-      const cL = hexToRgb(stops[stops.length-1].color);
-      return `rgba(${cL.r},${cL.g},${cL.b},${alpha})`;
-    }
-
+    /* ============ TEC カラーマップ設定 ============ */
     function applyTecColorScale() {
-      const v1 = parseFloat(document.getElementById("tTec1").value) || 0;
-      const v2 = parseFloat(document.getElementById("tTec2").value) || 30;
-      const v3 = parseFloat(document.getElementById("tTec3").value) || 60;
-      const v4 = parseFloat(document.getElementById("tTec4").value) || 120;
-      const c1 = document.getElementById("cTec1").value || "#003300";
-      const c2 = document.getElementById("cTec2").value || "#00ff00";
-      const c3 = document.getElementById("cTec3").value || "#ffff00";
-      const c4 = document.getElementById("cTec4").value || "#ff0000";
-      gTecColorStops = [
-        { value: v1, color: c1 },
-        { value: v2, color: c2 },
-        { value: v3, color: c3 },
-        { value: v4, color: c4 }
+      const limits = [
+        parseFloat(document.getElementById("tLimit1").value) || 10,
+        parseFloat(document.getElementById("tLimit2").value) || 30,
+        parseFloat(document.getElementById("tLimit3").value) || 60,
+        parseFloat(document.getElementById("tLimit4").value) || 120
       ];
-      localStorage.setItem(STORAGE_KEY_TEC_COL, JSON.stringify(gTecColorStops));
-      logInfo("TEC カラー設定を保存しました。");
-      updateTecOverlay();
-      drawTecLegend();
+      const cols = [
+        document.getElementById("tColor1").value || "#00ff00",
+        document.getElementById("tColor2").value || "#ffff00",
+        document.getElementById("tColor3").value || "#ff9900",
+        document.getElementById("tColor4").value || "#ff0000"
+      ];
+      gTecColorScale = [
+        { limit: limits[0], color: cols[0] },
+        { limit: limits[1], color: cols[1] },
+        { limit: limits[2], color: cols[2] },
+        { limit: limits[3], color: cols[3] }
+      ];
+      localStorage.setItem(STORAGE_KEY_TCOL, JSON.stringify(gTecColorScale));
+      logInfo("TECカラースケールを保存しました。");
+      updateTecLegend();
+      drawTecOverlay();
     }
 
     function resetTecColorScale() {
-      gTecColorStops = [
-        { value: 0,   color: "#003300" },
-        { value: 30,  color: "#00ff00" },
-        { value: 60,  color: "#ffff00" },
-        { value: 120, color: "#ff0000" }
+      gTecColorScale = [
+        { limit: 10,  color: "#00ff00" },
+        { limit: 30,  color: "#ffff00" },
+        { limit: 60,  color: "#ff9900" },
+        { limit: 120, color: "#ff0000" }
       ];
-      document.getElementById("tTec1").value = 0;
-      document.getElementById("tTec2").value = 30;
-      document.getElementById("tTec3").value = 60;
-      document.getElementById("tTec4").value = 120;
-      document.getElementById("cTec1").value = "#003300";
-      document.getElementById("cTec2").value = "#00ff00";
-      document.getElementById("cTec3").value = "#ffff00";
-      document.getElementById("cTec4").value = "#ff0000";
-      localStorage.setItem(STORAGE_KEY_TEC_COL, JSON.stringify(gTecColorStops));
-      updateTecOverlay();
-      drawTecLegend();
+      document.getElementById("tLimit1").value = 10;
+      document.getElementById("tLimit2").value = 30;
+      document.getElementById("tLimit3").value = 60;
+      document.getElementById("tLimit4").value = 120;
+      document.getElementById("tColor1").value = "#00ff00";
+      document.getElementById("tColor2").value = "#ffff00";
+      document.getElementById("tColor3").value = "#ff9900";
+      document.getElementById("tColor4").value = "#ff0000";
+      localStorage.setItem(STORAGE_KEY_TCOL, JSON.stringify(gTecColorScale));
+      updateTecLegend();
+      drawTecOverlay();
     }
 
     function loadTecColorScaleFromStorage() {
-      const s = localStorage.getItem(STORAGE_KEY_TEC_COL);
+      const s = localStorage.getItem(STORAGE_KEY_TCOL);
       if (!s) return;
       try {
         const arr = JSON.parse(s);
         if (!Array.isArray(arr) || arr.length !== 4) return;
-        gTecColorStops = arr;
-        document.getElementById("tTec1").value = arr[0].value;
-        document.getElementById("tTec2").value = arr[1].value;
-        document.getElementById("tTec3").value = arr[2].value;
-        document.getElementById("tTec4").value = arr[3].value;
-        document.getElementById("cTec1").value = arr[0].color;
-        document.getElementById("cTec2").value = arr[1].color;
-        document.getElementById("cTec3").value = arr[2].color;
-        document.getElementById("cTec4").value = arr[3].color;
+        gTecColorScale = arr;
+        document.getElementById("tLimit1").value = arr[0].limit;
+        document.getElementById("tLimit2").value = arr[1].limit;
+        document.getElementById("tLimit3").value = arr[2].limit;
+        document.getElementById("tLimit4").value = arr[3].limit;
+        document.getElementById("tColor1").value = arr[0].color;
+        document.getElementById("tColor2").value = arr[1].color;
+        document.getElementById("tColor3").value = arr[2].color;
+        document.getElementById("tColor4").value = arr[3].color;
       } catch(e) {
-        console.warn("TEC カラー設定の復元に失敗:", e);
+        console.warn("TEC色スケール復元に失敗:", e);
       }
     }
 
-    /* ====== 太陽位置など（最初の v3 と同じ式） ====== */
+    /* ====== 太陽位置 ====== */
     function dayOfYearUTC(date) {
       const start = new Date(Date.UTC(date.getUTCFullYear(),0,1,0,0,0));
       return 1 + (date - start)/86400000;
@@ -1068,7 +1088,7 @@
       return out;
     }
 
-    /* ============ 予報計算本体（最初の v3 と同じ構造） ============ */
+    /* ============ 予報計算本体 ============ */
     function runForecast() {
       try {
         const bomTexts = [
@@ -1222,19 +1242,155 @@
 
         const slider = document.getElementById("timeSlider");
         slider.min=0; slider.max=nSteps; slider.value=0;
+        currentStepIndex = 0;
         updateTimeLabel();
         logInfo(`予報計算完了: frames=${gForecastFrames.length}, grid=${nLat}×${nLon}`);
-        updateTecOverlay();
-        drawTecLegend();
+        drawTecOverlay();
       } catch(e) {
         logInfo("エラー: "+e.message);
         console.error(e);
       }
     }
 
+    /* ===== TEC カラー関数 ===== */
+    function hexToRgb(hex) {
+      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return m ? {
+        r: parseInt(m[1], 16),
+        g: parseInt(m[2], 16),
+        b: parseInt(m[3], 16)
+      } : {r:0,g:0,b:0};
+    }
+
+    function interpolateColor(c1, c2, t) {
+      const rgb1 = hexToRgb(c1);
+      const rgb2 = hexToRgb(c2);
+      const r = Math.round(rgb1.r + (rgb2.r - rgb1.r)*t);
+      const g = Math.round(rgb1.g + (rgb2.g - rgb1.g)*t);
+      const b = Math.round(rgb1.b + (rgb2.b - rgb1.b)*t);
+      return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
+    }
+
+    function tecColorHex(val) {
+      if (!gTecColorScale.length) return "#000000";
+      const scale = gTecColorScale;
+      const maxLimit = scale[scale.length-1].limit;
+      if (val <= scale[0].limit) return scale[0].color;
+      if (val >= maxLimit) return scale[scale.length-1].color;
+      let lower = scale[0], upper = scale[scale.length-1];
+      for (let i=0;i<scale.length-1;i++) {
+        if (val <= scale[i+1].limit) {
+          lower = scale[i];
+          upper = scale[i+1];
+          break;
+        }
+      }
+      const range = upper.limit - lower.limit;
+      const t = range > 0 ? (val - lower.limit)/range : 0;
+      return interpolateColor(lower.color, upper.color, t);
+    }
+
+    function tecColorRGBA(val, alpha) {
+      const hex = tecColorHex(val);
+      const rgb = hexToRgb(hex);
+      return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+    }
+
+    function getTecGradientCSS() {
+      const scale = gTecColorScale;
+      if (!scale.length) return "none";
+      const maxLimit = scale[scale.length-1].limit;
+      const steps = 40;
+      const stops = [];
+      for (let k=0;k<=steps;k++) {
+        const v = maxLimit * k / steps;
+        const col = tecColorHex(v);
+        const pct = 100*(1 - k/steps); // 上がMAX
+        stops.push(`${col} ${pct}%`);
+      }
+      return `linear-gradient(to top, ${stops.join(",")})`;
+    }
+
+    /* ===== Leaflet 地図 & TEC Overlay ===== */
+    function initLeafletMap() {
+      map = L.map("tecMap", {
+        worldCopyJump: false,
+        maxBounds: [[-90,-180],[90,180]],
+        maxBoundsViscosity: 0.7,
+        zoomSnap: 0.25,
+        zoomDelta: 0.5
+      }).setView([0, 130], 2.0);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 6,
+        minZoom: 1,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(map);
+
+      // TEC 用 Canvas Overlay
+      tecCanvas = document.createElement("canvas");
+      tecCanvas.className = "tec-canvas-overlay";
+      const overlayPane = map.getPanes().overlayPane;
+      overlayPane.appendChild(tecCanvas);
+      resizeTecCanvas();
+
+      map.on("moveend zoomend", drawTecOverlay);
+      map.on("resize", () => {
+        resizeTecCanvas();
+        drawTecOverlay();
+      });
+
+      map.on("click", onMapClick);
+
+      // TEC 凡例
+      tecLegendControl = L.control({position:"bottomright"});
+      tecLegendControl.onAdd = function() {
+        const div = L.DomUtil.create("div", "leaflet-control tec-legend");
+        div.innerHTML = `
+          <div class="tec-legend-title">TEC [TECU]</div>
+          <div class="tec-legend-bar"></div>
+          <div class="tec-legend-labels">
+            <span id="tecLegendMax">Max</span>
+            <span id="tecLegendMin">0</span>
+          </div>
+        `;
+        return div;
+      };
+      tecLegendControl.addTo(map);
+      updateTecLegend();
+    }
+
+    function resizeTecCanvas() {
+      if (!map || !tecCanvas) return;
+      const size = map.getSize();
+      tecCanvas.width = size.x;
+      tecCanvas.height = size.y;
+      tecCtx = tecCanvas.getContext("2d");
+    }
+
+    function updateTecLegend() {
+      if (!map || !tecLegendControl) return;
+      const container = tecLegendControl.getContainer();
+      if (!container) return;
+      const bar = container.querySelector(".tec-legend-bar");
+      if (bar) {
+        bar.style.background = getTecGradientCSS();
+      }
+      const maxSpan = container.querySelector("#tecLegendMax");
+      const minSpan = container.querySelector("#tecLegendMin");
+      if (maxSpan) {
+        const maxLimit = gTecColorScale[gTecColorScale.length-1].limit;
+        maxSpan.textContent = maxLimit.toFixed(0);
+      }
+      if (minSpan) {
+        minSpan.textContent = "0";
+      }
+    }
+
     function updateTimeLabel() {
       const slider = document.getElementById("timeSlider");
-      const idx = parseInt(slider.value,10);
+      const idx = parseInt(slider.value,10) || 0;
+      currentStepIndex = idx;
       const h  = (idx*15)/60;
       let label = `t = ${h.toFixed(2)} h`;
       if (gForecastTimes[idx]) {
@@ -1243,182 +1399,113 @@
       document.getElementById("timeLabel").textContent = label;
     }
 
-    /* ===== Leaflet 地図 & TEC オーバーレイ ===== */
-    let map = null;
-    let tecOverlayCanvas = null;
-    let tecOverlay = null;
+    function drawTecOverlay() {
+      if (!map || !tecCtx) return;
+      const size = map.getSize();
+      tecCtx.clearRect(0,0,size.x,size.y);
 
-    function initMap() {
-      map = L.map('map', {
-        worldCopyJump: true,
-        center: [0, 140],
-        zoom: 2,
-        minZoom: 1,
-        maxZoom: 8
-      });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
+      if (!gForecastFrames.length || !gGrid) return;
 
-      map.on('click', onMapClick);
-    }
+      const frame = gForecastFrames[currentStepIndex] || gForecastFrames[0];
+      const {nLat, nLon, latArr, lonArr} = gGrid;
+      if (nLat<2 || nLon<2) return;
 
-    function onTecAlphaChange() {
-      const alpha = parseFloat(document.getElementById("tecAlpha").value) || 0.8;
-      if (tecOverlay) {
-        tecOverlay.setOpacity(alpha);
-      }
-      // 画像にも反映したいなら再描画
-      updateTecOverlay();
-    }
+      const alphaSlider = document.getElementById("tecAlpha");
+      tecAlpha = alphaSlider ? (parseFloat(alphaSlider.value)||0.8) : 0.8;
 
-    function updateTecOverlay() {
-      if (!map || !gForecastFrames.length || !gGrid) return;
-
-      const step = parseInt(document.getElementById("timeSlider").value,10);
-      const frame = gForecastFrames[step];
-      const { nLat, nLon, latArr, lonArr } = gGrid;
-      const alpha = parseFloat(document.getElementById("tecAlpha").value) || 0.8;
-
-      // キャンバス準備（世界全体をぴったりカバー）
-      if (!tecOverlayCanvas) {
-        tecOverlayCanvas = document.createElement('canvas');
-      }
-      // 解像度はグリッドの4倍程度
-      const cw = nLon * 4;
-      const ch = nLat * 4;
-      tecOverlayCanvas.width = cw;
-      tecOverlayCanvas.height = ch;
-      const ctx = tecOverlayCanvas.getContext('2d');
-
-      ctx.clearRect(0,0,cw,ch);
-
-      // 緯度経度からキャンバス座標へ
-      const latStep = (nLat > 1) ? (latArr[1]-latArr[0]) : 180/nLat;
-      const lonStep = (nLon > 1) ? (lonArr[1]-lonArr[0]) : 360/nLon;
+      const dLat = latArr[1] - latArr[0];
+      const dLon = lonArr[1] - lonArr[0];
 
       for (let i=0;i<nLat;i++) {
+        const latC = latArr[i];
+        let lat1 = latC - dLat/2;
+        let lat2 = latC + dLat/2;
+        if (i===0)      lat1 = -90;
+        if (i===nLat-1) lat2 =  90;
+
         for (let j=0;j<nLon;j++) {
+          const lonC = lonArr[j];
+          let lon1 = lonC - dLon/2;
+          let lon2 = lonC + dLon/2;
+          if (j===0)      lon1 = -180;
+          if (j===nLon-1) lon2 =  180;
+
           const v = frame[i][j];
           if (!isFinite(v)) continue;
+          const color = tecColorRGBA(v, tecAlpha);
 
-          // セル境界（上下左右）を推定し、-90〜90, -180〜180 に合わせる
-          let latCenter = latArr[i];
-          let lonCenter = lonArr[j];
+          const p1 = map.latLngToContainerPoint([lat1, lon1]);
+          const p2 = map.latLngToContainerPoint([lat2, lon2]);
 
-          let lat1 = latCenter - latStep/2;
-          let lat2 = latCenter + latStep/2;
-          if (i === 0)      lat1 = -90;
-          if (i === nLat-1) lat2 =  90;
+          const x = Math.min(p1.x, p2.x);
+          const y = Math.min(p1.y, p2.y);
+          const w = Math.abs(p2.x - p1.x);
+          const h = Math.abs(p2.y - p1.y);
+          if (w <= 0 || h <= 0) continue;
 
-          let lon1 = lonCenter - lonStep/2;
-          let lon2 = lonCenter + lonStep/2;
-          if (j === 0)      lon1 = -180;
-          if (j === nLon-1) lon2 =  180;
-
-          lat1 = clamp(lat1, -90, 90);
-          lat2 = clamp(lat2, -90, 90);
-          lon1 = clamp(lon1, -180, 180);
-          lon2 = clamp(lon2, -180, 180);
-
-          const x1 = (lon1 + 180) / 360 * cw;
-          const x2 = (lon2 + 180) / 360 * cw;
-          const y1 = (90 - lat2) / 180 * ch;
-          const y2 = (90 - lat1) / 180 * ch;
-
-          ctx.fillStyle = tecColorRGBA(v, alpha);
-          ctx.fillRect(x1, y1, (x2-x1)+0.5, (y2-y1)+0.5);
+          tecCtx.fillStyle = color;
+          tecCtx.fillRect(x, y, w, h);
         }
       }
-
-      const bounds = [[-90,-180],[90,180]];
-      const url = tecOverlayCanvas.toDataURL("image/png");
-
-      if (!tecOverlay) {
-        tecOverlay = L.imageOverlay(url, bounds, { opacity: alpha });
-        tecOverlay.addTo(map);
-      } else {
-        tecOverlay.setUrl(url);
-        tecOverlay.setOpacity(alpha);
-      }
-    }
-
-    function onMapClick(ev) {
-      if (!gForecastFrames.length || !gGrid) return;
-      const { latArr, lonArr, nLat, nLon } = gGrid;
-      const lat = ev.latlng.lat;
-      let lon = ev.latlng.lng;
-
-      // 経度を [-180,180] に正規化
-      while (lon < -180) lon += 360;
-      while (lon > 180)  lon -= 360;
-
-      let bestI = 0, bestJ = 0;
-      let bestD2 = 1e12;
-      for (let i=0;i<nLat;i++) {
-        const dLat = latArr[i] - lat;
-        for (let j=0;j<nLon;j++) {
-          let dLon = lonArr[j] - lon;
-          if (dLon > 180) dLon -= 360;
-          if (dLon < -180) dLon += 360;
-          const d2 = dLat*dLat + dLon*dLon;
-          if (d2 < bestD2) {
-            bestD2 = d2;
-            bestI = i;
-            bestJ = j;
-          }
-        }
-      }
-
-      const step = parseInt(document.getElementById("timeSlider").value,10);
-      const frame = gForecastFrames[step];
-      const val = frame[bestI][bestJ];
-      const t   = gForecastTimes[step];
-
-      const info = `lat=${latArr[bestI].toFixed(1)}°, lon=${lonArr[bestJ].toFixed(1)}°\n` +
-                   `TEC ≈ ${val.toFixed(2)} TECU\n` +
-                   `t(UTC) = ${t.toISOString().replace("T"," ").replace(".000Z","Z")}`;
-      document.getElementById("pointInfo").textContent = info;
     }
 
     function onSliderChange() {
       updateTimeLabel();
-      updateTecOverlay();
+      drawTecOverlay();
     }
 
-    function drawTecLegend() {
-      const canvas = document.getElementById("tecLegend");
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0,0,w,h);
-
-      const steps = 100;
-      for (let i=0;i<steps;i++) {
-        const f = i/(steps-1);
-        // f を TEC 値にマップ
-        const vMin = gTecColorStops[0].value;
-        const vMax = gTecColorStops[gTecColorStops.length-1].value;
-        const v = vMin + (vMax - vMin)*f;
-        ctx.fillStyle = tecColorRGBA(v, 1.0);
-        const x = f * w;
-        ctx.fillRect(x,0, w/steps+1, h);
-      }
-      ctx.strokeStyle="#222b3f";
-      ctx.strokeRect(0.5,0.5,w-1,h-1);
-
-      const vMin = gTecColorStops[0].value;
-      const vMax = gTecColorStops[gTecColorStops.length-1].value;
-      const label = document.getElementById("tecLegendLabel");
-      if (label) {
-        label.textContent = `${vMin} TECU 〜 ${vMax} TECU`;
-      }
+    function onTecAlphaChange() {
+      const alphaSlider = document.getElementById("tecAlpha");
+      tecAlpha = alphaSlider ? (parseFloat(alphaSlider.value)||0.8) : 0.8;
+      drawTecOverlay();
     }
 
-    /* ===== 検証ロジック（元コードと同じ） ===== */
-    let lastVerifyResult = null;
+    /* ===== TEC値クリック表示（Leafletクリック） ===== */
+    function findNearestIndex(value, arr) {
+      let bestIdx = 0;
+      let bestDiff = Infinity;
+      for (let i=0;i<arr.length;i++) {
+        const d = Math.abs(value - arr[i]);
+        if (d < bestDiff) {
+          bestDiff = d;
+          bestIdx = i;
+        }
+      }
+      return bestIdx;
+    }
 
+    function normalizeLonForGrid(lon, lonArr) {
+      // Gridが 0〜360 の場合、Leaflet(-180～180)を 0～360 に変換
+      const minLon = Math.min(...lonArr);
+      const maxLon = Math.max(...lonArr);
+      if (minLon >= 0 && maxLon > 180) {
+        // 0〜360 系
+        if (lon < 0) lon += 360;
+      }
+      return lon;
+    }
+
+    function onMapClick(e) {
+      if (!gForecastFrames.length || !gGrid) return;
+      const {latArr, lonArr, nLat, nLon} = gGrid;
+      const lat = e.latlng.lat;
+      let lon = e.latlng.lng;
+      lon = normalizeLonForGrid(lon, lonArr);
+
+      const i = findNearestIndex(lat, latArr);
+      const j = findNearestIndex(lon, lonArr);
+
+      const frame = gForecastFrames[currentStepIndex] || gForecastFrames[0];
+      const v = frame[i][j];
+      const t = gForecastTimes[currentStepIndex] || gForecastTimes[0];
+
+      const info = `lat ≈ ${latArr[i].toFixed(1)}°, lon ≈ ${lonArr[j].toFixed(1)}°\n` +
+                   `TEC ≈ ${v.toFixed(2)} TECU\n` +
+                   `t(UTC) = ${t.toISOString().replace("T"," ").replace(".000Z","Z")}`;
+      document.getElementById("pointInfo").textContent = info;
+    }
+
+    /* ===== 検証ロジック ===== */
     function runVerification() {
       if (!gForecastFrames.length || !gGrid || !gForecastTimes.length) {
         logInfo("まず予報を計算してください。");
@@ -1540,7 +1627,8 @@
       reportLines.push("=== 係数調整の簡易提案 ===");
       if (nAll>0 && sumObsAll>0) {
         const avgBias = sumBiasAll/nAll;
-        const relBias = avgBias/(sumObsAll/nAll);
+        const avgObs  = sumObsAll/nAll;
+        const relBias = avgBias/avgObs; // 正→過大評価
         const thr = cfg.biasThresh/100;
         if (Math.abs(relBias) < thr) {
           reportLines.push("・全体として大きなバイアスはありません。係数はそのままでOK。");
@@ -1585,6 +1673,7 @@
       const ctx = canvas.getContext("2d");
       const w = canvas.width;
       const h = canvas.height;
+
       ctx.clearRect(0,0,w,h);
       ctx.fillStyle="#050814";
       ctx.fillRect(0,0,w,h);
@@ -1598,7 +1687,7 @@
       for (const z of result.zones) {
         const il=z.il, jl=z.jl;
         const x=jl*cellW;
-        const y=(2-il)*cellH;
+        const y=(2-il)*cellH; // 北を上に
         let col="#333";
         if (isFinite(z.MAPE)) {
           for (const lvl of gVerifyColorScale) {
@@ -1638,39 +1727,44 @@
       gForecastFrames=[];
       gForecastTimes=[];
       gForecastStart=null;
-      const slider = document.getElementById("timeSlider");
-      slider.value=0;
+      currentStepIndex = 0;
+      document.getElementById("timeSlider").value=0;
       updateTimeLabel();
-      if (tecOverlay) {
-        map.removeLayer(tecOverlay);
-        tecOverlay = null;
-      }
-      if (tecOverlayCanvas) {
-        const ctx = tecOverlayCanvas.getContext("2d");
-        ctx.clearRect(0,0,tecOverlayCanvas.width,tecOverlayCanvas.height);
-      }
+      drawTecOverlay();
       clearVerification();
-      document.getElementById("pointInfo").textContent = "地図上をクリックすると、その格子点のTECと位置が表示されます。";
-      logInfo("内部状態をリセットしました。（BoM/係数の保存値は残っています）");
-      drawTecLegend();
+      document.getElementById("pointInfo").textContent =
+        "地図上をクリックすると、その格子点のTECと位置が表示されます。";
+      logInfo("内部状態をリセットしました。（BoM/係数/色の保存値は残っています）");
     }
 
-    /* ===== 起動時処理 ===== */
+    /* ===== レイアウト ===== */
+    function resizeLayout() {
+      if (map) {
+        map.invalidateSize();
+        resizeTecCanvas();
+        drawTecOverlay();
+      }
+      const ver=document.getElementById("verifyCanvas");
+      if (ver) {
+        // サイズは CSS 固定に近いので、ここでは描画のみ
+        drawVerifyMap(lastVerifyResult);
+      }
+    }
+
+    window.addEventListener("resize", resizeLayout);
+
+    /* ===== 初期化 ===== */
     window.addEventListener("load", ()=>{
       loadConfig(true);
       loadVerifyColorScaleFromStorage();
-      loadBomInputsFromStorage();
       loadTecColorScaleFromStorage();
-      initMap();
-      updateTimeLabel();
-      drawTecLegend();
-      logInfo("SWIFT-TEC v3 Leaflet版 準備完了。まず BoM TEC を貼り付けてください。");
-    });
+      loadBomInputsFromStorage();
 
-    window.addEventListener("resize", ()=>{
-      if (map) {
-        map.invalidateSize();
-      }
+      initLeafletMap();
+      updateTimeLabel();
+      resizeLayout();
+
+      logInfo("SWIFT-TEC v3 Leaflet版 準備完了。まず BoM TEC を貼り付けてください。");
     });
   </script>
 </body>
