@@ -1529,6 +1529,14 @@
 　　　　 　const p3 = map.latLngToLayerPoint([lat2, lon2]);
 　　　　　 const p4 = map.latLngToLayerPoint([lat2, lon1]);
 
+
+          // 画面外の場合はある程度スキップ
+          const minX = Math.min(p1.x, p2.x, p3.x, p4.x);
+          const maxX = Math.max(p1.x, p2.x, p3.x, p4.x);
+          const minY = Math.min(p1.y, p2.y, p3.y, p4.y);
+          const maxY = Math.max(p1.y, p2.y, p3.y, p4.y);
+          if (maxX < 0 || maxY < 0 || minX > size.x || minY > size.y) continue;
+
           tecCtx.beginPath();
           tecCtx.moveTo(p1.x, p1.y);
           tecCtx.lineTo(p2.x, p2.y);
@@ -1862,5 +1870,3 @@
   </script>
 </body>
 </html>
-
-
