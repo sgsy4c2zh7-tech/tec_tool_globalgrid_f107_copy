@@ -1405,7 +1405,7 @@ function initLeafletMap() {
   // Leaflet マップ本体
   map = L.map("tecMap", {
     worldCopyJump: false,
-    maxBounds: [[-90,-180],[90,180]],
+    maxBounds: [[-90, -180], [90, 180]],
     maxBoundsViscosity: 0.7,
     zoomSnap: 0.25,
     zoomDelta: 0.5
@@ -1422,7 +1422,7 @@ function initLeafletMap() {
   tecCanvas = document.createElement("canvas");
   tecCanvas.className = "tec-canvas-overlay";
 
-  // ★ 重要ポイント：overlayPane ではなく map コンテナ直下に置く
+  // ★ 重要：overlayPane ではなく map コンテナ直下に置く
   const container = map.getContainer();
   container.style.position = "relative"; // 念のため
   tecCanvas.style.position = "absolute";
@@ -1452,7 +1452,7 @@ function initLeafletMap() {
 
   // TEC 凡例（既存）
   tecLegendControl = L.control({ position: "bottomright" });
-  tecLegendControl.onAdd = function() {
+  tecLegendControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-control tec-legend");
     div.innerHTML = `
       <div class="tec-legend-title">TEC [TECU]</div>
@@ -1467,6 +1467,7 @@ function initLeafletMap() {
   tecLegendControl.addTo(map);
   updateTecLegend();
 }
+
       // TEC 用 Canvas Overlay
       tecCanvas = document.createElement("canvas");
       tecCanvas.className = "tec-canvas-overlay";
