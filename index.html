@@ -1752,10 +1752,11 @@
 
           const color = tecColorRGBA(v, tecAlpha);
 
-          const p1 = map.latLngToContainerPoint([lat1, lon1]);
-          const p2 = map.latLngToContainerPoint([lat1, lon2]);
-          const p3 = map.latLngToContainerPoint([lat2, lon2]);
-          const p4 = map.latLngToContainerPoint([lat2, lon1]);
+          const p1 = map.latLngToLayerPoint([lat1, lon1]);
+　　　　　 const p2 = map.latLngToLayerPoint([lat1, lon2]);
+          const p3 = map.latLngToLayerPoint([lat2, lon2]);
+          const p4 = map.latLngToLayerPoint([lat2, lon1]);
+
 
           tecCtx.beginPath();
           tecCtx.moveTo(p1.x, p1.y);
@@ -2190,3 +2191,4 @@
   </script>
 </body>
 </html>
+
