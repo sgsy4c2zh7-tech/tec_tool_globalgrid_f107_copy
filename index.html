@@ -48,7 +48,7 @@
       padding: 10px;
       gap: 8px;
       min-width: 0;
-      overflow-y: auto; /* 右側もスクロール */
+      overflow-y: auto;
     }
 
     .card {
@@ -84,7 +84,8 @@
     }
     input[type="number"],
     input[type="text"],
-    input[type="color"] {
+    input[type="color"],
+    select {
       background: #050814;
       border-radius: 4px;
       border: 1px solid #334;
@@ -244,7 +245,6 @@
       flex-direction: column;
     }
 
-    /* 出力テキストエリアは内部スクロール可に */
     .output-col pre {
       max-height: 220px;
       overflow-y: auto;
@@ -265,7 +265,7 @@
           ・F10.7 / Ap / Dst / X-ray / Deep Flare Net を反映<br>
           ・BoM 実測（最大4枚）で 3×3 領域ごとの誤差検証<br>
           ・Leaflet 地図で好きな地域をズームして TEC を確認<br>
-          ・9領域バイアス補正で地域ごとの誤差を微調整
+          ・指定した範囲だけバイアス補正して微調整可能
         </div>
       </div>
 
@@ -466,36 +466,70 @@
         </div>
       </div>
 
-      <!-- 6. 9領域バイアス補正 -->
+      <!-- 6. フォーカス & 指定範囲バイアス -->
       <div class="card">
         <div class="card-header">
-          <h2>6. 9領域バイアス補正</h2>
-          <span>3×3 領域ごとに TEC を微調整</span>
+          <h2>6. フォーカス & バイアス（範囲指定）</h2>
+          <span>地域を選んで地図＆バイアスを制御</span>
         </div>
         <div class="small">
-          各領域ごとに TEC を ±% で補正できます。<br>
-          検証レポートの Bias を見ながら少しずつ調整してください。
+          ・プリセットで「日本」「ヨーロッパ」などを選択すると緯度経度が自動入力。<br>
+          ・「地図をフォーカス」で Leaflet 地図のズーム・中心も連動。<br>
+          ・「この範囲のバイアス[%]」を設定すると、その矩形内のTECだけ±%補正。
         </div>
-        <table>
-          <thead>
-            <tr><th>領域ID</th><th>位置</th><th>補正[%]</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Z1</td><td>南西 (S, W)</td><td><input id="zbias_0" type="number" value="0" style="width:60px;"></td></tr>
-            <tr><td>Z2</td><td>南中 (S, C)</td><td><input id="zbias_1" type="number" value="0" style="width:60px;"></td></tr>
-            <tr><td>Z3</td><td>南東 (S, E)</td><td><input id="zbias_2" type="number" value="0" style="width:60px;"></td></tr>
-            <tr><td>Z4</td><td>中西 (M, W)</td><td><input id="zbias_3" type="number" value="0" style="width:60px;"></td></tr>
-            <tr><td>Z5</td><td>中央 (M, C)</td><td><input id="zbias_4" type="number" value="0" style="width:60px;"></td></tr>
-            <tr><td>Z6</td><td>中東 (M, E)</td><td><input id="zbias_5" type="number" value="0" style="width:60px;"></td></tr>
-            <tr><td>Z7</td><td>北西 (N, W)</td><td><input id="zbias_6" type="number" value="0" style="width:60px;"></td></tr>
-            <tr><td>Z8</td><td>北中 (N, C)</td><td><input id="zbias_7" type="number" value="0" style="width:60px;"></td></tr>
-            <tr><td>Z9</td><td>北東 (N, E)</td><td><input id="zbias_8" type="number" value="0" style="width:60px;"></td></tr>
-          </tbody>
-        </table>
         <div class="row">
-          <button onclick="applyZoneBiasFromUI()">バイアスを保存</button>
-          <button class="secondary" onclick="resetZoneBias()">初期化</button>
+          <div style="flex:1;">
+            <label>地域プリセット</label><br>
+            <select id="focusPreset" onchange="onFocusPresetChange()">
+              <option value="custom">カスタム（手動）</option>
+              <option value="japan">日本</option>
+              <option value="europe">ヨーロッパ</option>
+              <option value="north_america">北アメリカ</option>
+              <option value="south_america">南アメリカ</option>
+              <option value="africa">アフリカ</option>
+              <option value="global">全地球</option>
+            </select>
+          </div>
         </div>
+        <div class="row">
+          <div>
+            <label>latMin [°]</label><br>
+            <input id="focusLatMin" type="number" value="20">
+          </div>
+          <div>
+            <label>latMax [°]</label><br>
+            <input id="focusLatMax" type="number" value="50">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>lonMin [°]</label><br>
+            <input id="focusLonMin" type="number" value="120">
+          </div>
+          <div>
+            <label>lonMax [°]</label><br>
+            <input id="focusLonMax" type="number" value="150">
+          </div>
+        </div>
+        <div class="row">
+          <button onclick="applyFocusRegion()">地図をフォーカス</button>
+          <button class="secondary" onclick="resetFocusRegion()">全地球表示</button>
+        </div>
+        <hr style="border-color:#222b3f;opacity:0.6;margin:6px 0;">
+        <div class="row">
+          <div style="flex:1;">
+            <label>この範囲のバイアス[%]</label><br>
+            <input id="rectBiasPct" type="number" value="0" style="width:80px;">
+          </div>
+          <div style="flex:1;">
+            <label><input id="rectBiasEnable" type="checkbox"> バイアスを有効にする</label>
+          </div>
+        </div>
+        <div class="row">
+          <button onclick="saveRectBiasFromUI()">バイアス保存</button>
+          <button class="secondary" onclick="clearRectBias()">バイアス解除</button>
+        </div>
+        <div class="small" id="rectBiasInfo"></div>
       </div>
 
       <!-- 7. TEC カラーマップ設定 -->
@@ -696,8 +730,16 @@
       { limit: 120, color: "#ff0000" }
     ];
 
-    // 9領域バイアス[%]（Z1〜Z9）
-    let gZoneBiasPct = new Array(9).fill(0);
+    // 指定矩形バイアス
+    const STORAGE_KEY_RECTBIAS = "swifttec_rectbias_rect_v1";
+    let gRectBias = {
+      enabled: false,
+      latMin: 20,
+      latMax: 50,
+      lonMin: 120,
+      lonMax: 150,
+      biasPct: 0
+    };
 
     // Leaflet 関連
     let map = null;
@@ -712,7 +754,6 @@
     const STORAGE_KEY_VCOL     = "swifttec_vcol_v3";
     const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v3";
     const STORAGE_KEY_TCOL     = "swifttec_teccol_v3";
-    const STORAGE_KEY_ZONEBIAS = "swifttec_zonebias_v1";
 
     function logInfo(msg) {
       const div = document.getElementById("runInfo");
@@ -829,11 +870,6 @@
       } catch(e) {
         console.warn("BoM入力の復元に失敗:", e);
       }
-    }
-
-    function clearBomInputsStorage() {
-      localStorage.removeItem(STORAGE_KEY_BOM);
-      logInfo("保存されていた BoM 入力を削除しました。（テキスト内容はそのまま）");
     }
 
     /* ============ Config（係数） ============ */
@@ -1021,57 +1057,144 @@
       }
     }
 
-    /* ============ 9領域バイアス補正 ============ */
-    function applyZoneBiasFromUI() {
-      for (let z=0; z<9; z++) {
-        const el = document.getElementById("zbias_" + z);
-        const v = parseFloat(el.value);
-        gZoneBiasPct[z] = isNaN(v) ? 0 : v;
-      }
-      localStorage.setItem(STORAGE_KEY_ZONEBIAS, JSON.stringify(gZoneBiasPct));
-      logInfo("9領域バイアスを保存しました。（次回の予報から適用）");
+    /* ============ フォーカス & 矩形バイアス ============ */
+
+    const FOCUS_PRESETS = {
+      japan:        { latMin: 20,  latMax: 50,  lonMin: 120, lonMax: 150 },
+      europe:       { latMin: 35,  latMax: 70,  lonMin: -15, lonMax: 40  },
+      north_america:{ latMin: 15,  latMax: 75,  lonMin: -170,lonMax: -50 },
+      south_america:{ latMin: -60, latMax: 15,  lonMin: -90, lonMax: -30 },
+      africa:       { latMin: -35, latMax: 35,  lonMin: -20, lonMax: 50  },
+      global:       { latMin: -60, latMax: 60,  lonMin: -180,lonMax: 180 }
+    };
+
+    function onFocusPresetChange() {
+      const sel = document.getElementById("focusPreset").value;
+      if (!FOCUS_PRESETS[sel]) return;
+      const p = FOCUS_PRESETS[sel];
+      document.getElementById("focusLatMin").value = p.latMin;
+      document.getElementById("focusLatMax").value = p.latMax;
+      document.getElementById("focusLonMin").value = p.lonMin;
+      document.getElementById("focusLonMax").value = p.lonMax;
     }
 
-    function resetZoneBias() {
-      gZoneBiasPct = new Array(9).fill(0);
-      for (let z=0; z<9; z++) {
-        const el = document.getElementById("zbias_" + z);
-        if (el) el.value = 0;
+    function applyFocusRegion() {
+      if (!map) return;
+      let latMin = parseFloat(document.getElementById("focusLatMin").value);
+      let latMax = parseFloat(document.getElementById("focusLatMax").value);
+      let lonMin = parseFloat(document.getElementById("focusLonMin").value);
+      let lonMax = parseFloat(document.getElementById("focusLonMax").value);
+      if (isNaN(latMin) || isNaN(latMax) || isNaN(lonMin) || isNaN(lonMax)) {
+        logInfo("フォーカス範囲の値が不正です。");
+        return;
       }
-      localStorage.setItem(STORAGE_KEY_ZONEBIAS, JSON.stringify(gZoneBiasPct));
-      logInfo("9領域バイアスをリセットしました。");
+      if (latMin > latMax) [latMin, latMax] = [latMax, latMin];
+      if (lonMin > lonMax) [lonMin, lonMax] = [lonMax, lonMin];
+
+      const bounds = L.latLngBounds(
+        [latMin, lonMin],
+        [latMax, lonMax]
+      );
+      map.fitBounds(bounds, { padding: [10,10] });
+
+      logInfo(`地図をフォーカス: lat[${latMin},${latMax}], lon[${lonMin},${lonMax}]`);
     }
 
-    function loadZoneBiasFromStorage() {
-      const s = localStorage.getItem(STORAGE_KEY_ZONEBIAS);
-      if (!s) return;
+    function resetFocusRegion() {
+      if (!map) return;
+      map.setView([0,130], 2.0);
+      logInfo("地図表示を全地球にリセットしました。");
+    }
+
+    function saveRectBiasFromUI() {
+      let latMin = parseFloat(document.getElementById("focusLatMin").value);
+      let latMax = parseFloat(document.getElementById("focusLatMax").value);
+      let lonMin = parseFloat(document.getElementById("focusLonMin").value);
+      let lonMax = parseFloat(document.getElementById("focusLonMax").value);
+      const pct   = parseFloat(document.getElementById("rectBiasPct").value) || 0;
+      const enable= document.getElementById("rectBiasEnable").checked;
+
+      if (latMin > latMax) [latMin, latMax] = [latMax, latMin];
+      if (lonMin > lonMax) [lonMin, lonMax] = [lonMax, lonMin];
+
+      gRectBias = {
+        enabled: enable && pct !== 0,
+        latMin, latMax, lonMin, lonMax,
+        biasPct: pct
+      };
+      localStorage.setItem(STORAGE_KEY_RECTBIAS, JSON.stringify(gRectBias));
+
+      const info = document.getElementById("rectBiasInfo");
+      if (gRectBias.enabled) {
+        info.textContent =
+          `有効範囲: lat[${latMin},${latMax}], lon[${lonMin},${lonMax}], バイアス=${pct}%`;
+        logInfo("指定範囲バイアスを保存しました。（次回の予報から適用）");
+      } else {
+        info.textContent = "バイアスは現在無効です。";
+        logInfo("バイアス設定を保存しましたが、チェックが外れているため適用されていません。");
+      }
+    }
+
+    function clearRectBias() {
+      gRectBias.enabled = false;
+      gRectBias.biasPct = 0;
+      document.getElementById("rectBiasPct").value = 0;
+      document.getElementById("rectBiasEnable").checked = false;
+      localStorage.removeItem(STORAGE_KEY_RECTBIAS);
+      const info = document.getElementById("rectBiasInfo");
+      if (info) info.textContent = "バイアスは無効です。";
+      logInfo("指定範囲バイアスを解除しました。");
+    }
+
+    function loadRectBiasFromStorage() {
+      const s = localStorage.getItem(STORAGE_KEY_RECTBIAS);
+      const info = document.getElementById("rectBiasInfo");
+      if (!s) {
+        if (info) info.textContent = "バイアスは無効です。";
+        return;
+      }
       try {
-        const arr = JSON.parse(s);
-        if (!Array.isArray(arr) || arr.length !== 9) return;
-        gZoneBiasPct = arr;
-        for (let z=0; z<9; z++) {
-          const el = document.getElementById("zbias_" + z);
-          if (el) el.value = arr[z];
+        const rb = JSON.parse(s);
+        if (typeof rb !== "object") return;
+        gRectBias = {
+          enabled: !!rb.enabled,
+          latMin: rb.latMin,
+          latMax: rb.latMax,
+          lonMin: rb.lonMin,
+          lonMax: rb.lonMax,
+          biasPct: rb.biasPct
+        };
+        document.getElementById("focusLatMin").value = rb.latMin;
+        document.getElementById("focusLatMax").value = rb.latMax;
+        document.getElementById("focusLonMin").value = rb.lonMin;
+        document.getElementById("focusLonMax").value = rb.lonMax;
+        document.getElementById("rectBiasPct").value = rb.biasPct;
+        document.getElementById("rectBiasEnable").checked = !!rb.enabled;
+        if (info) {
+          info.textContent = rb.enabled
+            ? `有効範囲: lat[${rb.latMin},${rb.latMax}], lon[${rb.lonMin},${rb.lonMax}], バイアス=${rb.biasPct}%`
+            : "バイアスは無効です。";
         }
       } catch(e) {
-        console.warn("9領域バイアス復元に失敗:", e);
+        console.warn("矩形バイアスの復元に失敗:", e);
       }
     }
 
-    // 緯度・経度から 3×3 のゾーン番号（0〜8）を返す
-    // latBands: [-90,-30,30,90], lonBands: [-180,-60,60,180] に対応
-    function getZoneIndex(lat, lon) {
-      let il;
-      if (lat < -30) il = 0;       // 南
-      else if (lat < 30) il = 1;   // 中緯度
-      else il = 2;                 // 北
+    function applyRectBiasToValue(lat, lon, val) {
+      if (!gRectBias.enabled) return val;
 
-      let jl;
-      if (lon < -60) jl = 0;       // 西
-      else if (lon < 60) jl = 1;   // 中央
-      else jl = 2;                 // 東
+      let latMin = gRectBias.latMin;
+      let latMax = gRectBias.latMax;
+      let lonMin = gRectBias.lonMin;
+      let lonMax = gRectBias.lonMax;
+      if (latMin > latMax) [latMin, latMax] = [latMax, latMin];
+      if (lonMin > lonMax) [lonMin, lonMax] = [lonMax, lonMin];
 
-      return il * 3 + jl;          // 0〜8
+      // lon は -180〜180 前提の簡易判定（BoMグリッドも同様）
+      if (lat < latMin || lat > latMax) return val;
+      if (lon < lonMin || lon > lonMax) return val;
+
+      return val * (1 + gRectBias.biasPct / 100);
     }
 
     /* ====== 太陽位置 ====== */
@@ -1316,15 +1439,12 @@
               const scale = cfg.kGlobal * Ssolar * Sflare * wLat;
               let val = T*scale;
 
-              // 9領域バイアス適用
-              const zoneIdx = getZoneIndex(lat, lon);
-              const bpct = gZoneBiasPct[zoneIdx] || 0;
-              val = val * (1 + bpct/100);
+              // ★ 指定矩形バイアスを適用
+              val = applyRectBiasToValue(lat, lon, val);
 
               frame[i][j] = val;
             }
           }
-          // V字補正は軽めに（0.85だと効きすぎる場合は 0.9 等にしてもOK）
           gForecastFrames[step] = fixLocalVShape(frame,nLat,nLon,0.9);
         }
 
@@ -1522,15 +1642,11 @@
           if (!isFinite(v)) continue;
           const color = tecColorRGBA(v, tecAlpha);
 
-          // Web Mercator の歪みを Leaflet に任せるため、四隅を polygon で塗る
-          // ★★ LayerPoint に変更（overlayPane と座標を揃える）★★
-　　　　 　const p1 = map.latLngToLayerPoint([lat1, lon1]);
-　　　　 　const p2 = map.latLngToLayerPoint([lat1, lon2]);
-　　　　 　const p3 = map.latLngToLayerPoint([lat2, lon2]);
-　　　　　 const p4 = map.latLngToLayerPoint([lat2, lon1]);
+          const p1 = map.latLngToLayerPoint([lat1, lon1]);
+          const p2 = map.latLngToLayerPoint([lat1, lon2]);
+          const p3 = map.latLngToLayerPoint([lat2, lon2]);
+          const p4 = map.latLngToLayerPoint([lat2, lon1]);
 
-
-          // 画面外の場合はある程度スキップ
           const minX = Math.min(p1.x, p2.x, p3.x, p4.x);
           const maxX = Math.max(p1.x, p2.x, p3.x, p4.x);
           const minY = Math.min(p1.y, p2.y, p3.y, p4.y);
@@ -1835,7 +1951,7 @@
       clearVerification();
       document.getElementById("pointInfo").textContent =
         "地図上をクリックすると、その格子点のTECと位置が表示されます。";
-      logInfo("内部状態をリセットしました。（BoM/係数/色/9領域バイアスの保存値は残っています）");
+      logInfo("内部状態をリセットしました。（BoM/係数/色/バイアスの保存値は残っています）");
     }
 
     /* ===== レイアウト ===== */
@@ -1860,14 +1976,11 @@
       loadTecColorScaleFromStorage();
       loadBomInputsFromStorage();
       initLeafletMap();
-      loadZoneBiasFromStorage();
-
+      loadRectBiasFromStorage();
       updateTimeLabel();
       resizeLayout();
-
       logInfo("SWIFT-TEC v3 Leaflet版 準備完了。まず BoM TEC を貼り付けてください。");
     });
   </script>
 </body>
 </html>
-
