@@ -273,7 +273,7 @@
           <span>Global TEC Forecast & Verification</span>
         </div>
         <div class="small">
-          ・BoM TEC（最大6枚）から 48h / 15min 予報を生成<br>
+          ・BoM TEC（最大9枚）から 48h / 15min 予報を生成<br>
           ・F10.7 / Ap / Dst / X-ray / Deep Flare Net / 磁気嵐を反映<br>
           ・BoM 実測（最大4枚）で 3×3 領域ごとの誤差検証<br>
           ・Leaflet 地図で TEC / GPS誤差を確認、地域フォーカスも可能
@@ -283,7 +283,7 @@
       <!-- 1. BoM TEC 予報用 -->
       <div class="card">
         <div class="card-header">
-          <h2>1. BoM TEC（予報用 最大6枚）</h2>
+          <h2>1. BoM TEC（予報用 最大9枚）</h2>
           <span>World0000_tec.txt などをコピペ</span>
         </div>
         <div class="row small">
@@ -301,6 +301,14 @@
           <div><textarea id="bomInput4"></textarea></div>
           <div><textarea id="bomInput5"></textarea></div>
           <div><textarea id="bomInput6"></textarea></div>
+        </div>
+        <div class="row small">
+          <div>BoM #7</div><div>BoM #8</div><div>BoM #9</div>
+        </div>
+        <div class="row">
+          <div><textarea id="bomInput7"></textarea></div>
+          <div><textarea id="bomInput8"></textarea></div>
+          <div><textarea id="bomInput9"></textarea></div>
         </div>
         <div class="row">
           <button onclick="saveBomInputs()">BoM入力を保存</button>
@@ -688,7 +696,7 @@
           <button class="focus-btn" onclick="focusRegion('europe')">ヨーロッパ</button>
         </div>
         <div class="row">
-                    <button class="focus-btn" onclick="focusRegion('southAmerica')">南アメリカ</button>
+          <button class="focus-btn" onclick="focusRegion('southAmerica')">南アメリカ</button>
           <button class="focus-btn" onclick="focusRegion('europe')">ヨーロッパ</button>
         </div>
         <div class="row">
@@ -840,7 +848,7 @@
 
     const STORAGE_KEY_CONFIG   = "swifttec_config_v4";
     const STORAGE_KEY_VCOL     = "swifttec_vcol_v3";
-    const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v3";
+    const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v4";  // ★ 9枚対応版
     const STORAGE_KEY_TCOL     = "swifttec_teccol_v3";
     const STORAGE_KEY_GCOL     = "swifttec_gpscol_v1";
 
@@ -939,7 +947,10 @@
         bomInput3: document.getElementById("bomInput3").value,
         bomInput4: document.getElementById("bomInput4").value,
         bomInput5: document.getElementById("bomInput5").value,
-        bomInput6: document.getElementById("bomInput6").value
+        bomInput6: document.getElementById("bomInput6").value,
+        bomInput7: document.getElementById("bomInput7").value,
+        bomInput8: document.getElementById("bomInput8").value,
+        bomInput9: document.getElementById("bomInput9").value,
       };
       localStorage.setItem(STORAGE_KEY_BOM, JSON.stringify(data));
       logInfo("BoM入力を保存しました。（次回起動時に自動復元）");
@@ -956,6 +967,9 @@
         if (data.bomInput4 !== undefined) document.getElementById("bomInput4").value = data.bomInput4;
         if (data.bomInput5 !== undefined) document.getElementById("bomInput5").value = data.bomInput5;
         if (data.bomInput6 !== undefined) document.getElementById("bomInput6").value = data.bomInput6;
+        if (data.bomInput7 !== undefined) document.getElementById("bomInput7").value = data.bomInput7;
+        if (data.bomInput8 !== undefined) document.getElementById("bomInput8").value = data.bomInput8;
+        if (data.bomInput9 !== undefined) document.getElementById("bomInput9").value = data.bomInput9;
       } catch(e) {
         console.warn("BoM入力の復元に失敗:", e);
       }
@@ -1249,7 +1263,7 @@
       const r = Math.round(rgb1.r + (rgb2.r - rgb1.r)*t);
       const g = Math.round(rgb1.g + (rgb2.g - rgb1.g)*t);
       const b = Math.round(rgb1.b + (rgb2.b - rgb1.b)*t);
-      return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
+      return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16,"0").padStart(2,"0")}`;
     }
 
     function colorHexFromScale(val, scale) {
@@ -1664,7 +1678,10 @@
           document.getElementById("bomInput3").value,
           document.getElementById("bomInput4").value,
           document.getElementById("bomInput5").value,
-          document.getElementById("bomInput6").value
+          document.getElementById("bomInput6").value,
+          document.getElementById("bomInput7").value,
+          document.getElementById("bomInput8").value,
+          document.getElementById("bomInput9").value
         ];
         const snaps = [];
         const infoLines = [];
@@ -2182,4 +2199,3 @@ GPS_L1_error[m] = TEC_forecast × kL1 (${cfg.kL1.toFixed(3)} m/TECU)
   </script>
 </body>
 </html>
-
