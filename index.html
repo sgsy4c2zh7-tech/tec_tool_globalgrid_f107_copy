@@ -173,7 +173,6 @@
       align-items: center;
       gap: 8px;
       font-size: 11px;
-      flex-wrap: wrap;
     }
     #timeSlider {
       flex: 1;
@@ -185,7 +184,6 @@
       min-height: 360px;
       border-radius: 8px;
       overflow: hidden;
-      position: relative;
     }
     .leaflet-container {
       background: #000;
@@ -246,30 +244,14 @@
       display: flex;
       flex-direction: column;
     }
-
     .output-col pre {
       max-height: 220px;
       overflow-y: auto;
     }
 
-    /* storm phase label */
-    #stormPhaseLabel {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      border: 1px solid #374151;
-      background: rgba(15,23,42,0.8);
-      white-space: nowrap;
-    }
-
-    /* small badge text */
-    .badge {
-      display: inline-block;
-      padding: 1px 6px;
-      border-radius: 999px;
-      border: 1px solid #4b5563;
-      font-size: 10px;
-      background: #111827;
+    hr {
+      border: none;
+      border-top: 1px solid #222b3f;
     }
   </style>
 </head>
@@ -285,9 +267,9 @@
         <div class="small">
           ・BoM TEC（最大6枚）から 48h / 15min 予報を生成<br>
           ・F10.7 / Ap / Dst / X-ray / Deep Flare Net を反映<br>
-          ・CME / 高速太陽風インプットで磁気嵐〜電離圏嵐を近似<br>
-          ・Leaflet 地図で好きな地域をズーム & フォーカス<br>
-          ・指定範囲バイアス補正で任意の領域だけTECを微調整
+          ・BoM 実測（最大4枚）で 3×3 領域ごとの誤差検証<br>
+          ・Leaflet 地図で好きな地域をズームして TEC / GPS誤差を確認<br>
+          ・9領域バイアス補正で地域ごとの誤差を微調整
         </div>
       </div>
 
@@ -355,46 +337,10 @@
         </div>
       </div>
 
-      <!-- 3. 宇宙天気イベント（CME / HSS） -->
+      <!-- 3. Deep Flare Net 8領域 -->
       <div class="card">
         <div class="card-header">
-          <h2>3. CME / 高速太陽風</h2>
-          <span>磁気嵐〜電離圏嵐モデル用</span>
-        </div>
-        <div class="row">
-          <div>
-            <label>CME到達時刻 (UTC)</label><br>
-            <input id="stormCmeTime" type="text" placeholder="2025-11-25T00:00Z">
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label>高速太陽風(HSS)到達時刻 (UTC)</label><br>
-            <input id="stormHssTime" type="text" placeholder="2025-11-25T06:00Z">
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label>予想 Bz_min [nT]（南向きは負）</label><br>
-            <input id="stormBzMin" type="number" value="-10" step="1">
-          </div>
-          <div>
-            <label>予想 Vsw [km/s]</label><br>
-            <input id="stormVsw" type="number" value="600" step="10">
-          </div>
-        </div>
-        <div class="row">
-          <button onclick="updateStormModelFromUI()">嵐インデックス更新</button>
-        </div>
-        <div class="small" id="stormModelSummary">
-          Stormモデル: 現在は静穏として扱います。
-        </div>
-      </div>
-
-      <!-- 4. Deep Flare Net 8領域 -->
-      <div class="card">
-        <div class="card-header">
-          <h2>4. Deep Flare Net 領域</h2>
+          <h2>3. Deep Flare Net 領域</h2>
           <span>8分割フレア確率</span>
         </div>
         <div class="small">
@@ -452,10 +398,10 @@
         </table>
       </div>
 
-      <!-- 5. 検証用 BoM -->
+      <!-- 4. 検証用 BoM -->
       <div class="card">
         <div class="card-header">
-          <h2>5. 検証用 BoM TEC（最大4枚）</h2>
+          <h2>4. 検証用 BoM TEC（最大4枚）</h2>
           <span>予報期間中の実測</span>
         </div>
         <div class="row small">
@@ -482,10 +428,10 @@
         </div>
       </div>
 
-      <!-- 6. 検証マップ色設定 -->
+      <!-- 5. 検証マップ色設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>6. 検証マップ色設定</h2>
+          <h2>5. 検証マップ色設定</h2>
           <span>誤差(%) → 色を任意設定</span>
         </div>
         <div class="small">
@@ -524,76 +470,45 @@
         </div>
       </div>
 
-      <!-- 7. 地域フォーカス & 指定範囲バイアス -->
+      <!-- 6. 9領域バイアス補正 -->
       <div class="card">
         <div class="card-header">
-          <h2>7. 地域フォーカス & 指定バイアス</h2>
-          <span>地図ズーム & TEC補正</span>
+          <h2>6. 9領域バイアス補正</h2>
+          <span>3×3 領域ごとに TEC を微調整</span>
         </div>
         <div class="small">
-          ・プリセット地域や手動範囲で地図をフォーカス<br>
-          ・同じ範囲にだけ TEC の +/-% バイアスを掛けられます。
+          各領域ごとに TEC を ±% で補正できます。<br>
+          検証レポートの Bias を見ながら少しずつ調整してください。
         </div>
+        <table>
+          <thead>
+            <tr><th>領域ID</th><th>位置</th><th>補正[%]</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Z1</td><td>南西 (S, W)</td><td><input id="zbias_0" type="number" value="0" style="width:60px;"></td></tr>
+            <tr><td>Z2</td><td>南中 (S, C)</td><td><input id="zbias_1" type="number" value="0" style="width:60px;"></td></tr>
+            <tr><td>Z3</td><td>南東 (S, E)</td><td><input id="zbias_2" type="number" value="0" style="width:60px;"></td></tr>
+            <tr><td>Z4</td><td>中西 (M, W)</td><td><input id="zbias_3" type="number" value="0" style="width:60px;"></td></tr>
+            <tr><td>Z5</td><td>中央 (M, C)</td><td><input id="zbias_4" type="number" value="0" style="width:60px;"></td></tr>
+            <tr><td>Z6</td><td>中東 (M, E)</td><td><input id="zbias_5" type="number" value="0" style="width:60px;"></td></tr>
+            <tr><td>Z7</td><td>北西 (N, W)</td><td><input id="zbias_6" type="number" value="0" style="width:60px;"></td></tr>
+            <tr><td>Z8</td><td>北中 (N, C)</td><td><input id="zbias_7" type="number" value="0" style="width:60px;"></td></tr>
+            <tr><td>Z9</td><td>北東 (N, E)</td><td><input id="zbias_8" type="number" value="0" style="width:60px;"></td></tr>
+          </tbody>
+        </table>
         <div class="row">
-          <div>
-            <label>フォーカス地域</label><br>
-            <select id="focusPreset" onchange="onFocusPresetChange()">
-              <option value="global">グローバル</option>
-              <option value="japan">日本付近</option>
-              <option value="europe">ヨーロッパ</option>
-              <option value="na">北アメリカ</option>
-              <option value="sa">南アメリカ</option>
-              <option value="africa">アフリカ</option>
-              <option value="custom">手動指定</option>
-            </select>
-          </div>
-        </div>
-        <div class="row small">
-          <div>緯度範囲 [deg]</div><div>経度範囲 [deg]</div>
-        </div>
-        <div class="row">
-          <div>
-            minLat<br>
-            <input id="focusLatMin" type="number" value="-90" step="1">
-          </div>
-          <div>
-            maxLat<br>
-            <input id="focusLatMax" type="number" value="90" step="1">
-          </div>
-          <div>
-            minLon<br>
-            <input id="focusLonMin" type="number" value="-180" step="1">
-          </div>
-          <div>
-            maxLon<br>
-            <input id="focusLonMax" type="number" value="180" step="1">
-          </div>
-        </div>
-        <div class="row">
-          <button onclick="applyFocusRegion()">地図をフォーカス</button>
-        </div>
-        <hr style="border-color:#1f2937;">
-        <div class="row">
-          <div>
-            <label>この範囲のバイアス補正[%]</label><br>
-            <input id="biasPct" type="number" value="0" step="1">
-          </div>
-        </div>
-        <div class="row">
-          <button onclick="applyBiasFromUI()">バイアスを保存</button>
-          <button class="secondary" onclick="resetBiasRect()">バイアス解除</button>
-        </div>
-        <div class="small" id="biasInfo">
-          現在、指定範囲バイアスは未設定です。
+          <button onclick="applyZoneBiasFromUI()">バイアスを保存</button>
+          <button class="secondary" onclick="resetZoneBias()">初期化</button>
         </div>
       </div>
 
-      <!-- 8. TEC カラーマップ設定 -->
+      <!-- 7. TEC / GPS カラーマップ設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>8. TEC カラーマップ設定</h2>
-          <span>TEC値 → 色を任意設定</span>
+          <h2>7. カラーマップ設定</h2>
+          <span>TEC / GPS L1誤差 → 色を任意設定</span>
         </div>
+
         <div class="small">
           TEC [TECU] の上限と色を設定。色は Leaflet 地図と凡例に反映されます。
         </div>
@@ -626,15 +541,53 @@
         </table>
         <div class="row">
           <button onclick="applyTecColorScale()">TEC色を反映</button>
-          <button class="secondary" onclick="resetTecColorScale()">初期化</button>
+          <button class="secondary" onclick="resetTecColorScale()">TEC初期化</button>
+        </div>
+
+        <hr>
+
+        <div class="small">
+          GPS L1測位誤差 [m] のカラーマップ。<br>
+          予報TECから kL1 係数で換算した誤差に対して色付けします。
+        </div>
+        <table>
+          <thead>
+            <tr><th>レベル</th><th>L1誤差上限[m]</th><th>色</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>G1</td>
+              <td><input id="gLimit1" type="number" value="1" style="width:60px;"></td>
+              <td><input id="gColor1" type="color" value="#00ff00"></td>
+            </tr>
+            <tr>
+              <td>G2</td>
+              <td><input id="gLimit2" type="number" value="3" style="width:60px;"></td>
+              <td><input id="gColor2" type="color" value="#ffff00"></td>
+            </tr>
+            <tr>
+              <td>G3</td>
+              <td><input id="gLimit3" type="number" value="6" style="width:60px;"></td>
+              <td><input id="gColor3" type="color" value="#ff9900"></td>
+            </tr>
+            <tr>
+              <td>G4</td>
+              <td><input id="gLimit4" type="number" value="12" style="width:60px;"></td>
+              <td><input id="gColor4" type="color" value="#ff0000"></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="row">
+          <button onclick="applyGpsColorScale()">GPS色を反映</button>
+          <button class="secondary" onclick="resetGpsColorScale()">GPS初期化</button>
         </div>
       </div>
 
-      <!-- 9. 係数設定 -->
+      <!-- 8. 係数設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>9. 係数設定（Advanced）</h2>
-          <span>バイアス提案 & 嵐モデル用</span>
+          <h2>8. 係数設定（Advanced）</h2>
+          <span>バイアス提案の対象</span>
         </div>
         <div class="small">※いじり過ぎる前に現在値をどこかにメモ推奨。</div>
         <div class="flex-col">
@@ -694,43 +647,27 @@
               <input id="cfg_suggestGain" type="number" value="0.5" step="0.1">
             </div>
           </div>
-
-          <!-- 嵐モデル係数 -->
           <div class="row">
             <div>
-              <label>kStormOnsetH（到達→嵐開始[h]）</label><br>
-              <input id="cfg_kStormOnsetH" type="number" value="0.5" step="0.5">
+              <label>dayEdgeCosWidth（昼夜境界の滑らかさ）</label><br>
+              <input id="cfg_dayEdgeCosWidth" type="number" value="0.2" step="0.05">
             </div>
             <div>
-              <label>kStormPeakH（立ち上がり〜ピーク[h]）</label><br>
-              <input id="cfg_kStormPeakH" type="number" value="3" step="0.5">
-            </div>
-            <div>
-              <label>kStormRecoverH（ピーク→回復[h]）</label><br>
-              <input id="cfg_kStormRecoverH" type="number" value="24" step="1">
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label>kStormBoost（正層嵐増幅係数）</label><br>
-              <input id="cfg_kStormBoost" type="number" value="0.3" step="0.05">
-            </div>
-            <div>
-              <label>kStormDecay（回復期減衰係数）</label><br>
-              <input id="cfg_kStormDecay" type="number" value="0.05" step="0.01">
+              <label>kL1（TEC→L1誤差[m/TECU]）</label><br>
+              <input id="cfg_kL1" type="number" value="0.16" step="0.01">
             </div>
           </div>
         </div>
         <div class="row">
           <button onclick="saveConfig()">設定を保存</button>
-          <button class="secondary" onclick="loadConfig(true); updateFormulaText();">保存値を再読込</button>
+          <button class="secondary" onclick="loadConfig(true)">保存値を再読込</button>
         </div>
       </div>
 
-      <!-- 10. 実行 -->
+      <!-- 9. 実行 -->
       <div class="card">
         <div class="card-header">
-          <h2>10. 実行</h2>
+          <h2>9. 実行</h2>
           <span>予報 & 描画</span>
         </div>
         <div class="row">
@@ -743,21 +680,28 @@
 
     <!-- ============= メイン領域 ============= -->
     <div class="main">
-      <!-- 上段：時間スライダー＋透明度 -->
+      <!-- 上段：時間スライダー＋透明度＋モード -->
       <div class="card slider-card">
         <div class="slider-row">
           <span>時間スライダー（0〜48h / 15分刻み）</span>
           <input type="range" id="timeSlider" min="0" max="192" value="0" oninput="onSliderChange()">
           <span id="timeLabel">t = 0.00 h</span>
-          <span id="stormPhaseLabel">嵐フェーズ: 静穏</span>
         </div>
         <div class="row small" style="margin-top:4px;">
           <div style="flex:1;">
-            TEC透明度:
-            <input id="tecAlpha" type="range" min="0.2" max="1" step="0.05" value="0.8" style="width:140px;" oninput="onTecAlphaChange()">
+            透明度:
+            <input id="tecAlpha" type="range" min="0.2" max="1" step="0.05" value="0.8"
+                   style="width:140px;" oninput="onTecAlphaChange()">
+          </div>
+          <div style="flex:1;">
+            表示モード:
+            <select id="displayMode" onchange="onDisplayModeChange()">
+              <option value="tec">TEC [TECU]</option>
+              <option value="gps">GPS L1誤差 [m]</option>
+            </select>
           </div>
           <div style="flex:2;">
-            <span class="small">※地図をズーム／ドラッグして、任意の地域の TEC 分布を確認できます。</span>
+            <span class="small">※地図をズーム／ドラッグして、任意の地域の分布を確認できます。</span>
           </div>
         </div>
       </div>
@@ -771,29 +715,16 @@
       <div class="card output-card">
         <div class="output-row">
           <div class="output-col" style="flex:0 0 240px; max-width:260px;">
-            <h3>11. 検証 3×3 マップ</h3>
+            <h3>10. 検証 3×3 マップ</h3>
             <canvas id="verifyCanvas"></canvas>
           </div>
           <div class="output-col" style="flex:2;">
-            <h3>12. 検証レポート & 係数提案</h3>
+            <h3>11. 検証レポート & 係数提案</h3>
             <pre id="verifyReport">(まだ検証されていません)</pre>
           </div>
           <div class="output-col" style="flex:1;">
-            <h3>TEC & 嵐ステータス</h3>
-            <pre id="pointInfo">地図上をクリックすると、その格子点のTECと位置が表示されます。</pre>
-          </div>
-        </div>
-      </div>
-
-      <!-- 計算式表示 -->
-      <div class="card output-card">
-        <div class="output-row">
-          <div class="output-col">
-            <h3>13. 現在の TEC 計算式</h3>
-            <div class="row">
-              <button onclick="updateFormulaText()">計算式を更新</button>
-            </div>
-            <pre id="formulaText">まだ計算式が生成されていません。</pre>
+            <h3>12. 現在の TEC / GPS誤差</h3>
+            <pre id="pointInfo">地図上をクリックすると、その格子点のTECとGPS L1誤差が表示されます。</pre>
           </div>
         </div>
       </div>
@@ -826,8 +757,19 @@
       { limit: 120, color: "#ff0000" }
     ];
 
-    // 指定範囲バイアス
-    let gBiasRect = null; // {latMin,latMax,lonMin,lonMax,pct}
+    // GPS L1誤差 [m] 用カラー
+    let gGpsColorScale = [
+      { limit: 1,  color: "#00ff00" },
+      { limit: 3,  color: "#ffff00" },
+      { limit: 6,  color: "#ff9900" },
+      { limit: 12, color: "#ff0000" }
+    ];
+
+    // 9領域バイアス[%]（Z1〜Z9）
+    let gZoneBiasPct = new Array(9).fill(0);
+
+    // 表示モード: "tec" or "gps"
+    let displayMode = "tec";
 
     // Leaflet 関連
     let map = null;
@@ -836,21 +778,14 @@
     let tecLegendControl = null;
     let tecAlpha = 0.8;
 
-    let focusRectLayer = null;
-    let biasRectLayer = null;
-
     let lastVerifyResult = null;
 
-    // 磁気嵐・電離圏嵐モデル
-    let gStormModel = null;          // {baseTime, S, levelText, hasStorm}
-    let gStormFactors = [];          // [step] multiplicative factor
-    let gStormPhaseLabels = [];      // [step] phase text
-
-    const STORAGE_KEY_CONFIG    = "swifttec_config_v3";
-    const STORAGE_KEY_VCOL      = "swifttec_vcol_v3";
-    const STORAGE_KEY_BOM       = "swifttec_bom_inputs_v3";
-    const STORAGE_KEY_TCOL      = "swifttec_teccol_v3";
-    const STORAGE_KEY_BIASRECT  = "swifttec_biasrect_v1";
+    const STORAGE_KEY_CONFIG   = "swifttec_config_v3";
+    const STORAGE_KEY_VCOL     = "swifttec_vcol_v3";
+    const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v3";
+    const STORAGE_KEY_TCOL     = "swifttec_teccol_v3";
+    const STORAGE_KEY_GPSCOL   = "swifttec_gpscol_v1";
+    const STORAGE_KEY_ZONEBIAS = "swifttec_zonebias_v1";
 
     function logInfo(msg) {
       const div = document.getElementById("runInfo");
@@ -989,12 +924,8 @@
         kM:          parseFloat(document.getElementById("cfg_kM").value)       || 0.3,
         biasThresh:  parseFloat(document.getElementById("cfg_biasThresh").value)|| 15,
         suggestGain: parseFloat(document.getElementById("cfg_suggestGain").value)|| 0.5,
-        // 嵐モデル関連
-        kStormOnsetH:   parseFloat(document.getElementById("cfg_kStormOnsetH").value)   || 0.5,
-        kStormPeakH:    parseFloat(document.getElementById("cfg_kStormPeakH").value)    || 3,
-        kStormRecoverH: parseFloat(document.getElementById("cfg_kStormRecoverH").value) || 24,
-        kStormBoost:    parseFloat(document.getElementById("cfg_kStormBoost").value)    || 0.3,
-        kStormDecay:    parseFloat(document.getElementById("cfg_kStormDecay").value)    || 0.05
+        dayEdgeCosWidth: parseFloat(document.getElementById("cfg_dayEdgeCosWidth").value) || 0.2,
+        kL1:         parseFloat(document.getElementById("cfg_kL1").value)      || 0.16
       };
     }
 
@@ -1012,18 +943,18 @@
       document.getElementById("cfg_biasThresh").value  = cfg.biasThresh;
       document.getElementById("cfg_suggestGain").value = cfg.suggestGain;
 
-      document.getElementById("cfg_kStormOnsetH").value   = cfg.kStormOnsetH;
-      document.getElementById("cfg_kStormPeakH").value    = cfg.kStormPeakH;
-      document.getElementById("cfg_kStormRecoverH").value = cfg.kStormRecoverH;
-      document.getElementById("cfg_kStormBoost").value    = cfg.kStormBoost;
-      document.getElementById("cfg_kStormDecay").value    = cfg.kStormDecay;
+      if (cfg.dayEdgeCosWidth !== undefined) {
+        document.getElementById("cfg_dayEdgeCosWidth").value = cfg.dayEdgeCosWidth;
+      }
+      if (cfg.kL1 !== undefined) {
+        document.getElementById("cfg_kL1").value = cfg.kL1;
+      }
     }
 
     function saveConfig() {
       const cfg = getConfigFromUI();
       localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(cfg));
       logInfo("係数設定を保存しました。");
-      updateFormulaText();
     }
 
     function loadConfig(apply) {
@@ -1033,15 +964,7 @@
         return null;
       }
       try {
-        const cfgRaw = JSON.parse(s);
-        // 後から増えたパラメータに対してデフォルト埋め
-        const cfg = Object.assign({
-          kGlobal:1.0,wF107:0.004,wAp:0.01,wDst:-0.002,pX:1.5,
-          latShape:0.4,latHighCut:0.5,betaFlare:0.5,kX:1.0,kM:0.3,
-          biasThresh:15,suggestGain:0.5,
-          kStormOnsetH:0.5,kStormPeakH:3,kStormRecoverH:24,
-          kStormBoost:0.3,kStormDecay:0.05
-        }, cfgRaw);
+        const cfg = JSON.parse(s);
         if (apply) applyConfigToUI(cfg);
         return cfg;
       } catch(e) {
@@ -1114,7 +1037,7 @@
       }
     }
 
-    /* ============ TEC カラーマップ設定 ============ */
+    /* ============ TEC / GPS カラーマップ設定 ============ */
     function applyTecColorScale() {
       const limits = [
         parseFloat(document.getElementById("tLimit1").value) || 10,
@@ -1180,75 +1103,126 @@
       }
     }
 
-    /* ============ 指定範囲バイアス ============ */
-    function applyBiasFromUI() {
-      const latMin = parseFloat(document.getElementById("focusLatMin").value);
-      const latMax = parseFloat(document.getElementById("focusLatMax").value);
-      const lonMin = parseFloat(document.getElementById("focusLonMin").value);
-      const lonMax = parseFloat(document.getElementById("focusLonMax").value);
-      const pct    = parseFloat(document.getElementById("biasPct").value) || 0;
-
-      if (!isFinite(latMin) || !isFinite(latMax) || !isFinite(lonMin) || !isFinite(lonMax)) {
-        logInfo("バイアス範囲の緯度・経度が不正です。");
-        return;
-      }
-      gBiasRect = {latMin,latMax,lonMin,lonMax,pct};
-      localStorage.setItem(STORAGE_KEY_BIASRECT, JSON.stringify(gBiasRect));
-      updateBiasRectOverlay();
-      const info = `指定範囲バイアス: lat[${latMin},${latMax}], lon[${lonMin},${lonMax}] に ${pct}% を適用。`;
-      document.getElementById("biasInfo").textContent = info;
-      logInfo("指定範囲バイアスを保存しました。");
+    // GPS L1誤差用
+    function applyGpsColorScale() {
+      const limits = [
+        parseFloat(document.getElementById("gLimit1").value) || 1,
+        parseFloat(document.getElementById("gLimit2").value) || 3,
+        parseFloat(document.getElementById("gLimit3").value) || 6,
+        parseFloat(document.getElementById("gLimit4").value) || 12
+      ];
+      const cols = [
+        document.getElementById("gColor1").value || "#00ff00",
+        document.getElementById("gColor2").value || "#ffff00",
+        document.getElementById("gColor3").value || "#ff9900",
+        document.getElementById("gColor4").value || "#ff0000"
+      ];
+      gGpsColorScale = [
+        { limit: limits[0], color: cols[0] },
+        { limit: limits[1], color: cols[1] },
+        { limit: limits[2], color: cols[2] },
+        { limit: limits[3], color: cols[3] }
+      ];
+      localStorage.setItem(STORAGE_KEY_GPSCOL, JSON.stringify(gGpsColorScale));
+      logInfo("GPS L1誤差カラースケールを保存しました。");
+      updateTecLegend();
       drawTecOverlay();
     }
 
-    function resetBiasRect() {
-      gBiasRect = null;
-      localStorage.removeItem(STORAGE_KEY_BIASRECT);
-      document.getElementById("biasPct").value = 0;
-      document.getElementById("biasInfo").textContent = "現在、指定範囲バイアスは未設定です。";
-      if (biasRectLayer && map) {
-        map.removeLayer(biasRectLayer);
-        biasRectLayer = null;
-      }
+    function resetGpsColorScale() {
+      gGpsColorScale = [
+        { limit: 1,  color: "#00ff00" },
+        { limit: 3,  color: "#ffff00" },
+        { limit: 6,  color: "#ff9900" },
+        { limit: 12, color: "#ff0000" }
+      ];
+      document.getElementById("gLimit1").value = 1;
+      document.getElementById("gLimit2").value = 3;
+      document.getElementById("gLimit3").value = 6;
+      document.getElementById("gLimit4").value = 12;
+      document.getElementById("gColor1").value = "#00ff00";
+      document.getElementById("gColor2").value = "#ffff00";
+      document.getElementById("gColor3").value = "#ff9900";
+      document.getElementById("gColor4").value = "#ff0000";
+      localStorage.setItem(STORAGE_KEY_GPSCOL, JSON.stringify(gGpsColorScale));
+      updateTecLegend();
       drawTecOverlay();
     }
 
-    function loadBiasRectFromStorage() {
-      const s = localStorage.getItem(STORAGE_KEY_BIASRECT);
+    function loadGpsColorScaleFromStorage() {
+      const s = localStorage.getItem(STORAGE_KEY_GPSCOL);
       if (!s) return;
       try {
-        const rect = JSON.parse(s);
-        if (rect && typeof rect.latMin === "number") {
-          gBiasRect = rect;
-          document.getElementById("biasPct").value = rect.pct;
-          document.getElementById("biasInfo").textContent =
-            `指定範囲バイアス: lat[${rect.latMin},${rect.latMax}], lon[${rect.lonMin},${rect.lonMax}] に ${rect.pct}% を適用。`;
-          // フォーカス欄にはロードしない（ユーザー操作時に上書き）
-          updateBiasRectOverlay();
+        const arr = JSON.parse(s);
+        if (!Array.isArray(arr) || arr.length !== 4) return;
+        gGpsColorScale = arr;
+        document.getElementById("gLimit1").value = arr[0].limit;
+        document.getElementById("gLimit2").value = arr[1].limit;
+        document.getElementById("gLimit3").value = arr[2].limit;
+        document.getElementById("gLimit4").value = arr[3].limit;
+        document.getElementById("gColor1").value = arr[0].color;
+        document.getElementById("gColor2").value = arr[1].color;
+        document.getElementById("gColor3").value = arr[2].color;
+        document.getElementById("gColor4").value = arr[3].color;
+      } catch(e) {
+        console.warn("GPS L1誤差カラースケール復元に失敗:", e);
+      }
+    }
+
+    /* ============ 9領域バイアス補正 ============ */
+    function applyZoneBiasFromUI() {
+      for (let z=0; z<9; z++) {
+        const el = document.getElementById("zbias_" + z);
+        const v = parseFloat(el.value);
+        gZoneBiasPct[z] = isNaN(v) ? 0 : v;
+      }
+      localStorage.setItem(STORAGE_KEY_ZONEBIAS, JSON.stringify(gZoneBiasPct));
+      logInfo("9領域バイアスを保存しました。（次回の予報から適用）");
+    }
+
+    function resetZoneBias() {
+      gZoneBiasPct = new Array(9).fill(0);
+      for (let z=0; z<9; z++) {
+        const el = document.getElementById("zbias_" + z);
+        if (el) el.value = 0;
+      }
+      localStorage.setItem(STORAGE_KEY_ZONEBIAS, JSON.stringify(gZoneBiasPct));
+      logInfo("9領域バイアスをリセットしました。");
+    }
+
+    function loadZoneBiasFromStorage() {
+      const s = localStorage.getItem(STORAGE_KEY_ZONEBIAS);
+      if (!s) return;
+      try {
+        const arr = JSON.parse(s);
+        if (!Array.isArray(arr) || arr.length !== 9) return;
+        gZoneBiasPct = arr;
+        for (let z=0; z<9; z++) {
+          const el = document.getElementById("zbias_" + z);
+          if (el) el.value = arr[z];
         }
       } catch(e) {
-        console.warn("指定範囲バイアス復元に失敗:", e);
+        console.warn("9領域バイアス復元に失敗:", e);
       }
     }
 
-    function updateBiasRectOverlay() {
-      if (!map) return;
-      if (biasRectLayer) {
-        map.removeLayer(biasRectLayer);
-        biasRectLayer = null;
-      }
-      if (!gBiasRect) return;
-      const b = gBiasRect;
-      const bounds = [[b.latMin, b.lonMin],[b.latMax, b.lonMax]];
-      biasRectLayer = L.rectangle(bounds, {
-        color:"#f97316",
-        weight:1,
-        fill:false,
-        dashArray:"4,4"
-      }).addTo(map);
+    // 緯度・経度から 3×3 のゾーン番号（0〜8）を返す
+    // latBands: [-90,-30,30,90], lonBands: [-180,-60,60,180] に対応
+    function getZoneIndex(lat, lon) {
+      let il;
+      if (lat < -30) il = 0;       // 南
+      else if (lat < 30) il = 1;   // 中緯度
+      else il = 2;                 // 北
+
+      let jl;
+      if (lon < -60) jl = 0;       // 西
+      else if (lon < 60) jl = 1;   // 中央
+      else jl = 2;                 // 東
+
+      return il * 3 + jl;          // 0〜8
     }
 
-    /* ===== 太陽位置 ===== */
+    /* ====== 太陽位置 ====== */
     function dayOfYearUTC(date) {
       const start = new Date(Date.UTC(date.getUTCFullYear(),0,1,0,0,0));
       return 1 + (date - start)/86400000;
@@ -1313,6 +1287,26 @@
       return clamp(Sflare, 0.7, 3.0);
     }
 
+    // 昼夜境界の fDay をなめらかにする関数
+    // c = cos(太陽天頂角) (-1〜+1)
+    function smoothDayFactor(c, cfg) {
+      const pX = cfg.pX || 1.5;
+
+      let w = cfg.dayEdgeCosWidth;
+      if (!isFinite(w)) w = 0.2;
+      w = clamp(w, 0.01, 0.5);
+      const c0 = w; // [-c0, +c0] が「境界ゾーン」
+
+      if (c <= -c0) return 0;                     // 十分夜側
+      if (c >=  c0) return Math.pow(clamp(c,0,1), pX);  // 十分昼側
+
+      // [-c0, +c0] を smoothstep で接続
+      const u = (c + c0) / (2 * c0); // 0〜1
+      const s = u * u * (3 - 2 * u);
+      const fEdge = Math.pow(c0, pX);
+      return fEdge * s;
+    }
+
     function fixLocalVShape(frame, nLat, nLon, threshold) {
       const out = new Array(nLat);
       for (let i=0;i<nLat;i++) {
@@ -1340,105 +1334,6 @@
         }
       }
       return out;
-    }
-
-    /* ============ 磁気嵐 / 電離圏嵐モデル ============ */
-    function parseEventTimeStr(str) {
-      const s = (str || "").trim();
-      if (!s) return null;
-      // 末尾にZが無ければUTCとして扱う
-      let iso = s;
-      if (!/Z$/.test(iso) && !/[+-]\d\d:\d\d$/.test(iso)) {
-        iso += "Z";
-      }
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return null;
-      return d;
-    }
-
-    function buildStormModelFromUI(cfg) {
-      const tCME = parseEventTimeStr(document.getElementById("stormCmeTime").value);
-      const tHSS = parseEventTimeStr(document.getElementById("stormHssTime").value);
-      const Vsw  = parseFloat(document.getElementById("stormVsw").value) || 400;
-      const bz   = parseFloat(document.getElementById("stormBzMin").value) || 0;
-
-      if (!tCME && !tHSS) {
-        return {
-          hasStorm:false,
-          baseTime:null,
-          S:0,
-          levelText:"静穏（イベント未入力）"
-        };
-      }
-      const baseTime = tCME || tHSS;
-      const vNorm = Vsw / 400;
-      const bzSouth = Math.max(0, -bz); // 南向きのみ
-      let S = vNorm * (1 + 0.1 * bzSouth);
-      if (tCME && tHSS) {
-        // CME + HSS 両方ある場合は少し強めに
-        S *= 1.2;
-      }
-      S = clamp(S, 0, 4);
-
-      let levelText = "Minor Storm";
-      if (S < 0.5) levelText = "静穏〜弱い擾乱";
-      else if (S < 1.5) levelText = "Minor Storm（G1相当）";
-      else if (S < 2.5) levelText = "Moderate Storm（G2〜G3）";
-      else levelText = "Strong Storm（G4+）";
-
-      return {
-        hasStorm:true,
-        baseTime,
-        S,
-        levelText
-      };
-    }
-
-    function updateStormModelFromUI() {
-      const cfg = getConfigFromUI();
-      gStormModel = buildStormModelFromUI(cfg);
-      const div = document.getElementById("stormModelSummary");
-      if (!gStormModel.hasStorm) {
-        div.textContent = "Stormモデル: 現在は静穏として扱います。";
-      } else {
-        div.textContent =
-          `Stormモデル: 基準時刻=${gStormModel.baseTime.toISOString()} / 強度Index S=${gStormModel.S.toFixed(2)} / ` +
-          gStormModel.levelText;
-      }
-      updateFormulaText();
-    }
-
-    // ある時刻tに対する正層嵐ブースト係数とフェーズ文字列
-    function getStormFactorAtTime(t, model, cfg) {
-      if (!model || !model.hasStorm || !model.baseTime) {
-        return { factor:1.0, phase:"嵐フェーズ: 静穏" };
-      }
-      const dtH = (t - model.baseTime)/3600000; // [h]
-      const onsetH   = cfg.kStormOnsetH;                    // 到達→嵐開始
-      const peakH    = onsetH + cfg.kStormPeakH;            // ピークまで
-      const recoverH = peakH + cfg.kStormRecoverH;          // 回復終了
-      const S        = model.S;
-      const ampBase  = cfg.kStormBoost * (S/2);             // S=2で≈kStormBoost
-
-      if (dtH < onsetH) {
-        return { factor:1.0, phase:"嵐フェーズ: 事前静穏" };
-      }
-      if (dtH >= onsetH && dtH < peakH) {
-        // 磁気嵐メインフェーズ & 電離圏正相の立ち上がり
-        const prog = (dtH - onsetH) / Math.max(peakH-onsetH, 0.1);
-        const amp  = ampBase * clamp(prog,0,1);
-        const factor = 1 + amp;
-        return { factor, phase:"嵐フェーズ: 磁気嵐立ち上がり / 正層嵐増加中" };
-      }
-      if (dtH >= peakH && dtH < recoverH) {
-        // 回復フェーズ：指数減衰で正相嵐が弱まる
-        const tRec = dtH - peakH;
-        const amp  = ampBase * Math.exp(-cfg.kStormDecay * tRec);
-        const factor = 1 + amp;
-        return { factor, phase:"嵐フェーズ: 回復期 / 正層嵐減衰" };
-      }
-      // かなり後：ほぼ静穏へ
-      return { factor:1.0, phase:"嵐フェーズ: ポストストーム〜静穏" };
     }
 
     /* ============ 予報計算本体 ============ */
@@ -1497,22 +1392,12 @@
         const Ssolar = computeSolarScale(F107, Ap, Dst, Xray, cfg);
         const Sflare = computeFlareScale(cfg);
 
-        // 磁気嵐モデルを更新
-        gStormModel = buildStormModelFromUI(cfg);
-        const stormSumDiv = document.getElementById("stormModelSummary");
-        if (!gStormModel.hasStorm) {
-          stormSumDiv.textContent = "Stormモデル: 現在は静穏として扱います。";
-        } else {
-          stormSumDiv.textContent =
-            `Stormモデル: 基準時刻=${gStormModel.baseTime.toISOString()} / Index S=${gStormModel.S.toFixed(2)} / `
-            + gStormModel.levelText;
-        }
-
         const K = snaps.length;
         const T0  = new Array(nLat);
         const Aamp= new Array(nLat);
         const coschi = [];
 
+        // 各スナップの cosχ
         for (let k=0;k<K;k++) {
           const snap = snaps[k];
           const t = snap.validTime || gForecastStart;
@@ -1536,7 +1421,7 @@
           }
         }
 
-        const pX = cfg.pX;
+        // T0 / Aamp を昼夜スムーズ版の f でフィット
         for (let i=0;i<nLat;i++) {
           T0[i]=new Array(nLon);
           Aamp[i]=new Array(nLon);
@@ -1545,7 +1430,7 @@
             for (let k=0;k<K;k++) {
               const B = snaps[k].grid[i][j];
               const c = coschi[k][i][j];
-              const f = c>0 ? Math.pow(c,pX) : 0;
+              const f = smoothDayFactor(c, cfg);
               S_B += B;
               S_f += f;
               S_f2+= f*f;
@@ -1573,19 +1458,10 @@
         const nSteps = Math.round(forecastHours*60/dtMin);
         gForecastFrames = new Array(nSteps+1);
         gForecastTimes  = new Array(nSteps+1);
-        gStormFactors   = new Array(nSteps+1);
-        gStormPhaseLabels = new Array(nSteps+1);
 
         for (let step=0; step<=nSteps; step++) {
           const t = new Date(gForecastStart.getTime() + step*dtMin*60000);
           gForecastTimes[step]=t;
-
-          // 嵐係数
-          const stormInfo = getStormFactorAtTime(t, gStormModel, cfg);
-          const stormFactor = stormInfo.factor;
-          gStormFactors[step] = stormFactor;
-          gStormPhaseLabels[step] = stormInfo.phase;
-
           const delta = solarDeclinationRad(t);
           const lonS  = subsolarLongitudeDeg(t);
           const rad = Math.PI/180;
@@ -1603,27 +1479,21 @@
               const lam=lon*rad;
               const h=lam - lonS*rad;
               const c = sinphi*Math.sin(delta)+cosphi*Math.cos(delta)*Math.cos(h);
-              const fDay = c>0 ? Math.pow(c,pX) : 0;
+              const fDay = smoothDayFactor(c, cfg);
+
               let T = T0[i][j] + Aamp[i][j]*fDay;
               if (T<0) T=0;
               const scale = cfg.kGlobal * Ssolar * Sflare * wLat;
               let val = T*scale;
 
-              // 正層嵐ブースト
-              val *= stormFactor;
-
-              // 指定範囲バイアス適用
-              if (gBiasRect) {
-                const b = gBiasRect;
-                if (lat >= b.latMin && lat <= b.latMax && lon >= b.lonMin && lon <= b.lonMax) {
-                  val *= (1 + b.pct/100);
-                }
-              }
+              // 9領域バイアス適用
+              const zoneIdx = getZoneIndex(lat, lon);
+              const bpct = gZoneBiasPct[zoneIdx] || 0;
+              val = val * (1 + bpct/100);
 
               frame[i][j] = val;
             }
           }
-          // V字補正
           gForecastFrames[step] = fixLocalVShape(frame,nLat,nLon,0.9);
         }
 
@@ -1633,14 +1503,13 @@
         updateTimeLabel();
         logInfo(`予報計算完了: frames=${gForecastFrames.length}, grid=${nLat}×${nLon}`);
         drawTecOverlay();
-        updateFormulaText();
       } catch(e) {
         logInfo("エラー: "+e.message);
         console.error(e);
       }
     }
 
-    /* ===== TEC カラー関数 ===== */
+    /* ===== TEC / GPS カラー関数 ===== */
     function hexToRgb(hex) {
       const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
       return m ? {
@@ -1659,12 +1528,12 @@
       return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
     }
 
-    function tecColorHex(val) {
-      if (!gTecColorScale.length) return "#000000";
-      const scale = gTecColorScale;
+    function colorHexFromScale(val, scale) {
+      if (!scale.length) return "#000000";
       const maxLimit = scale[scale.length-1].limit;
       if (val <= scale[0].limit) return scale[0].color;
       if (val >= maxLimit) return scale[scale.length-1].color;
+
       let lower = scale[0], upper = scale[scale.length-1];
       for (let i=0;i<scale.length-1;i++) {
         if (val <= scale[i+1].limit) {
@@ -1678,21 +1547,32 @@
       return interpolateColor(lower.color, upper.color, t);
     }
 
+    function tecColorHex(val) {
+      return colorHexFromScale(val, gTecColorScale);
+    }
     function tecColorRGBA(val, alpha) {
       const hex = tecColorHex(val);
       const rgb = hexToRgb(hex);
       return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
     }
 
-    function getTecGradientCSS() {
-      const scale = gTecColorScale;
+    function gpsColorHex(val) {
+      return colorHexFromScale(val, gGpsColorScale);
+    }
+    function gpsColorRGBA(val, alpha) {
+      const hex = gpsColorHex(val);
+      const rgb = hexToRgb(hex);
+      return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
+    }
+
+    function getGradientCSSForScale(scale) {
       if (!scale.length) return "none";
       const maxLimit = scale[scale.length-1].limit;
       const steps = 40;
       const stops = [];
       for (let k=0;k<=steps;k++) {
         const v = maxLimit * k / steps;
-        const col = tecColorHex(v);
+        const col = colorHexFromScale(v, scale);
         const pct = 100*(1 - k/steps); // 上がMAX
         stops.push(`${col} ${pct}%`);
       }
@@ -1730,7 +1610,7 @@
 
       map.on("click", onMapClick);
 
-      // TEC 凡例
+      // TEC / GPS 凡例
       tecLegendControl = L.control({position:"bottomright"});
       tecLegendControl.onAdd = function() {
         const div = L.DomUtil.create("div", "leaflet-control tec-legend");
@@ -1746,9 +1626,6 @@
       };
       tecLegendControl.addTo(map);
       updateTecLegend();
-
-      // 既存バイアス矩形の描画
-      updateBiasRectOverlay();
     }
 
     function resizeTecCanvas() {
@@ -1763,18 +1640,36 @@
       if (!map || !tecLegendControl) return;
       const container = tecLegendControl.getContainer();
       if (!container) return;
-      const bar = container.querySelector(".tec-legend-bar");
-      if (bar) {
-        bar.style.background = getTecGradientCSS();
-      }
+
+      const bar   = container.querySelector(".tec-legend-bar");
       const maxSpan = container.querySelector("#tecLegendMax");
       const minSpan = container.querySelector("#tecLegendMin");
+      const title   = container.querySelector(".tec-legend-title");
+
+      let scale;
+      let unitTitle;
+      if (displayMode === "gps") {
+        scale = gGpsColorScale;
+        unitTitle = "GPS L1誤差 [m]";
+      } else {
+        scale = gTecColorScale;
+        unitTitle = "TEC [TECU]";
+      }
+
+      if (bar) {
+        bar.style.background = getGradientCSSForScale(scale);
+      }
+
+      const maxLimit = scale[scale.length-1].limit;
       if (maxSpan) {
-        const maxLimit = gTecColorScale[gTecColorScale.length-1].limit;
-        maxSpan.textContent = maxLimit.toFixed(0);
+        maxSpan.textContent =
+          displayMode === "gps" ? maxLimit.toFixed(1) : maxLimit.toFixed(0);
       }
       if (minSpan) {
         minSpan.textContent = "0";
+      }
+      if (title) {
+        title.textContent = unitTitle;
       }
     }
 
@@ -1788,9 +1683,6 @@
         label += "  (UTC " + gForecastTimes[idx].toISOString().replace("T"," ").replace(".000Z","Z") + ")";
       }
       document.getElementById("timeLabel").textContent = label;
-
-      const phaseText = gStormPhaseLabels[idx] || "嵐フェーズ: 静穏";
-      document.getElementById("stormPhaseLabel").textContent = phaseText;
     }
 
     function drawTecOverlay() {
@@ -1806,6 +1698,9 @@
 
       const alphaSlider = document.getElementById("tecAlpha");
       tecAlpha = alphaSlider ? (parseFloat(alphaSlider.value)||0.8) : 0.8;
+
+      const cfg = getConfigFromUI();
+      const kL1 = cfg.kL1 || 0.16;
 
       const dLat = latArr[1] - latArr[0];
       const dLon = lonArr[1] - lonArr[0];
@@ -1824,9 +1719,16 @@
           if (j===0)      lon1 = -180;
           if (j===nLon-1) lon2 =  180;
 
-          const v = frame[i][j];
-          if (!isFinite(v)) continue;
-          const color = tecColorRGBA(v, tecAlpha);
+          const vTec = frame[i][j];
+          if (!isFinite(vTec)) continue;
+
+          let color;
+          if (displayMode === "gps") {
+            const errL1 = vTec * kL1;
+            color = gpsColorRGBA(errL1, tecAlpha);
+          } else {
+            color = tecColorRGBA(vTec, tecAlpha);
+          }
 
           const p1 = map.latLngToLayerPoint([lat1, lon1]);
           const p2 = map.latLngToLayerPoint([lat1, lon2]);
@@ -1862,6 +1764,13 @@
       drawTecOverlay();
     }
 
+    function onDisplayModeChange() {
+      const sel = document.getElementById("displayMode");
+      displayMode = sel ? (sel.value || "tec") : "tec";
+      updateTecLegend();
+      drawTecOverlay();
+    }
+
     /* ===== TEC値クリック表示（Leafletクリック） ===== */
     function findNearestIndex(value, arr) {
       let bestIdx = 0;
@@ -1887,7 +1796,7 @@
 
     function onMapClick(e) {
       if (!gForecastFrames.length || !gGrid) return;
-      const {latArr, lonArr, nLat, nLon} = gGrid;
+      const {latArr, lonArr} = gGrid;
       const lat = e.latlng.lat;
       let lon = e.latlng.lng;
       lon = normalizeLonForGrid(lon, lonArr);
@@ -1896,14 +1805,19 @@
       const j = findNearestIndex(lon, lonArr);
 
       const frame = gForecastFrames[currentStepIndex] || gForecastFrames[0];
-      const v = frame[i][j];
+      const vTec = frame[i][j];
       const t = gForecastTimes[currentStepIndex] || gForecastTimes[0];
 
-      const phaseText = gStormPhaseLabels[currentStepIndex] || "嵐フェーズ: 静穏";
-      const info = `lat ≈ ${latArr[i].toFixed(1)}°, lon ≈ ${lonArr[j].toFixed(1)}°\n` +
-                   `TEC ≈ ${v.toFixed(2)} TECU\n` +
-                   `t(UTC) = ${t.toISOString().replace("T"," ").replace(".000Z","Z")}\n\n` +
-                   `${phaseText}`;
+      const cfg = getConfigFromUI();
+      const kL1 = cfg.kL1 || 0.16;
+      const errL1 = vTec * kL1;
+
+      const info =
+        `lat ≈ ${latArr[i].toFixed(1)}°, lon ≈ ${lonArr[j].toFixed(1)}°\n` +
+        `TEC ≈ ${vTec.toFixed(2)} TECU\n` +
+        `GPS L1誤差 ≈ ${errL1.toFixed(2)} m\n` +
+        `t(UTC) = ${t.toISOString().replace("T"," ").replace(".000Z","Z")}`;
+
       document.getElementById("pointInfo").textContent = info;
     }
 
@@ -2126,57 +2040,6 @@
       ctx.fillText("検証 3×3 誤差マップ", 4,10);
     }
 
-    /* ===== フォーカス機能 ===== */
-    function onFocusPresetChange() {
-      const preset = document.getElementById("focusPreset").value;
-      let latMin=-90,latMax=90,lonMin=-180,lonMax=180;
-      if (preset === "japan") {
-        latMin=20; latMax=50; lonMin=120; lonMax=150;
-      } else if (preset==="europe") {
-        latMin=35; latMax=70; lonMin=-10; lonMax=40;
-      } else if (preset==="na") {
-        latMin=10; latMax=60; lonMin=-130; lonMax=-60;
-      } else if (preset==="sa") {
-        latMin=-60; latMax=15; lonMin=-80; lonMax=-30;
-      } else if (preset==="africa") {
-        latMin=-35; latMax=35; lonMin=-20; lonMax=50;
-      } else if (preset==="global") {
-        latMin=-90; latMax=90; lonMin=-180; lonMax=180;
-      } else if (preset==="custom") {
-        // カスタムは既存値そのまま
-        return;
-      }
-      document.getElementById("focusLatMin").value = latMin;
-      document.getElementById("focusLatMax").value = latMax;
-      document.getElementById("focusLonMin").value = lonMin;
-      document.getElementById("focusLonMax").value = lonMax;
-      applyFocusRegion();
-    }
-
-    function applyFocusRegion() {
-      if (!map) return;
-      const latMin = parseFloat(document.getElementById("focusLatMin").value);
-      const latMax = parseFloat(document.getElementById("focusLatMax").value);
-      const lonMin = parseFloat(document.getElementById("focusLonMin").value);
-      const lonMax = parseFloat(document.getElementById("focusLonMax").value);
-
-      if (!isFinite(latMin) || !isFinite(latMax) || !isFinite(lonMin) || !isFinite(lonMax)) {
-        logInfo("フォーカス範囲の緯度・経度が不正です。");
-        return;
-      }
-      const bounds = [[latMin, lonMin],[latMax, lonMax]];
-      map.fitBounds(bounds, {padding:[20,20]});
-
-      if (focusRectLayer) {
-        map.removeLayer(focusRectLayer);
-      }
-      focusRectLayer = L.rectangle(bounds, {
-        color:"#22c55e",
-        weight:1,
-        fill:false
-      }).addTo(map);
-    }
-
     /* ===== リセット ===== */
     function resetAll() {
       gGrid=null;
@@ -2184,16 +2047,13 @@
       gForecastTimes=[];
       gForecastStart=null;
       currentStepIndex = 0;
-      gStormModel = null;
-      gStormFactors = [];
-      gStormPhaseLabels = [];
       document.getElementById("timeSlider").value=0;
       updateTimeLabel();
       drawTecOverlay();
       clearVerification();
       document.getElementById("pointInfo").textContent =
-        "地図上をクリックすると、その格子点のTECと位置が表示されます。";
-      logInfo("内部状態をリセットしました。（BoM/係数/色/指定範囲バイアスの保存値は残っています）");
+        "地図上をクリックすると、その格子点のTECとGPS L1誤差が表示されます。";
+      logInfo("内部状態をリセットしました。（BoM/係数/色/9領域バイアスの保存値は残っています）");
     }
 
     /* ===== レイアウト ===== */
@@ -2211,68 +2071,20 @@
 
     window.addEventListener("resize", resizeLayout);
 
-    /* ===== 計算式テキスト ===== */
-    function updateFormulaText() {
-      const cfg = getConfigFromUI();
-      const stormModel = gStormModel || {hasStorm:false,S:0,levelText:"静穏"};
-      const lines = [];
-
-      lines.push("TEC(lat, lon, t) =");
-      lines.push("  ( T0(lat,lon) + A_amp(lat,lon) × f_day(lat,lon,t) )");
-      lines.push("  × kGlobal");
-      lines.push("  × SolarScale(F10.7, Ap, Dst, Xray)");
-      lines.push("  × FlareScale(Deep Flare Net)");
-      lines.push("  × LatWeight(lat)");
-      lines.push("  × StormBoost(t)");
-      lines.push("  × BiasRegion(lat, lon)");
-      lines.push("");
-      lines.push("where");
-      lines.push(`  SolarScale = 1 + wF107·(F10.7-100) + wAp·(Ap-10) + wDst·Dst + Xray項`);
-      lines.push(`    wF107 = ${cfg.wF107}, wAp = ${cfg.wAp}, wDst = ${cfg.wDst}`);
-      lines.push("");
-      lines.push("  LatWeight(lat) : 赤道異常 + 高緯度減衰");
-      lines.push(`    latShape = ${cfg.latShape}, latHighCut = ${cfg.latHighCut}`);
-      lines.push("");
-      lines.push("  FlareScale : Deep Flare Net の X/M確率から係数を計算");
-      lines.push(`    β_flare = ${cfg.betaFlare}, k_X = ${cfg.kX}, k_M = ${cfg.kM}`);
-      lines.push("");
-      lines.push("  StormBoost(t) : CME / 高速太陽風による電離圏正層嵐ブースト（正のみ）");
-      lines.push("    ・到達から kStormOnsetH 時間後に磁気嵐開始");
-      lines.push("    ・そこから kStormPeakH 時間でピークまで増加");
-      lines.push("    ・さらに kStormRecoverH 時間かけて指数減衰で静穏へ");
-      lines.push(`    kStormOnsetH = ${cfg.kStormOnsetH} h`);
-      lines.push(`    kStormPeakH  = ${cfg.kStormPeakH} h`);
-      lines.push(`    kStormRecoverH = ${cfg.kStormRecoverH} h`);
-      lines.push(`    kStormBoost = ${cfg.kStormBoost}, kStormDecay = ${cfg.kStormDecay}`);
-      if (stormModel && stormModel.hasStorm && stormModel.baseTime) {
-        lines.push(`    StormIndex S = ${stormModel.S.toFixed(2)} （${stormModel.levelText}）`);
-        lines.push(`    baseTime = ${stormModel.baseTime.toISOString()}`);
-      } else {
-        lines.push("    ※現在はStormイベント未設定 → StormBoost(t) ≒ 1");
-      }
-      lines.push("");
-      if (gBiasRect) {
-        lines.push("  BiasRegion(lat,lon): 指定範囲内のみ TEC×(1 + b%/100)");
-        lines.push(`    lat[${gBiasRect.latMin},${gBiasRect.latMax}], lon[${gBiasRect.lonMin},${gBiasRect.lonMax}], b = ${gBiasRect.pct}%`);
-      } else {
-        lines.push("  BiasRegion(lat,lon): 現在バイアス無し（=1.0）");
-      }
-
-      document.getElementById("formulaText").textContent = lines.join("\n");
-    }
-
     /* ===== 初期化 ===== */
     window.addEventListener("load", ()=>{
       loadConfig(true);
       loadVerifyColorScaleFromStorage();
       loadTecColorScaleFromStorage();
+      loadGpsColorScaleFromStorage();
       loadBomInputsFromStorage();
       initLeafletMap();
-      loadBiasRectFromStorage();
+      loadZoneBiasFromStorage();
 
       updateTimeLabel();
       resizeLayout();
-      updateFormulaText();
+
+      onDisplayModeChange(); // displayMode と legend を同期
 
       logInfo("SWIFT-TEC v3 Leaflet版 準備完了。まず BoM TEC を貼り付けてください。");
     });
