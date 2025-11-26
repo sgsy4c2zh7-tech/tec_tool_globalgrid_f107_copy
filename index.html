@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool (Leaflet版)</title>
+  <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool (Leaflet版, 7日予報)</title>
 
   <!-- Leaflet CSS -->
   <link
@@ -270,10 +270,10 @@
       <div class="card">
         <div class="card-header">
           <h1>SWIFT-TEC v3</h1>
-          <span>Global TEC Forecast & Verification</span>
+          <span>Global TEC Forecast & Verification (7-day)</span>
         </div>
         <div class="small">
-          ・BoM TEC（最大9枚）から 48h / 15min 予報を生成<br>
+          ・BoM TEC（最大9枚）から <b>7日 / 1h</b> 予報を生成<br>
           ・F10.7 / Ap / Dst / X-ray / Deep Flare Net / 磁気嵐を反映<br>
           ・BoM 実測（最大4枚）で 3×3 領域ごとの誤差検証<br>
           ・Leaflet 地図で TEC / GPS誤差を確認、地域フォーカスも可能
@@ -638,7 +638,7 @@
           </div>
           <div class="row">
             <div>
-              <label>latHighCut（高緯度減衰）</label><br>
+              <label>latHighCut（高緯度調整）</label><br>
               <input id="cfg_latHighCut" type="number" value="1.05" step="0.05">
             </div>
             <div>
@@ -696,10 +696,6 @@
           <button class="focus-btn" onclick="focusRegion('europe')">ヨーロッパ</button>
         </div>
         <div class="row">
-          <button class="focus-btn" onclick="focusRegion('southAmerica')">南アメリカ</button>
-          <button class="focus-btn" onclick="focusRegion('europe')">ヨーロッパ</button>
-        </div>
-        <div class="row">
           <button class="focus-btn" onclick="focusRegion('africa')">アフリカ</button>
           <button class="focus-btn" onclick="focusRegion('australia')">オーストラリア</button>
         </div>
@@ -750,8 +746,8 @@
       <!-- 上段：時間スライダー＋透明度＋表示モード -->
       <div class="card slider-card">
         <div class="slider-row">
-          <span>時間スライダー（0〜48h / 15分刻み）</span>
-          <input type="range" id="timeSlider" min="0" max="192" value="0" oninput="onSliderChange()">
+          <span>時間スライダー（0〜7日 / 1h刻み）</span>
+          <input type="range" id="timeSlider" min="0" max="168" value="0" oninput="onSliderChange()">
           <span id="timeLabel">t = 0.00 h</span>
         </div>
         <div class="row small" style="margin-top:4px;">
@@ -804,6 +800,9 @@
 
   <script>
     /* ============ グローバル状態 ============ */
+    const FORECAST_HOURS = 24 * 7;   // ★ 7日分
+    const DT_MINUTES     = 60;       // ★ 1時間刻み
+
     let gGrid = null;              // {latArr, lonArr, nLat, nLon}
     let gForecastFrames = [];      // [step][iLat][iLon] TEC
     let gForecastTimes = [];       // Date[]
@@ -846,7 +845,7 @@
     // 地域フォーカス
     let currentFocus = null; // {latMin,latMax,lonMin,lonMax}
 
-    const STORAGE_KEY_CONFIG   = "swifttec_config_v4";
+    const STORAGE_KEY_CONFIG   = "swifttec_config_v4_7d";
     const STORAGE_KEY_VCOL     = "swifttec_vcol_v3";
     const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v4";  // ★ 9枚対応版
     const STORAGE_KEY_TCOL     = "swifttec_teccol_v3";
@@ -1263,7 +1262,7 @@
       const r = Math.round(rgb1.r + (rgb2.r - rgb1.r)*t);
       const g = Math.round(rgb1.g + (rgb2.g - rgb1.g)*t);
       const b = Math.round(rgb1.b + (rgb2.b - rgb1.b)*t);
-      return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16,"0").padStart(2,"0")}`;
+      return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
     }
 
     function colorHexFromScale(val, scale) {
@@ -1393,7 +1392,7 @@
       const slider = document.getElementById("timeSlider");
       const idx = parseInt(slider.value,10) || 0;
       currentStepIndex = idx;
-      const h  = (idx*15)/60;
+      const h  = (idx * DT_MINUTES) / 60;
       let label = `t = ${h.toFixed(2)} h`;
       if (gForecastTimes[idx]) {
         label += "  (UTC " + gForecastTimes[idx].toISOString().replace("T"," ").replace(".000Z","Z") + ")";
@@ -1590,11 +1589,10 @@
       const x = Math.abs(latDeg)/40;
       let w = 1 + a * (1 - (x-1)*(x-1));  // 赤道付近 > 中緯度 > 高緯度
       if (w < 0.3) w = 0.3;
-      // latHighCut >1 で高緯度強め / <1 で弱め という扱い
       const gh = cfg.latHighCut;
       if (Math.abs(latDeg) > 60) {
         const f = (Math.abs(latDeg)-60)/30;
-        w *= (1 - f*(1-gh)); // gh>1 なら増幅、<1 なら減衰
+        w *= (1 - f*(1-gh));
       }
       return w;
     }
@@ -1623,7 +1621,6 @@
       const edge = cfg.dayEdgeCosWidth || 0;
       if (cosChi <= 0) {
         if (edge > 0 && cosChi > -edge) {
-          // トワイライト側: 0〜0.1程度の弱い値
           const t = (cosChi + edge) / edge; // 0..1
           return 0.1 * Math.pow(t, pX);
         }
@@ -1632,7 +1629,7 @@
       let f = Math.pow(cosChi, pX);
       if (edge > 0 && cosChi < edge) {
         const t = cosChi / edge; // 0..1
-        f *= t; // 昼直後は弱め、徐々に本来の値へ
+        f *= t;
       }
       return f;
     }
@@ -1764,7 +1761,7 @@
             for (let k=0;k<K;k++) {
               const B = snaps[k].grid[i][j];
               const c = coschi[k][i][j];
-              const f = computeDayFactor(c, cfg); // 昼夜境界を含めた日中因子
+              const f = computeDayFactor(c, cfg);
               S_B += B;
               S_f += f;
               S_f2+= f*f;
@@ -1787,8 +1784,8 @@
           }
         }
 
-        const forecastHours = 48;
-        const dtMin = 15;
+        const forecastHours = FORECAST_HOURS;
+        const dtMin = DT_MINUTES;
         const nSteps = Math.round(forecastHours*60/dtMin);
         gForecastFrames = new Array(nSteps+1);
         gForecastTimes  = new Array(nSteps+1);
@@ -1843,7 +1840,6 @@
               frame[i][j] = val;
             }
           }
-          // 局所的に明らかにおかしい V字ピーク等を補正
           gForecastFrames[step] = fixLocalAnomalies(frame,nLat,nLon,0.5,1.8);
         }
 
@@ -1851,7 +1847,7 @@
         slider.min=0; slider.max=nSteps; slider.value=0;
         currentStepIndex = 0;
         updateTimeLabel();
-        logInfo(`予報計算完了: frames=${gForecastFrames.length}, grid=${nLat}×${nLon}`);
+        logInfo(`予報計算完了: frames=${gForecastFrames.length}, grid=${nLat}×${nLon}, span=${FORECAST_HOURS}h`);
         updateFormulaText();
         drawTecOverlay();
       } catch(e) {
@@ -1860,7 +1856,7 @@
       }
     }
 
-    /* ===== 検証ロジック（元ロジックほぼそのまま） ===== */
+    /* ===== 検証ロジック（元ロジック） ===== */
     function runVerification() {
       if (!gForecastFrames.length || !gGrid || !gForecastTimes.length) {
         logInfo("まず予報を計算してください。");
@@ -1984,7 +1980,7 @@
       if (nAll>0 && sumObsAll>0) {
         const avgBias = sumBiasAll/nAll;
         const avgObs  = sumObsAll/nAll;
-        const relBias = avgBias/avgObs; // 正→過大評価
+        const relBias = avgBias/avgObs;
         const thr = cfg.biasThresh/100;
         if (Math.abs(relBias) < thr) {
           reportLines.push("・全体として大きなバイアスはありません。係数はそのままでOK。");
@@ -2096,7 +2092,8 @@ TEC_forecast(lat,lon,t) =
 GPS_L1_error[m] = TEC_forecast × kL1 (${cfg.kL1.toFixed(3)} m/TECU)
 
 【モード】
-現在の表示モード: ${mapMode === "tec" ? "TECヒートマップ" : "GPS L1誤差ヒートマップ"}`;
+現在の表示モード: ${mapMode === "tec" ? "TECヒートマップ" : "GPS L1誤差ヒートマップ"}
+予報期間: 0〜${FORECAST_HOURS} h（約7日, Δt=${DT_MINUTES}分）`;
 
       document.getElementById("formulaText").textContent = text;
     }
@@ -2194,7 +2191,7 @@ GPS_L1_error[m] = TEC_forecast × kL1 (${cfg.kL1.toFixed(3)} m/TECU)
       updateTimeLabel();
       resizeLayout();
       changeMapMode(); // legend更新
-      logInfo("SWIFT-TEC v3 Leaflet版 準備完了。まず BoM TEC を貼り付けてください。");
+      logInfo("SWIFT-TEC v3 Leaflet版（7日予報） 準備完了。まず BoM TEC を貼り付けてください。");
     });
   </script>
 </body>
