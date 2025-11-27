@@ -351,15 +351,16 @@
         </div>
       </div>
 
-      <!-- 3. Deep Flare Net 8領域 -->
+      <!-- 3. Deep Flare Net 9領域 -->
       <div class="card">
         <div class="card-header">
           <h2>3. Deep Flare Net 領域</h2>
-          <span>8分割フレア確率</span>
+          <span>9分割フレア確率（3×3）</span>
         </div>
         <div class="small">
-          8領域ごとに Xクラス / Mクラス発生確率 [%] を入力。<br>
-          同じ場所に複数領域がある場合は「特異なもののみ」入力。
+          太陽円盤を 3×3 の 9領域に分割し、各領域ごとの Xクラス / Mクラス発生確率 [%] を入力。<br>
+          位置イメージ：<br>
+          R1=北西, R2=北, R3=北東 / R4=西, R5=中央, R6=東 / R7=南西, R8=南, R9=南東
         </div>
         <table>
           <thead>
@@ -368,45 +369,59 @@
             </tr>
           </thead>
           <tbody>
-            <tr><td>R1</td><td>北西</td>
+            <tr>
+              <td>R1</td><td>北西</td>
               <td><input id="fx1" type="number" value="0" style="width:50px;"></td>
               <td><input id="fm1" type="number" value="10" style="width:50px;"></td>
               <td><input id="fu1" type="checkbox" checked></td>
             </tr>
-            <tr><td>R2</td><td>西</td>
+            <tr>
+              <td>R2</td><td>北</td>
               <td><input id="fx2" type="number" value="0" style="width:50px;"></td>
               <td><input id="fm2" type="number" value="10" style="width:50px;"></td>
               <td><input id="fu2" type="checkbox" checked></td>
             </tr>
-            <tr><td>R3</td><td>南西</td>
+            <tr>
+              <td>R3</td><td>北東</td>
               <td><input id="fx3" type="number" value="0" style="width:50px;"></td>
               <td><input id="fm3" type="number" value="10" style="width:50px;"></td>
               <td><input id="fu3" type="checkbox" checked></td>
             </tr>
-            <tr><td>R4</td><td>南</td>
+            <tr>
+              <td>R4</td><td>西</td>
               <td><input id="fx4" type="number" value="0" style="width:50px;"></td>
               <td><input id="fm4" type="number" value="10" style="width:50px;"></td>
               <td><input id="fu4" type="checkbox" checked></td>
             </tr>
-            <tr><td>R5</td><td>南東</td>
+            <tr>
+              <td>R5</td><td>中央</td>
               <td><input id="fx5" type="number" value="0" style="width:50px;"></td>
               <td><input id="fm5" type="number" value="10" style="width:50px;"></td>
               <td><input id="fu5" type="checkbox" checked></td>
             </tr>
-            <tr><td>R6</td><td>東</td>
+            <tr>
+              <td>R6</td><td>東</td>
               <td><input id="fx6" type="number" value="0" style="width:50px;"></td>
               <td><input id="fm6" type="number" value="10" style="width:50px;"></td>
               <td><input id="fu6" type="checkbox" checked></td>
             </tr>
-            <tr><td>R7</td><td>北東</td>
+            <tr>
+              <td>R7</td><td>南西</td>
               <td><input id="fx7" type="number" value="0" style="width:50px;"></td>
               <td><input id="fm7" type="number" value="10" style="width:50px;"></td>
               <td><input id="fu7" type="checkbox" checked></td>
             </tr>
-            <tr><td>R8</td><td>中央</td>
+            <tr>
+              <td>R8</td><td>南</td>
               <td><input id="fx8" type="number" value="0" style="width:50px;"></td>
               <td><input id="fm8" type="number" value="10" style="width:50px;"></td>
               <td><input id="fu8" type="checkbox" checked></td>
+            </tr>
+            <tr>
+              <td>R9</td><td>南東</td>
+              <td><input id="fx9" type="number" value="0" style="width:50px;"></td>
+              <td><input id="fm9" type="number" value="10" style="width:50px;"></td>
+              <td><input id="fu9" type="checkbox" checked></td>
             </tr>
           </tbody>
         </table>
@@ -1597,21 +1612,36 @@
       return w;
     }
 
+    // ★★★ 9領域版 Deep Flare Net スケール ★★★
     function computeFlareScale(cfg) {
       let I = 0;
-      for (let r=1;r<=8;r++) {
-        const use = document.getElementById("fu"+r).checked;
+      // R1〜R9（3×3）の9領域
+      for (let r = 1; r <= 9; r++) {
+        const useElem = document.getElementById("fu" + r);
+        if (!useElem) continue;
+        const use = useElem.checked;
         if (!use) continue;
-        const px = parseFloat(document.getElementById("fx"+r).value) || 0;
-        const pm = parseFloat(document.getElementById("fm"+r).value) || 0;
-        let wvis = 0.7;
-        if (r === 8) wvis = 1.0;
-        if (r === 4 || r === 5) wvis = 0.85;
-        const Fx = cfg.kX * (px/100);
-        const Fm = cfg.kM * (pm/100);
-        I += (Fx + Fm)*wvis;
+
+        const px = parseFloat(document.getElementById("fx" + r).value) || 0;
+        const pm = parseFloat(document.getElementById("fm" + r).value) || 0;
+
+        // 視線方向（中心＞上下左右＞斜め）による重み
+        //  R5: 中央  → 1.0
+        //  R2,R4,R6,R8: 上下左右 → 0.85
+        //  R1,R3,R7,R9: 斜め     → 0.7
+        let wvis = 0.7; // デフォルト：斜め
+        if (r === 5) {
+          wvis = 1.0;   // 中央
+        } else if (r === 2 || r === 4 || r === 6 || r === 8) {
+          wvis = 0.85;  // 上下左右
+        }
+
+        const Fx = cfg.kX * (px / 100);
+        const Fm = cfg.kM * (pm / 100);
+        I += (Fx + Fm) * wvis;
       }
-      const Sflare = 1 + cfg.betaFlare*I;
+
+      const Sflare = 1 + cfg.betaFlare * I;
       return clamp(Sflare, 0.7, 3.0);
     }
 
@@ -2084,7 +2114,7 @@ TEC_forecast(lat,lon,t) =
   (T0(lat,lon) + A(lat,lon) * f_day(cosχ; pX=${cfg.pX.toFixed(2)}, edge=${cfg.dayEdgeCosWidth.toFixed(2)}))
   × kGlobal(${cfg.kGlobal.toFixed(2)})
   × S_solar(F10.7,Ap,Dst,Xray)
-  × S_flare(DeepFlareNet; β_flare=${cfg.betaFlare.toFixed(2)}, k_X=${cfg.kX.toFixed(2)}, k_M=${cfg.kM.toFixed(2)})
+  × S_flare(DeepFlareNet 9領域; β_flare=${cfg.betaFlare.toFixed(2)}, k_X=${cfg.kX.toFixed(2)}, k_M=${cfg.kM.toFixed(2)})
   × S_storm(Kp=${cfg.stormKp.toFixed(1)}, start=${cfg.stormStartH.toFixed(1)}h, dur=${cfg.stormDurH.toFixed(1)}h, delay=${cfg.ionoDelayH.toFixed(1)}h)
   × W_lat(lat; latShape=${cfg.latShape.toFixed(2)}, latHighCut=${cfg.latHighCut.toFixed(2)})
 
@@ -2191,7 +2221,7 @@ GPS_L1_error[m] = TEC_forecast × kL1 (${cfg.kL1.toFixed(3)} m/TECU)
       updateTimeLabel();
       resizeLayout();
       changeMapMode(); // legend更新
-      logInfo("SWIFT-TEC v3 Leaflet版（7日予報） 準備完了。まず BoM TEC を貼り付けてください。");
+      logInfo("SWIFT-TEC v3 Leaflet版（7日予報, DeepFlareNet 9領域） 準備完了。まず BoM TEC を貼り付けてください。");
     });
   </script>
 </body>
