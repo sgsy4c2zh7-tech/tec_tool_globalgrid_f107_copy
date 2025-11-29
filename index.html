@@ -778,7 +778,8 @@
           <span>時間スライダー（0〜7日 / 1h刻み）</span>
           <input type="range" id="timeSlider" min="0" max="168" value="0" oninput="onSliderChange()">
           <span id="timeLabel">t = 0.00 h</span>
-          <span id="utcLabel">UTC: --</span>
+          <span id="utcLabel">UTC(予報): --</span>
+          <span id="nowUtcLabel">Now UTC: --</span>
           <span id="kpNowLabel">Kp=--</span>
           <span id="f107NowLabel">F10.7=--</span>
         </div>
@@ -894,6 +895,30 @@
       console.log(msg);
     }
     function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+    /* ===== 経度正規化 & 実太陽時ローカルタイム ===== */
+
+    // 経度を -180〜+180 に正規化
+    function normalizeLon180(lonDeg) {
+      let x = lonDeg;
+      while (x < -180) x += 360;
+      while (x > 180) x -= 360;
+      return x;
+    }
+
+    // UTC と経度から「地球の実太陽時ベース」のローカル太陽時 [hour] を計算
+    function getLocalSolarHour(tUtc, lonDeg) {
+      const lon = normalizeLon180(lonDeg);
+
+      const utcHours =
+        tUtc.getUTCHours() +
+        tUtc.getUTCMinutes() / 60 +
+        tUtc.getUTCSeconds() / 3600;
+
+      let h = utcHours + lon / 15;   // 経度 15° = 1時間
+      h = ((h % 24) + 24) % 24;      // 0〜24 に正規化
+      return h;
+    }
 
     /* ===== 日付パース: VALID DATE/TIME: 11/11/2025 00:00:00UTC ===== */
     function parseBomValidTime(text) {
@@ -1779,11 +1804,18 @@
       const lbl = document.getElementById("utcLabel");
       if (!lbl) return;
       if (!gForecastTimes.length || !gForecastTimes[stepIndex]) {
-        lbl.textContent = "UTC: --";
+        lbl.textContent = "UTC(予報): --";
         return;
       }
       const tUtc = gForecastTimes[stepIndex];
-      lbl.textContent = "UTC: " + tUtc.toISOString().replace(".000Z","Z");
+      lbl.textContent = "UTC(予報): " + tUtc.toISOString().replace(".000Z","Z");
+    }
+
+    function updateNowUtcLabel() {
+      const lbl = document.getElementById("nowUtcLabel");
+      if (!lbl) return;
+      const now = new Date();
+      lbl.textContent = "Now UTC: " + now.toISOString().replace(".000Z","Z");
     }
 
     function updateKpF107LabelsForStep(stepIndex) {
@@ -1950,7 +1982,10 @@
             const lat = gGrid.latArr[i];
             for (let j=0;j<nLon;j++) {
               const lon = gGrid.lonArr[j];
-              const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lon/15 + 24) % 24;
+
+              // ★ 実太陽時ベースのローカル時 (LT) を使用
+              const ltHour = getLocalSolarHour(tUtc, lon);
+
               let tec0 = baseGrid[i][j];
 
               const solarFactor = calcSolarFactor(cfg, F107_t, F107mean_t, Ap, Dst);
@@ -2009,7 +2044,7 @@
       const tUtc = gForecastTimes[currentStepIndex];
 
       const txt =
-        "UTC: " + (tUtc ? tUtc.toISOString().replace(".000Z","Z") : "N/A") + "\n" +
+        "UTC(予報): " + (tUtc ? tUtc.toISOString().replace(".000Z","Z") : "N/A") + "\n" +
         "Lat=" + gGrid.latArr[bestI].toFixed(1) + "°, Lon=" + gGrid.lonArr[bestJ].toFixed(1) + "°\n" +
         "TEC = " + tec.toFixed(1) + " TECU\n" +
         "GPS L1誤差 ≈ " + gpsErr.toFixed(2) + " m";
@@ -2290,6 +2325,8 @@
       updateTimeLabel();
       updateUtcLabel(0);
       updateKpF107LabelsForStep(0);
+      updateNowUtcLabel();
+      setInterval(updateNowUtcLabel, 60000);  // Now UTC を1分ごとに更新
       drawVerifyMap(null);
     });
   </script>
