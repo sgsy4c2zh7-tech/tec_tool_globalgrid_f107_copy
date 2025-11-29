@@ -186,7 +186,7 @@
       min-height: 360px;
       border-radius: 8px;
       overflow: hidden;
-      position: relative; /* ★ キャンバスオーバーレイ用 */
+      position: relative;
     }
     .leaflet-container {
       background: #000;
@@ -196,7 +196,7 @@
       top: 0;
       left: 0;
       pointer-events: none;
-      z-index: 400; /* タイルより前面に */
+      z-index: 400;
     }
 
     .leaflet-control.tec-legend {
@@ -278,7 +278,7 @@
         </div>
         <div class="small">
           ・BoM TEC（最大9枚）から <b>7日 / 1h</b> 予報を生成<br>
-          ・F10.7 / Ap / Dst / X-ray / Deep Flare Net / 磁気嵐（Mukhtarov rTECベース）を反映<br>
+          ・F10.7 / Ap / Dst / X-ray / Deep Flare Net / 磁気嵐(Mukhtarov rTECベース)を反映<br>
           ・NOAAテキストから F10.7(t) / ⟨F10.7⟩(t) / Kp(t) を自動読取（任意）<br>
           ・BoM 実測（最大4枚）で 3×3 領域ごとの誤差検証<br>
           ・Leaflet 地図で TEC / GPS誤差を確認、地域フォーカスも可能
@@ -358,7 +358,7 @@
       <!-- 2b. NOAA F10.7 / Kp テキスト -->
       <div class="card">
         <div class="card-header">
-          <h2>2b. NOAA F10.7 / Kp テキスト</h2>
+          <h2>3. NOAA F10.7 / Kp テキスト</h2>
           <span>テキストを丸ごと貼り付け → 自動読取</span>
         </div>
         <div class="small">
@@ -391,7 +391,7 @@
       <!-- 3. Deep Flare Net 9領域 -->
       <div class="card">
         <div class="card-header">
-          <h2>3. Deep Flare Net 領域</h2>
+          <h2>4. Deep Flare Net 領域</h2>
           <span>9分割フレア確率（3×3）</span>
         </div>
         <div class="small">
@@ -467,7 +467,7 @@
       <!-- 4. 検証用 BoM -->
       <div class="card">
         <div class="card-header">
-          <h2>4. 検証用 BoM TEC（最大4枚）</h2>
+          <h2>5. 検証用 BoM TEC（最大4枚）</h2>
           <span>予報期間中の実測</span>
         </div>
         <div class="row small">
@@ -497,7 +497,7 @@
       <!-- 5. 検証マップ色設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>5. 検証マップ色設定</h2>
+          <h2>6. 検証マップ色設定</h2>
           <span>誤差(%) → 色を任意設定</span>
         </div>
         <div class="small">
@@ -539,7 +539,7 @@
       <!-- 6. TEC カラーマップ設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>6. TEC カラーマップ設定</h2>
+          <h2>7. TEC カラーマップ設定</h2>
           <span>TEC値 → 色を任意設定</span>
         </div>
         <div class="small">
@@ -581,7 +581,7 @@
       <!-- 7. GPS L1誤差 カラーマップ設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>7. GPS L1誤差 カラーマップ</h2>
+          <h2>8. GPS L1誤差 カラーマップ</h2>
           <span>誤差[m] → 色を任意設定</span>
         </div>
         <div class="small">
@@ -620,40 +620,7 @@
         </div>
       </div>
 
-      <!-- 8. 磁気嵐 / 電離圏嵐パラメータ -->
-      <div class="card">
-        <div class="card-header">
-          <h2>8. 磁気嵐 / 電離圏嵐パラメータ</h2>
-          <span>CME / 高速太陽風 からのイベント包絡</span>
-        </div>
-        <div class="row">
-          <div>
-            <label>磁気嵐開始 [h]</label><br>
-            <input id="stormStartH" type="number" value="0" step="1">
-          </div>
-          <div>
-            <label>磁気嵐継続時間 [h]</label><br>
-            <input id="stormDurH" type="number" value="0" step="1">
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label>イベントKp (任意, 0–9)</label><br>
-            <input id="stormKp" type="number" value="0" step="0.5" min="0" max="9">
-          </div>
-          <div>
-            <label>電離圏嵐ピーク遅れ [h]</label><br>
-            <input id="ionoDelayH" type="number" value="0" step="1">
-          </div>
-        </div>
-        <div class="small">
-          ・Kp(t) は NOAA テキストからの予報を使用。<br>
-          ・ここは「特定時間帯だけ上乗せしたいときの包絡」用。<br>
-          Smag_env = 1 + 0.3×(Kp_event/9), Siono_env = 1 + 0.5×(Kp_event/9) を適用。
-        </div>
-      </div>
-
-      <!-- 9. 係数設定 -->
+      <!-- 8. 係数設定 -->
       <div class="card">
         <div class="card-header">
           <h2>9. 係数設定（Advanced）</h2>
@@ -734,7 +701,7 @@
         </div>
       </div>
 
-      <!-- 10. 地域フォーカス -->
+      <!-- 9. 地域フォーカス -->
       <div class="card">
         <div class="card-header">
           <h2>10. 地域フォーカス</h2>
@@ -780,13 +747,22 @@
         </div>
       </div>
 
-      <!-- 11. 実行 -->
+      <!-- 10. 実行 -->
       <div class="card">
         <div class="card-header">
           <h2>11. 実行</h2>
           <span>予報 & 描画</span>
         </div>
-        <div class="row">
+        <div class="row small">
+          <div style="flex:1;">
+            予報スタート時刻（UTC, BoM有効時刻から選択）:<br>
+            <select id="forecastStartSelect" style="width:100%;"></select>
+          </div>
+        </div>
+        <div class="small" id="forecastStartInfo">
+          BoMを読み込むと候補が自動で入ります。未選択時は最も早い有効時刻から開始します。
+        </div>
+        <div class="row" style="margin-top:4px;">
           <button onclick="runForecast()">TEC予報を計算</button>
           <button class="secondary" onclick="resetAll()">リセット</button>
         </div>
@@ -802,6 +778,7 @@
           <span>時間スライダー（0〜7日 / 1h刻み）</span>
           <input type="range" id="timeSlider" min="0" max="168" value="0" oninput="onSliderChange()">
           <span id="timeLabel">t = 0.00 h</span>
+          <span id="utcLabel">UTC: --</span>
           <span id="kpNowLabel">Kp=--</span>
           <span id="f107NowLabel">F10.7=--</span>
         </div>
@@ -861,7 +838,7 @@
     let gGrid = null;              // {latArr, lonArr, nLat, nLon}
     let gForecastFrames = [];      // [step][iLat][iLon] TEC
     let gForecastTimes  = [];      // Date[]
-    let gForecastStart  = null;    // Date (UTC, from first BoM)
+    let gForecastStart  = null;    // Date (UTC, from BoM選択)
     let currentStepIndex = 0;
 
     let gVerifyColorScale = [
@@ -1039,7 +1016,7 @@
       logInfo("保存されていた BoM 入力を削除しました。（テキスト内容はそのまま）");
     }
 
-    /* ============ Config（係数＋嵐＋境界＋kL1） ============ */
+    /* ============ Config（係数＋境界＋kL1） ============ */
     function getConfigFromUI() {
       return {
         kGlobal:     parseFloat(document.getElementById("cfg_kGlobal").value)  || 0.55,
@@ -1055,12 +1032,7 @@
         biasThresh:  parseFloat(document.getElementById("cfg_biasThresh").value)|| 15,
         suggestGain: parseFloat(document.getElementById("cfg_suggestGain").value)|| 0.5,
         dayEdgeCosWidth: parseFloat(document.getElementById("cfg_dayEdgeCosWidth").value) || 0.2,
-        kL1:         parseFloat(document.getElementById("cfg_kL1").value)      || 0.16,
-        // 嵐パラメータ（イベント用包絡）
-        stormStartH: parseFloat(document.getElementById("stormStartH").value) || 0,
-        stormDurH:   parseFloat(document.getElementById("stormDurH").value)   || 0,
-        stormKp:     parseFloat(document.getElementById("stormKp").value)     || 0,
-        ionoDelayH:  parseFloat(document.getElementById("ionoDelayH").value)  || 0
+        kL1:         parseFloat(document.getElementById("cfg_kL1").value)      || 0.16
       };
     }
 
@@ -1079,11 +1051,6 @@
       document.getElementById("cfg_suggestGain").value = cfg.suggestGain;
       document.getElementById("cfg_dayEdgeCosWidth").value = cfg.dayEdgeCosWidth;
       document.getElementById("cfg_kL1").value         = cfg.kL1;
-
-      document.getElementById("stormStartH").value = cfg.stormStartH || 0;
-      document.getElementById("stormDurH").value   = cfg.stormDurH   || 0;
-      document.getElementById("stormKp").value     = cfg.stormKp     || 0;
-      document.getElementById("ionoDelayH").value  = cfg.ionoDelayH  || 0;
 
       updateFormulaText(); // 係数が変わったら式も更新
     }
@@ -1311,8 +1278,6 @@
 
     /* ===== NOAA F10.7 / Kp テキストパーサ ===== */
 
-    // F10.7: まず 27-day Outlook（27DO）の形式を優先してパース。
-    // 見つからなければ、従来の「YYYY MM DD F10.7」形式を読む。
     function parseF107Text(raw) {
       const text = raw || "";
       const lines = text.split(/\r?\n/);
@@ -1342,7 +1307,6 @@
         return out27;
       }
 
-      // フォールバック：汎用形式 "YYYY MM DD F10.7"
       const out = [];
       for (const line of lines) {
         const m = line.match(/(\d{4})[\/\-\s](\d{1,2})[\/\-\s](\d{1,2}).*?([0-9]{2,3}(\.[0-9]+)?)/);
@@ -1359,7 +1323,6 @@
       return out;
     }
 
-    // F10.7 の 27日ランニング平均（⟨F10.7⟩）を作る
     function computeF107MeanSeries(series, windowDays) {
       if (!series || !series.length) return [];
       const out = [];
@@ -1382,8 +1345,6 @@
       return out;
     }
 
-    // Kp: 3-Day Forecast の "NOAA Kp index breakdown" テーブルを優先して読む。
-    // 見つからなければ、従来の汎用フォーマットを読む。
     function parseKpText(raw) {
       const text = raw || "";
       if (/NOAA Kp index breakdown/i.test(text)) {
@@ -1423,7 +1384,6 @@
       return out;
     }
 
-    // 3-Day Forecast の Kp テーブルをパース
     function parseKpFrom3Day(raw) {
       const lines = raw.split(/\r?\n/);
       const out = [];
@@ -1441,12 +1401,10 @@
       }
       if (idxBreak < 0) return out;
 
-      // 年は "NOAA Kp index breakdown ... 2025" の末尾から取得
       let year = null;
       const mYear = lines[idxBreak].match(/(\d{4})\s*$/);
       if (mYear) year = parseInt(mYear[1],10);
 
-      // 見出し行（Nov 29  Nov 30  ...）を探す
       let headerLine = null;
       let headerIndex = -1;
       for (let i=idxBreak+1;i<lines.length;i++) {
@@ -1460,7 +1418,7 @@
       }
       if (!headerLine || year === null) return out;
 
-      const headerTokens = headerLine.trim().split(/\s+/); // ["Nov","29","Nov","30","Dec","01"...]
+      const headerTokens = headerLine.trim().split(/\s+/);
       if (headerTokens.length % 2 !== 0) return out;
       const colDates = [];
       for (let i=0;i<headerTokens.length;i+=2) {
@@ -1472,14 +1430,14 @@
       }
       if (!colDates.length) return out;
 
-      // その下の 8行: 00-03UT, 03-06UT, ... を読む
       const patUT = /^\s*(\d{2})-(\d{2})UT/;
       for (let i=headerIndex+1;i<lines.length;i++) {
         const line = lines[i];
         const m = line.match(patUT);
         if (!m) continue;
         const startHour = parseInt(m[1],10);
-        const tokens = line.trim().split(/\s+/); // ["00-03UT","2.33","3.00","1.67"]
+        const tokens = line.trim().split(/\s+/);
+
         if (tokens.length < 1 + colDates.length) continue;
 
         for (let c=0;c<colDates.length;c++) {
@@ -1554,13 +1512,11 @@
 
     /* ===== Solar / 緯度 / 昼夜 / 磁気嵐 (Mukhtarov風) ===== */
     function calcSolarFactor(cfg, F107_t, F107base_t, Ap, Dst) {
-      // F107base_t は F10.7 の27日ランニング平均（⟨F10.7⟩）を想定
       const dF = F107_t - F107base_t;
       return 1 + cfg.wF107*dF + cfg.wAp*Ap + cfg.wDst*Dst;
     }
 
     function calcDayNightFactor(latDeg, ltHour, width) {
-      // シンプルに「14LT付近最大のコサイン」：昼側ピーク
       const ang = Math.PI * (ltHour - 14) / 12;
       let f = 0.4 + 0.6 * Math.cos(ang);
       if (f < 0.1) f = 0.1;
@@ -1577,17 +1533,14 @@
       return f;
     }
 
-    // ★ Mukhtarov et al. (2013) をイメージした緯度＋Kp依存の rTEC（季節は無視）
-    //   rTEC(φ,LT,Kp) ≈ a1(φ,LT)*Kp + a2(φ,LT)*Kp^2
-    //   → TEC に対して (1 + rTEC) を掛ける。
     function calcMukhtarovLike(latDeg, ltHour, kp) {
       if (!isFinite(kp)) return 1.0;
       kp = clamp(kp, 0, 9);
 
       const x = Math.abs(latDeg);
-      const lowLat  = Math.exp(-Math.pow(x/25, 2));           // 低緯度
-      const midLat  = Math.exp(-Math.pow((x-30)/15, 2));      // 中緯度
-      const highLat = Math.exp(-Math.pow((x-60)/15, 2));      // 高緯度（オーロラ〜サブオーロラ）
+      const lowLat  = Math.exp(-Math.pow(x/25, 2));
+      const midLat  = Math.exp(-Math.pow((x-30)/15, 2));
+      const highLat = Math.exp(-Math.pow((x-60)/15, 2));
 
       const ltAng = 2*Math.PI*(ltHour/24);
       const nightEnh = 0.7 + 0.3*Math.cos(ltAng - Math.PI);   // 夜側をやや強め
@@ -1599,24 +1552,8 @@
       const a1 = (a_low1*lowLat + a_mid1*midLat + a_high1*highLat) * nightEnh;
       const a2 = (a_low2*lowLat + a_mid2*midLat + a_high2*highLat) * nightEnh;
 
-      const r = a1*kp + a2*kp*kp;   // rTEC(φ,Kp)
-      return 1 + r;                 // 乗算用
-    }
-
-    // イベント用の包絡 Smag_env, Siono_env
-    function calcStormEnvelope(cfg, tUtc, kpEff) {
-      const durH   = cfg.stormDurH;
-      const startH = cfg.stormStartH;
-      const eventKp = cfg.stormKp || kpEff || 0;
-      if (durH <= 0 || eventKp <= 0 || !gForecastStart) return 1.0;
-
-      const hoursFromStart = (tUtc.getTime() - gForecastStart.getTime()) / 3600000;
-      if (hoursFromStart < startH || hoursFromStart > startH + durH) return 1.0;
-
-      const ratio = clamp(eventKp/9.0, 0, 1);
-      const Smag  = 1 + 0.3 * ratio;
-      const Siono = 1 + 0.5 * ratio;
-      return Smag * Siono;
+      const r = a1*kp + a2*kp*kp;
+      return 1 + r;
     }
 
     /* ===== Leaflet 初期化 & ヒートマップ描画 ===== */
@@ -1829,13 +1766,24 @@
       return out;
     }
 
-    /* ===== 時間ラベル / Kp,F10.7ラベル ===== */
+    /* ===== 時間ラベル / Kp,F10.7ラベル / UTCラベル ===== */
     function updateTimeLabel() {
       const slider = document.getElementById("timeSlider");
       const idx = parseInt(slider.value,10) || 0;
       const hours = idx * (DT_MINUTES/60);
       const lbl = document.getElementById("timeLabel");
       if (lbl) lbl.textContent = "t = " + hours.toFixed(1) + " h";
+    }
+
+    function updateUtcLabel(stepIndex) {
+      const lbl = document.getElementById("utcLabel");
+      if (!lbl) return;
+      if (!gForecastTimes.length || !gForecastTimes[stepIndex]) {
+        lbl.textContent = "UTC: --";
+        return;
+      }
+      const tUtc = gForecastTimes[stepIndex];
+      lbl.textContent = "UTC: " + tUtc.toISOString().replace(".000Z","Z");
     }
 
     function updateKpF107LabelsForStep(stepIndex) {
@@ -1862,8 +1810,47 @@
       const idx = parseInt(document.getElementById("timeSlider").value,10) || 0;
       currentStepIndex = clamp(idx, 0, gForecastFrames.length ? gForecastFrames.length-1 : idx);
       updateTimeLabel();
+      updateUtcLabel(currentStepIndex);
       updateKpF107LabelsForStep(currentStepIndex);
       drawTecOverlay();
+    }
+
+    /* ===== 予報スタート選択セレクトの更新 ===== */
+    function updateForecastStartSelect(frames) {
+      const sel = document.getElementById("forecastStartSelect");
+      const info = document.getElementById("forecastStartInfo");
+      if (!sel) return;
+      sel.innerHTML = "";
+
+      const times = frames
+        .map(f => f.validTime)
+        .filter(t => t instanceof Date && !isNaN(t.getTime()))
+        .sort((a,b) => a - b);
+
+      const uniqueMs = [];
+      const uniqueTimes = [];
+      for (const t of times) {
+        const ms = t.getTime();
+        if (!uniqueMs.includes(ms)) {
+          uniqueMs.push(ms);
+          uniqueTimes.push(t);
+        }
+      }
+
+      if (!uniqueTimes.length) {
+        if (info) info.textContent = "BoMに有効時刻が含まれていないため、最初のフレーム時刻を基準に7日予報を行います。";
+        return;
+      }
+
+      uniqueTimes.forEach((t, idx) => {
+        const opt = document.createElement("option");
+        opt.value = t.getTime().toString();
+        opt.textContent = t.toISOString().replace(".000Z","Z");
+        if (idx === 0) opt.selected = true;
+        sel.appendChild(opt);
+      });
+
+      if (info) info.textContent = "BoMの有効時刻から選択できます。変更後は再度「TEC予報を計算」を押してください。";
     }
 
     /* ===== 予報計算 ===== */
@@ -1910,7 +1897,20 @@
           nLat:   first.nLat,
           nLon:   first.nLon
         };
-        gForecastStart = first.validTime || new Date();
+
+        // BoMの有効時刻リストをセレクトに反映
+        updateForecastStartSelect(frames);
+
+        // ユーザー選択 or 最初の有効時刻を予報スタートに
+        let startTime = first.validTime || new Date();
+        const sel = document.getElementById("forecastStartSelect");
+        if (sel && sel.options.length > 0 && sel.value) {
+          const ms = parseInt(sel.value,10);
+          if (!isNaN(ms)) {
+            startTime = new Date(ms);
+          }
+        }
+        gForecastStart = startTime;
 
         // NOAAテキストをパース
         gF107Series = parseF107Text(document.getElementById("noaaF107Text").value);
@@ -1922,7 +1922,6 @@
         const Dst   = parseFloat(document.getElementById("inpDst").value) || 0;
         const Fmanual = parseFloat(document.getElementById("inpF107").value) || 150;
 
-        // 7日分の時刻リスト
         const totalSteps = Math.round(FORECAST_HOURS * 60 / DT_MINUTES); // 168
         for (let s=0;s<=totalSteps;s++) {
           const t = new Date(gForecastStart.getTime() + s * DT_MINUTES * 60000);
@@ -1945,7 +1944,6 @@
           const kp_t   = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
 
           const frame = new Array(nLat);
-          const envFactor = calcStormEnvelope(cfg, tUtc, kp_t);
 
           for (let i=0;i<nLat;i++) {
             frame[i] = new Array(nLon);
@@ -1961,7 +1959,7 @@
               const flareFactor = calcFlareFactor(cfg, ltHour);
               const mukFactor   = calcMukhtarovLike(lat, ltHour, kp_t);
 
-              let tec = tec0 * cfg.kGlobal * solarFactor * dayFactor * latFactor * flareFactor * mukFactor * envFactor;
+              let tec = tec0 * cfg.kGlobal * solarFactor * dayFactor * latFactor * flareFactor * mukFactor;
 
               if (!isFinite(tec) || tec < 0) tec = 0;
               frame[i][j] = tec;
@@ -1973,6 +1971,7 @@
         currentStepIndex = 0;
         document.getElementById("timeSlider").value = 0;
         updateTimeLabel();
+        updateUtcLabel(0);
         updateKpF107LabelsForStep(0);
         drawTecOverlay();
         updateFormulaText();
@@ -2049,7 +2048,6 @@
         return;
       }
 
-      // 3×3領域: Lat(-90,-30,30,90), Lon(-180,-60,60,180)
       const LAT_BOUNDS = [-90,-30,30,90];
       const LON_BOUNDS = [-180,-60,60,180];
 
@@ -2063,7 +2061,6 @@
 
       for (const vf of vFrames) {
         const tObs = vf.validTime;
-        // 最も近い予報ステップ
         let bestIdx = 0;
         let bestDt = 1e12;
         for (let s=0;s<gForecastTimes.length;s++) {
@@ -2097,7 +2094,6 @@
             }
             if (lonBand < 0) continue;
 
-            // 予報格子の対応セル探し（インデックスが同じ前提）
             const iPred = i;
             const jPred = j;
             if (iPred >= gGrid.nLat || jPred >= gGrid.nLon) continue;
@@ -2242,7 +2238,6 @@
   × LatShape(φ; latShape)
   × FlareFactor_DeepNet( LT(t,λ), β_flare, k_X, k_M )
   × rTEC_Mukhtarov_like(φ,LT(t,λ),Kp(t))
-  × StormEnvelope(Smag_env, Siono_env)
 
   ここで：
     F10.7(t)     : NOAA 27日予報テキストからの時系列（日別）
@@ -2251,8 +2246,6 @@
     Kp(t)        : NOAA 3日予報テーブルからの3時間ごとの時系列
     rTEC_Mukhtarov_like = 1 + a1(φ,LT)·Kp + a2(φ,LT)·Kp²
       （低緯度/中緯度/高緯度 ＋ 夜側強調で係数 a1,a2 を設定）
-    Smag_env = 1 + 0.3·(Kp_event/9)
-    Siono_env= 1 + 0.5·(Kp_event/9)
 
 現在の主な係数:
   kGlobal = ${cfg.kGlobal}
@@ -2277,6 +2270,7 @@
       currentStepIndex = 0;
       document.getElementById("timeSlider").value = 0;
       updateTimeLabel();
+      updateUtcLabel(0);
       updateKpF107LabelsForStep(0);
       if (tecCtx && tecCanvas) tecCtx.clearRect(0,0,tecCanvas.width, tecCanvas.height);
       document.getElementById("pointInfo").textContent =
@@ -2294,6 +2288,7 @@
       loadTecColorScaleFromStorage();
       loadGpsColorScaleFromStorage();
       updateTimeLabel();
+      updateUtcLabel(0);
       updateKpF107LabelsForStep(0);
       drawVerifyMap(null);
     });
