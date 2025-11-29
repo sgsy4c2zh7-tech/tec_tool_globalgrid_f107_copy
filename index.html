@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool (Leaflet版, 7日予報)</title>
+  <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool (Leaflet版, 3日予報)</title>
 
   <!-- Leaflet CSS -->
   <link
@@ -274,10 +274,10 @@
       <div class="card">
         <div class="card-header">
           <h1>SWIFT-TEC v3</h1>
-          <span>Global TEC Forecast & Verification (7-day)</span>
+          <span>Global TEC Forecast & Verification (3-day)</span>
         </div>
         <div class="small">
-          ・BoM TEC（最大9枚）から <b>7日 / 1h</b> 予報を生成<br>
+          ・BoM TEC（最大9枚）から <b>3日 / 30min</b> 予報を生成<br>
           ・F10.7 / Ap / Dst / X-ray / Deep Flare Net / 磁気嵐(Mukhtarov rTECベース)を反映<br>
           ・NOAAテキストから F10.7(t) / ⟨F10.7⟩(t) / Kp(t) を自動読取（任意）<br>
           ・BoM 実測（最大4枚）で 3×3 領域ごとの誤差検証<br>
@@ -775,8 +775,8 @@
       <!-- 上段：時間スライダー＋透明度＋表示モード -->
       <div class="card slider-card">
         <div class="slider-row">
-          <span>時間スライダー（0〜7日 / 1h刻み）</span>
-          <input type="range" id="timeSlider" min="0" max="168" value="0" oninput="onSliderChange()">
+          <span>時間スライダー（0〜3日 / 30分刻み）</span>
+          <input type="range" id="timeSlider" min="0" max="144" value="0" oninput="onSliderChange()">
           <span id="timeLabel">t = 0.00 h</span>
           <span id="utcLabel">UTC: --</span>
           <span id="kpNowLabel">Kp=--</span>
@@ -832,8 +832,8 @@
 
   <script>
     /* ============ グローバル状態 ============ */
-    const FORECAST_HOURS = 24 * 7;   // 7日分
-    const DT_MINUTES     = 60;       // 1時間刻み
+    const FORECAST_HOURS = 24 * 3;   // 3日分
+    const DT_MINUTES     = 30;       // 30分刻み
 
     let gGrid = null;              // {latArr, lonArr, nLat, nLon}
     let gForecastFrames = [];      // [step][iLat][iLon] TEC
@@ -1862,7 +1862,7 @@
       }
 
       if (!uniqueTimes.length) {
-        if (info) info.textContent = "BoMに有効時刻が含まれていないため、最初のフレーム時刻を基準に7日予報を行います。";
+        if (info) info.textContent = "BoMに有効時刻が含まれていないため、最初のフレーム時刻を基準に3日予報を行います。";
         return;
       }
 
@@ -1946,7 +1946,7 @@
         const Dst   = parseFloat(document.getElementById("inpDst").value) || 0;
         const Fmanual = parseFloat(document.getElementById("inpF107").value) || 150;
 
-        const totalSteps = Math.round(FORECAST_HOURS * 60 / DT_MINUTES); // 168
+        const totalSteps = Math.round(FORECAST_HOURS * 60 / DT_MINUTES); // 72h *2 =144
         for (let s=0;s<=totalSteps;s++) {
           const t = new Date(gForecastStart.getTime() + s * DT_MINUTES * 60000);
           gForecastTimes.push(t);
