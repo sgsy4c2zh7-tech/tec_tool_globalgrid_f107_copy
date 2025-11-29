@@ -694,14 +694,6 @@
               <input id="cfg_kL1" type="number" value="0.16" step="0.01">
             </div>
           </div>
-          <div class="row">
-            <div style="flex:1;">
-              <label>
-                <input type="checkbox" id="cfg_useDayNight" checked>
-                昼夜補正と夜側強調を有効にする
-              </label>
-            </div>
-          </div>
         </div>
         <div class="row">
           <button onclick="saveConfig()">設定を保存</button>
@@ -786,8 +778,7 @@
           <span>時間スライダー（0〜7日 / 1h刻み）</span>
           <input type="range" id="timeSlider" min="0" max="168" value="0" oninput="onSliderChange()">
           <span id="timeLabel">t = 0.00 h</span>
-          <span id="utcLabel">UTC(予報): --</span>
-          <span id="nowUtcLabel">Now UTC: --</span>
+          <span id="utcLabel">UTC: --</span>
           <span id="kpNowLabel">Kp=--</span>
           <span id="f107NowLabel">F10.7=--</span>
         </div>
@@ -875,7 +866,7 @@
 
     // NOAA 由来の F10.7(t), その27日平均 ⟨F10.7⟩(t), Kp(t) シリーズ
     let gF107Series      = []; // [{time: Date(UTC昼ごろ), value}]
-    let gF107MeanSeries  = []; // [{time: Date(UTC昼ごろ), value}]
+    let gF107MeanSeries  = []; // [{time: Date(UTC昼ごろ), value}] 27日ランニング平均
     let gKpSeries        = []; // [{time: Date(UTC), kp}]
 
     // Leaflet 関連
@@ -891,7 +882,7 @@
     // 地域フォーカス
     let currentFocus = null; // {latMin,latMax,lonMin,lonMax}
 
-    const STORAGE_KEY_CONFIG   = "swifttec_config_v4_7d_mukhtarov_dn";
+    const STORAGE_KEY_CONFIG   = "swifttec_config_v4_7d_mukhtarov";
     const STORAGE_KEY_VCOL     = "swifttec_vcol_v3";
     const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v4";  // 9枚対応版
     const STORAGE_KEY_TCOL     = "swifttec_teccol_v3";
@@ -904,29 +895,7 @@
     }
     function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 
-    /* ===== 経度正規化 & 実太陽時ローカルタイム ===== */
-
-    function normalizeLon180(lonDeg) {
-      let x = lonDeg;
-      while (x < -180) x += 360;
-      while (x > 180) x -= 360;
-      return x;
-    }
-
-    // UTC と経度から「地球の実太陽時ベース」のローカル太陽時 [hour]
-    function getLocalSolarHour(tUtc, lonDeg) {
-      const lon = normalizeLon180(lonDeg);
-      const utcHours =
-        tUtc.getUTCHours() +
-        tUtc.getUTCMinutes() / 60 +
-        tUtc.getUTCSeconds() / 3600;
-
-      let h = utcHours + lon / 15;   // 経度 15° = 1時間
-      h = ((h % 24) + 24) % 24;      // 0〜24 に正規化
-      return h;
-    }
-
-    /* ===== 日付パース ===== */
+    /* ===== 日付パース: VALID DATE/TIME: 11/11/2025 00:00:00UTC ===== */
     function parseBomValidTime(text) {
       const lines = text.split(/\r?\n/);
       for (const line of lines) {
@@ -1047,7 +1016,7 @@
       logInfo("保存されていた BoM 入力を削除しました。（テキスト内容はそのまま）");
     }
 
-    /* ============ Config（係数＋境界＋kL1＋昼夜ON/OFF） ============ */
+    /* ============ Config（係数＋境界＋kL1） ============ */
     function getConfigFromUI() {
       return {
         kGlobal:     parseFloat(document.getElementById("cfg_kGlobal").value)  || 0.55,
@@ -1063,8 +1032,7 @@
         biasThresh:  parseFloat(document.getElementById("cfg_biasThresh").value)|| 15,
         suggestGain: parseFloat(document.getElementById("cfg_suggestGain").value)|| 0.5,
         dayEdgeCosWidth: parseFloat(document.getElementById("cfg_dayEdgeCosWidth").value) || 0.2,
-        kL1:         parseFloat(document.getElementById("cfg_kL1").value)      || 0.16,
-        useDayNight: document.getElementById("cfg_useDayNight").checked ? true : false
+        kL1:         parseFloat(document.getElementById("cfg_kL1").value)      || 0.16
       };
     }
 
@@ -1083,10 +1051,8 @@
       document.getElementById("cfg_suggestGain").value = cfg.suggestGain;
       document.getElementById("cfg_dayEdgeCosWidth").value = cfg.dayEdgeCosWidth;
       document.getElementById("cfg_kL1").value         = cfg.kL1;
-      document.getElementById("cfg_useDayNight").checked =
-        (cfg.useDayNight === undefined ? true : !!cfg.useDayNight);
 
-      updateFormulaText();
+      updateFormulaText(); // 係数が変わったら式も更新
     }
 
     function saveConfig() {
@@ -1107,7 +1073,6 @@
       }
       try {
         const cfg = JSON.parse(s);
-        if (cfg.useDayNight === undefined) cfg.useDayNight = true;
         if (apply) applyConfigToUI(cfg);
         return cfg;
       } catch(e) {
@@ -1551,10 +1516,9 @@
       return 1 + cfg.wF107*dF + cfg.wAp*Ap + cfg.wDst*Dst;
     }
 
-    // 昼夜補正: cfg.useDayNight=false のとき常に 1.0
-    function calcDayNightFactor(cfg, latDeg, ltHour) {
-      if (!cfg.useDayNight) return 1.0;
-
+    function calcDayNightFactor(latDeg, ltHour, width) {
+      // 実太陽時（true solar time）の簡易モデル: LT = UTC + λ/15h に基づき、
+      // だいたい LT=14h 頃を TEC ピークにする形
       const ang = Math.PI * (ltHour - 14) / 12;
       let f = 0.4 + 0.6 * Math.cos(ang);
       if (f < 0.1) f = 0.1;
@@ -1571,8 +1535,7 @@
       return f;
     }
 
-    // 磁気嵐 rTEC (Mukhtarovライク) – cfg.useDayNight=false のとき夜側強調OFF
-    function calcMukhtarovLike(latDeg, ltHour, kp, cfg) {
+    function calcMukhtarovLike(latDeg, ltHour, kp) {
       if (!isFinite(kp)) return 1.0;
       kp = clamp(kp, 0, 9);
 
@@ -1582,9 +1545,7 @@
       const highLat = Math.exp(-Math.pow((x-60)/15, 2));
 
       const ltAng = 2*Math.PI*(ltHour/24);
-      const nightEnh = cfg.useDayNight
-        ? (0.7 + 0.3*Math.cos(ltAng - Math.PI))  // 夜側やや強め
-        : 1.0;
+      const nightEnh = 0.7 + 0.3*Math.cos(ltAng - Math.PI);   // 夜側をやや強め
 
       const a_low1  = 0.02, a_low2  = 0.002;
       const a_mid1  = 0.03, a_mid2  = 0.003;
@@ -1758,44 +1719,66 @@
       drawTecOverlay();
     }
 
-    /* ===== BoMフレーム補間 ===== */
+    /* ===== BoMフレーム補間（★時間範囲外はループ利用に変更） ===== */
     function interpolateBomFrames(frames, tUtc) {
       const nLat = frames[0].nLat;
       const nLon = frames[0].nLon;
       const out = new Array(nLat);
       for (let i=0;i<nLat;i++) out[i] = new Array(nLon);
 
-      if (frames.length === 1 || !frames[0].validTime) {
+      // validTime が無い場合は従来どおり「最初のフレーム固定」
+      const hasTime = frames.every(f => f.validTime instanceof Date && !isNaN(f.validTime.getTime()));
+      if (!hasTime) {
         const src = frames[0].grid;
         for (let i=0;i<nLat;i++) {
           for (let j=0;j<nLon;j++) out[i][j] = src[i][j];
         }
         return out;
       }
-      frames.sort((a,b) => a.validTime - b.validTime);
 
-      if (tUtc <= frames[0].validTime) {
+      // 時刻順に並べる
+      frames.sort((a,b) => a.validTime - b.validTime);
+      const tMin = frames[0].validTime.getTime();
+      const tMax = frames[frames.length-1].validTime.getTime();
+      const span = tMax - tMin;
+
+      // span が 0 か極端に短い場合は、固定で良い
+      if (span <= 0) {
         const src = frames[0].grid;
         for (let i=0;i<nLat;i++) {
           for (let j=0;j<nLon;j++) out[i][j] = src[i][j];
         }
         return out;
       }
-      const lastIdx = frames.length-1;
-      if (tUtc >= frames[lastIdx].validTime) {
-        const src = frames[lastIdx].grid;
+
+      // BoM がカバーしている [tMin, tMax) の区間をぐるぐる周回させて使う
+      const tRaw = tUtc.getTime();
+      const tWrap = tMin + (((tRaw - tMin) % span) + span) % span; // [tMin, tMax) に折り返し
+
+      // tWrap に対して線形補間
+      if (tWrap <= tMin) {
+        const src = frames[0].grid;
         for (let i=0;i<nLat;i++) {
           for (let j=0;j<nLon;j++) out[i][j] = src[i][j];
         }
         return out;
       }
+
       let k = 1;
-      while (k < frames.length && frames[k].validTime < tUtc) k++;
+      while (k < frames.length && frames[k].validTime.getTime() < tWrap) k++;
+      if (k >= frames.length) {
+        const src = frames[frames.length-1].grid;
+        for (let i=0;i<nLat;i++) {
+          for (let j=0;j<nLon;j++) out[i][j] = src[i][j];
+        }
+        return out;
+      }
+
       const f1 = frames[k-1];
       const f2 = frames[k];
       const t1 = f1.validTime.getTime();
       const t2 = f2.validTime.getTime();
-      const alpha = (tUtc.getTime() - t1) / (t2 - t1);
+      const alpha = (tWrap - t1) / (t2 - t1 + 1e-9);
 
       for (let i=0;i<nLat;i++) {
         const row1 = f1.grid[i];
@@ -1820,18 +1803,11 @@
       const lbl = document.getElementById("utcLabel");
       if (!lbl) return;
       if (!gForecastTimes.length || !gForecastTimes[stepIndex]) {
-        lbl.textContent = "UTC(予報): --";
+        lbl.textContent = "UTC: --";
         return;
       }
       const tUtc = gForecastTimes[stepIndex];
-      lbl.textContent = "UTC(予報): " + tUtc.toISOString().replace(".000Z","Z");
-    }
-
-    function updateNowUtcLabel() {
-      const lbl = document.getElementById("nowUtcLabel");
-      if (!lbl) return;
-      const now = new Date();
-      lbl.textContent = "Now UTC: " + now.toISOString().replace(".000Z","Z");
+      lbl.textContent = "UTC: " + tUtc.toISOString().replace(".000Z","Z");
     }
 
     function updateKpF107LabelsForStep(stepIndex) {
@@ -1946,8 +1922,10 @@
           nLon:   first.nLon
         };
 
+        // BoMの有効時刻リストをセレクトに反映
         updateForecastStartSelect(frames);
 
+        // ユーザー選択 or 最初の有効時刻を予報スタートに
         let startTime = first.validTime || new Date();
         const sel = document.getElementById("forecastStartSelect");
         if (sel && sel.options.length > 0 && sel.value) {
@@ -1958,6 +1936,7 @@
         }
         gForecastStart = startTime;
 
+        // NOAAテキストをパース
         gF107Series = parseF107Text(document.getElementById("noaaF107Text").value);
         gF107MeanSeries = computeF107MeanSeries(gF107Series, 27);
         gKpSeries   = parseKpText(document.getElementById("noaaKpText").value);
@@ -1996,15 +1975,16 @@
             for (let j=0;j<nLon;j++) {
               const lon = gGrid.lonArr[j];
 
-              const ltHour = getLocalSolarHour(tUtc, lon);
+              // 実太陽時（近似）LT = UTC + λ/15h
+              const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lon/15 + 24) % 24;
 
               let tec0 = baseGrid[i][j];
 
               const solarFactor = calcSolarFactor(cfg, F107_t, F107mean_t, Ap, Dst);
-              const dayFactor   = calcDayNightFactor(cfg, lat, ltHour);
+              const dayFactor   = calcDayNightFactor(lat, ltHour, cfg.dayEdgeCosWidth);
               const latFactor   = calcLatShapeFactor(lat, cfg.latShape);
               const flareFactor = calcFlareFactor(cfg, ltHour);
-              const mukFactor   = calcMukhtarovLike(lat, ltHour, kp_t, cfg);
+              const mukFactor   = calcMukhtarovLike(lat, ltHour, kp_t);
 
               let tec = tec0 * cfg.kGlobal * solarFactor * dayFactor * latFactor * flareFactor * mukFactor;
 
@@ -2056,7 +2036,7 @@
       const tUtc = gForecastTimes[currentStepIndex];
 
       const txt =
-        "UTC(予報): " + (tUtc ? tUtc.toISOString().replace(".000Z","Z") : "N/A") + "\n" +
+        "UTC: " + (tUtc ? tUtc.toISOString().replace(".000Z","Z") : "N/A") + "\n" +
         "Lat=" + gGrid.latArr[bestI].toFixed(1) + "°, Lon=" + gGrid.lonArr[bestJ].toFixed(1) + "°\n" +
         "TEC = " + tec.toFixed(1) + " TECU\n" +
         "GPS L1誤差 ≈ " + gpsErr.toFixed(2) + " m";
@@ -2276,17 +2256,15 @@
     /* ===== 式テキスト ===== */
     function updateFormulaText() {
       const cfg = getConfigFromUI();
-      const dn = cfg.useDayNight ? "ON" : "OFF";
-
       const txt =
 `TEC_eff(φ,λ,t) =
   TEC_BoM(φ,λ,t)
   × kGlobal
   × [1 + wF107·(F10.7(t) - ⟨F10.7⟩(t)) + wAp·Ap + wDst·Dst]
-  × DayNight(φ,LT(t,λ))   ${dn === "ON" ? "(有効)" : "(無効=1.0)"}
+  × DayNight(φ,LT(t,λ))
   × LatShape(φ; latShape)
   × FlareFactor_DeepNet( LT(t,λ), β_flare, k_X, k_M )
-  × rTEC_Mukhtarov_like(φ,LT(t,λ),Kp(t))  ${dn === "ON" ? "(夜側やや強調)" : "(昼夜均一)"}
+  × rTEC_Mukhtarov_like(φ,LT(t,λ),Kp(t))
 
   ここで：
     F10.7(t)     : NOAA 27日予報テキストからの時系列（日別）
@@ -2305,8 +2283,7 @@
   β_flare = ${cfg.betaFlare}
   k_X     = ${cfg.kX}
   k_M     = ${cfg.kM}
-  kL1     = ${cfg.kL1} [m/TECU]
-  昼夜補正 = ${dn}`;
+  kL1     = ${cfg.kL1} [m/TECU]`;
 
       document.getElementById("formulaText").textContent = txt;
     }
@@ -2340,8 +2317,6 @@
       updateTimeLabel();
       updateUtcLabel(0);
       updateKpF107LabelsForStep(0);
-      updateNowUtcLabel();
-      setInterval(updateNowUtcLabel, 60000);  // Now UTC を1分ごとに更新
       drawVerifyMap(null);
     });
   </script>
