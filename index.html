@@ -279,7 +279,7 @@
         <div class="small">
           ・BoM TEC（最大9枚）から <b>7日 / 1h</b> 予報を生成<br>
           ・F10.7 / Ap / Dst / X-ray / Deep Flare Net / 磁気嵐（Mukhtarov rTECベース）を反映<br>
-          ・NOAAテキストから F10.7(t) / Kp(t) を自動読取（任意）<br>
+          ・NOAAテキストから F10.7(t) / ⟨F10.7⟩(t) / Kp(t) を自動読取（任意）<br>
           ・BoM 実測（最大4枚）で 3×3 領域ごとの誤差検証<br>
           ・Leaflet 地図で TEC / GPS誤差を確認、地域フォーカスも可能
         </div>
@@ -332,7 +332,7 @@
         </div>
         <div class="row">
           <div>
-            <label>F10.7 [sfu]（基準値）</label><br>
+            <label>F10.7 [sfu]（基準値 / フォールバック）</label><br>
             <input id="inpF107" type="number" value="150" step="1">
           </div>
           <div>
@@ -351,7 +351,7 @@
           </div>
         </div>
         <div class="small">
-          ※F10.7(t) / Kp(t) を NOAA テキストから読取る場合も、ここは「ベース値」や「補正値」として使えます。
+          ※F10.7(t) / ⟨F10.7⟩(t) / Kp(t) を NOAA テキストから読取る場合も、ここは「ベース値」や「補正値」として使えます。
         </div>
       </div>
 
@@ -362,7 +362,10 @@
           <span>テキストを丸ごと貼り付け → 自動読取</span>
         </div>
         <div class="small">
-          NOAAの27日F10.7予報・3日Kp予報などを Ctrl+A → Ctrl+C でコピーして貼り付け。<br>
+          ・F10.7（27日予報）：<br>
+          　→ <b>27-day Space Weather Outlook Table 27DO.txt</b> をそのまま貼り付け<br>
+          ・Kp（3日予報）：<br>
+          　→ <b>3-Day Forecast</b> をそのまま貼り付け<br>
           形式が合わない場合は、簡易フォーマット：<br>
           F10.7: <code>YYYY MM DD F10.7</code><br>
           Kp: <code>YYYY-MM-DD HH Kp</code><br>
@@ -370,18 +373,18 @@
         </div>
         <div class="row">
           <div>
-            <label>F10.7 予報テキスト</label><br>
-            <textarea id="noaaF107Text" placeholder="NOAAのF10.7予報テキストを丸ごと貼り付け"></textarea>
+            <label>F10.7 予報テキスト（27DO）</label><br>
+            <textarea id="noaaF107Text" placeholder=":Product: 27-day Space Weather Outlook Table 27DO.txt から最後までを丸ごと貼り付け"></textarea>
           </div>
         </div>
         <div class="row">
           <div>
-            <label>Kp 予報テキスト</label><br>
-            <textarea id="noaaKpText" placeholder="NOAAのKp予報テキストを丸ごと貼り付け"></textarea>
+            <label>Kp 予報テキスト（3-Day Forecast）</label><br>
+            <textarea id="noaaKpText" placeholder=":Product: 3-Day Forecast から最後までを丸ごと貼り付け"></textarea>
           </div>
         </div>
         <div class="small">
-          「TEC予報を計算」ボタンを押したときに自動でパースし、F10.7(t) / Kp(t) に反映します。
+          「TEC予報を計算」ボタンを押したときに自動でパースし、F10.7(t) / ⟨F10.7⟩(t) / Kp(t) に反映します。
         </div>
       </div>
 
@@ -884,9 +887,10 @@
       { limit: 40, color: "#ff0000" }
     ];
 
-    // NOAA 由来の F10.7(t), Kp(t) シリーズ
-    let gF107Series = []; // [{time: Date(UTC昼ごろ), value}]
-    let gKpSeries   = []; // [{time: Date(UTC), kp}]
+    // NOAA 由来の F10.7(t), その27日平均 ⟨F10.7⟩(t), Kp(t) シリーズ
+    let gF107Series      = []; // [{time: Date(UTC昼ごろ), value}]
+    let gF107MeanSeries  = []; // [{time: Date(UTC昼ごろ), value}] 27日ランニング平均
+    let gKpSeries        = []; // [{time: Date(UTC), kp}]
 
     // Leaflet 関連
     let map = null;
@@ -1306,8 +1310,39 @@
     }
 
     /* ===== NOAA F10.7 / Kp テキストパーサ ===== */
+
+    // F10.7: まず 27-day Outlook（27DO）の形式を優先してパース。
+    // 見つからなければ、従来の「YYYY MM DD F10.7」形式を読む。
     function parseF107Text(raw) {
-      const lines = raw.split(/\r?\n/);
+      const text = raw || "";
+      const lines = text.split(/\r?\n/);
+      const out27 = [];
+      const monthMap = {
+        Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5,
+        Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11
+      };
+      const pat27 = /^\s*(\d{4})\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d+(\.\d+)?)\s+(\d+)\s+(\d+(\.\d+)?)/;
+
+      for (const line of lines) {
+        const m = line.match(pat27);
+        if (m) {
+          const y   = parseInt(m[1],10);
+          const mon = m[2];
+          const d   = parseInt(m[3],10);
+          const flux= parseFloat(m[4]);
+          const mi  = monthMap[mon] !== undefined ? monthMap[mon] : monthMap[mon.slice(0,3)];
+          if (mi !== undefined) {
+            const t = new Date(Date.UTC(y, mi, d, 12, 0, 0)); // 正午基準
+            out27.push({ time: t, value: flux });
+          }
+        }
+      }
+      if (out27.length > 0) {
+        out27.sort((a,b) => a.time - b.time);
+        return out27;
+      }
+
+      // フォールバック：汎用形式 "YYYY MM DD F10.7"
       const out = [];
       for (const line of lines) {
         const m = line.match(/(\d{4})[\/\-\s](\d{1,2})[\/\-\s](\d{1,2}).*?([0-9]{2,3}(\.[0-9]+)?)/);
@@ -1316,7 +1351,7 @@
           const mo = parseInt(m[2],10);
           const d  = parseInt(m[3],10);
           const v  = parseFloat(m[4]);
-          const t  = new Date(Date.UTC(y, mo-1, d, 12, 0, 0)); // 正午
+          const t  = new Date(Date.UTC(y, mo-1, d, 12, 0, 0));
           out.push({ time: t, value: v });
         }
       }
@@ -1324,8 +1359,38 @@
       return out;
     }
 
+    // F10.7 の 27日ランニング平均（⟨F10.7⟩）を作る
+    function computeF107MeanSeries(series, windowDays) {
+      if (!series || !series.length) return [];
+      const out = [];
+      const msWin = windowDays * 24 * 3600 * 1000;
+      for (let i=0;i<series.length;i++) {
+        const t    = series[i].time.getTime();
+        const tMin = t - msWin/2;
+        const tMax = t + msWin/2;
+        let sum=0, cnt=0;
+        for (let j=0;j<series.length;j++) {
+          const tj = series[j].time.getTime();
+          if (tj >= tMin && tj <= tMax) {
+            sum += series[j].value;
+            cnt++;
+          }
+        }
+        const mean = cnt>0 ? (sum/cnt) : series[i].value;
+        out.push({ time: new Date(series[i].time.getTime()), value: mean });
+      }
+      return out;
+    }
+
+    // Kp: 3-Day Forecast の "NOAA Kp index breakdown" テーブルを優先して読む。
+    // 見つからなければ、従来の汎用フォーマットを読む。
     function parseKpText(raw) {
-      const lines = raw.split(/\r?\n/);
+      const text = raw || "";
+      if (/NOAA Kp index breakdown/i.test(text)) {
+        return parseKpFrom3Day(text);
+      }
+
+      const lines = text.split(/\r?\n/);
       const out = [];
       for (const line of lines) {
         const m = line.match(/(\d{4})[\/\-\s](\d{1,2})[\/\-\s](\d{1,2})[T\s]+(\d{1,2})/);
@@ -1354,6 +1419,85 @@
         const t = new Date(Date.UTC(y, mo-1, d, hh, 0, 0));
         out.push({ time: t, kp: kp });
       }
+      out.sort((a,b) => a.time - b.time);
+      return out;
+    }
+
+    // 3-Day Forecast の Kp テーブルをパース
+    function parseKpFrom3Day(raw) {
+      const lines = raw.split(/\r?\n/);
+      const out = [];
+      const monthMap = {
+        Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5,
+        Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11
+      };
+
+      let idxBreak = -1;
+      for (let i=0;i<lines.length;i++) {
+        if (/NOAA Kp index breakdown/i.test(lines[i])) {
+          idxBreak = i;
+          break;
+        }
+      }
+      if (idxBreak < 0) return out;
+
+      // 年は "NOAA Kp index breakdown ... 2025" の末尾から取得
+      let year = null;
+      const mYear = lines[idxBreak].match(/(\d{4})\s*$/);
+      if (mYear) year = parseInt(mYear[1],10);
+
+      // 見出し行（Nov 29  Nov 30  ...）を探す
+      let headerLine = null;
+      let headerIndex = -1;
+      for (let i=idxBreak+1;i<lines.length;i++) {
+        const ln = lines[i].trim();
+        if (!ln) continue;
+        if (/[A-Za-z]{3}\s+\d{1,2}/.test(ln)) {
+          headerLine = lines[i];
+          headerIndex = i;
+          break;
+        }
+      }
+      if (!headerLine || year === null) return out;
+
+      const headerTokens = headerLine.trim().split(/\s+/); // ["Nov","29","Nov","30","Dec","01"...]
+      if (headerTokens.length % 2 !== 0) return out;
+      const colDates = [];
+      for (let i=0;i<headerTokens.length;i+=2) {
+        const mon = headerTokens[i];
+        const day = parseInt(headerTokens[i+1],10);
+        const mi  = monthMap[mon] !== undefined ? monthMap[mon] : monthMap[mon.slice(0,3)];
+        if (mi === undefined || isNaN(day)) continue;
+        colDates.push(new Date(Date.UTC(year, mi, day, 0, 0, 0)));
+      }
+      if (!colDates.length) return out;
+
+      // その下の 8行: 00-03UT, 03-06UT, ... を読む
+      const patUT = /^\s*(\d{2})-(\d{2})UT/;
+      for (let i=headerIndex+1;i<lines.length;i++) {
+        const line = lines[i];
+        const m = line.match(patUT);
+        if (!m) continue;
+        const startHour = parseInt(m[1],10);
+        const tokens = line.trim().split(/\s+/); // ["00-03UT","2.33","3.00","1.67"]
+        if (tokens.length < 1 + colDates.length) continue;
+
+        for (let c=0;c<colDates.length;c++) {
+          const vStr = tokens[1+c];
+          const kpVal = parseFloat(vStr);
+          if (!isNaN(kpVal)) {
+            const baseDate = colDates[c];
+            const t = new Date(Date.UTC(
+              baseDate.getUTCFullYear(),
+              baseDate.getUTCMonth(),
+              baseDate.getUTCDate(),
+              startHour, 0, 0
+            ));
+            out.push({ time: t, kp: kpVal });
+          }
+        }
+      }
+
       out.sort((a,b) => a.time - b.time);
       return out;
     }
@@ -1409,8 +1553,9 @@
     }
 
     /* ===== Solar / 緯度 / 昼夜 / 磁気嵐 (Mukhtarov風) ===== */
-    function calcSolarFactor(cfg, F107_t, F107base, Ap, Dst) {
-      const dF = F107_t - F107base;
+    function calcSolarFactor(cfg, F107_t, F107base_t, Ap, Dst) {
+      // F107base_t は F10.7 の27日ランニング平均（⟨F10.7⟩）を想定
+      const dF = F107_t - F107base_t;
       return 1 + cfg.wF107*dF + cfg.wAp*Ap + cfg.wDst*Dst;
     }
 
@@ -1703,9 +1848,9 @@
         return;
       }
       const tUtc = gForecastTimes[stepIndex];
-      const Fbase = parseFloat(document.getElementById("inpF107").value) || 150;
+      const Fmanual = parseFloat(document.getElementById("inpF107").value) || 150;
       let F_t = sampleSeriesAtUtc(gF107Series, tUtc, false);
-      if (F_t == null) F_t = Fbase;
+      if (F_t == null) F_t = Fmanual;
       let kp_t = sampleSeriesAtUtc(gKpSeries, tUtc, true);
       if (kp_t == null) kp_t = 0;
 
@@ -1769,12 +1914,13 @@
 
         // NOAAテキストをパース
         gF107Series = parseF107Text(document.getElementById("noaaF107Text").value);
+        gF107MeanSeries = computeF107MeanSeries(gF107Series, 27);
         gKpSeries   = parseKpText(document.getElementById("noaaKpText").value);
 
         const cfg   = getConfigFromUI();
         const Ap    = parseFloat(document.getElementById("inpAp").value)  || 0;
         const Dst   = parseFloat(document.getElementById("inpDst").value) || 0;
-        const Fbase = parseFloat(document.getElementById("inpF107").value) || 150;
+        const Fmanual = parseFloat(document.getElementById("inpF107").value) || 150;
 
         // 7日分の時刻リスト
         const totalSteps = Math.round(FORECAST_HOURS * 60 / DT_MINUTES); // 168
@@ -1790,7 +1936,12 @@
           const tUtc = gForecastTimes[s];
 
           const baseGrid = interpolateBomFrames(frames, tUtc);
-          const F107_t = sampleSeriesAtUtc(gF107Series, tUtc, false) ?? Fbase;
+
+          let F107_t = sampleSeriesAtUtc(gF107Series, tUtc, false);
+          let F107mean_t = sampleSeriesAtUtc(gF107MeanSeries, tUtc, false);
+          if (F107_t == null) F107_t = Fmanual;
+          if (F107mean_t == null) F107mean_t = Fmanual;
+
           const kp_t   = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
 
           const frame = new Array(nLat);
@@ -1804,7 +1955,7 @@
               const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lon/15 + 24) % 24;
               let tec0 = baseGrid[i][j];
 
-              const solarFactor = calcSolarFactor(cfg, F107_t, Fbase, Ap, Dst);
+              const solarFactor = calcSolarFactor(cfg, F107_t, F107mean_t, Ap, Dst);
               const dayFactor   = calcDayNightFactor(lat, ltHour, cfg.dayEdgeCosWidth);
               const latFactor   = calcLatShapeFactor(lat, cfg.latShape);
               const flareFactor = calcFlareFactor(cfg, ltHour);
@@ -2086,7 +2237,7 @@
 `TEC_eff(φ,λ,t) =
   TEC_BoM(φ,λ,t)
   × kGlobal
-  × [1 + wF107·(F10.7(t) - F10.7_base) + wAp·Ap + wDst·Dst]
+  × [1 + wF107·(F10.7(t) - ⟨F10.7⟩(t)) + wAp·Ap + wDst·Dst]
   × DayNight(φ,LT(t,λ))
   × LatShape(φ; latShape)
   × FlareFactor_DeepNet( LT(t,λ), β_flare, k_X, k_M )
@@ -2094,8 +2245,10 @@
   × StormEnvelope(Smag_env, Siono_env)
 
   ここで：
-    F10.7(t) : NOAAテキストからの時系列（なければ基準値）
-    Kp(t)    : NOAA 3日予報テキストからの時系列
+    F10.7(t)     : NOAA 27日予報テキストからの時系列（日別）
+    ⟨F10.7⟩(t)   : F10.7(t) の27日ランニング平均（平均値）
+                   → テキストが無い場合は、手入力の F10.7 を使用
+    Kp(t)        : NOAA 3日予報テーブルからの3時間ごとの時系列
     rTEC_Mukhtarov_like = 1 + a1(φ,LT)·Kp + a2(φ,LT)·Kp²
       （低緯度/中緯度/高緯度 ＋ 夜側強調で係数 a1,a2 を設定）
     Smag_env = 1 + 0.3·(Kp_event/9)
