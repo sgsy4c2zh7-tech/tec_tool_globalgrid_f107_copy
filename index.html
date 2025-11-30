@@ -344,12 +344,6 @@
             <input id="inpDst" type="number" value="-20" step="1">
           </div>
         </div>
-        <div class="row">
-          <div>
-            <label>X-ray (代表値 W/m²)</label><br>
-            <input id="inpXray" type="number" value="1e-6" step="1e-7">
-          </div>
-        </div>
         <div class="small">
           ※F10.7(t) / ⟨F10.7⟩(t) / Kp(t) を NOAA テキストから読取る場合も、ここは「ベース値」や「補正値」として使えます。
         </div>
@@ -397,8 +391,7 @@
         <div class="small">
           太陽円盤を 3×3 の 9領域に分割し、各領域ごとの Xクラス / Mクラス発生確率 [%] を入力。<br>
           位置イメージ：<br>
-          R1=北西, R2=北, R3=北東 / R4=西, R5=中央, R6=東 / R7=南西, R8=南, R9=南東<br>
-          ※フレア確率は「50% を超えたら起きる / 50%以下は起きない」の 2段階扱い。
+          R1=北西, R2=北, R3=北東 / R4=西, R5=中央, R6=東 / R7=南西, R8=南, R9=南東
         </div>
         <table>
           <thead>
@@ -649,46 +642,22 @@
               <input id="cfg_wDst" type="number" value="-0.002" step="0.001">
             </div>
             <div>
-              <label>pX（日中指数）</label><br>
-              <input id="cfg_pX" type="number" value="0.2" step="0.05">
-            </div>
-            <div>
               <label>latShape（赤道異常）</label><br>
               <input id="cfg_latShape" type="number" value="0.45" step="0.05">
             </div>
-          </div>
-          <div class="row">
             <div>
-              <label>latHighCut（高緯度調整）</label><br>
-              <input id="cfg_latHighCut" type="number" value="1.05" step="0.05">
-            </div>
-            <div>
-              <label>β_flare（※Sflareでは補正係数として使用可能）</label><br>
+              <label>β_flare</label><br>
               <input id="cfg_betaFlare" type="number" value="0.5" step="0.05">
             </div>
+          </div>
+          <div class="row">
             <div>
-              <label>k_X（Xクラス重み α_X）</label><br>
+              <label>k_X</label><br>
               <input id="cfg_kX" type="number" value="1.0" step="0.1">
             </div>
-          </div>
-          <div class="row">
             <div>
-              <label>k_M（Mクラス重み α_M）</label><br>
+              <label>k_M</label><br>
               <input id="cfg_kM" type="number" value="0.3" step="0.1">
-            </div>
-            <div>
-              <label>biasThresh%（提案閾値）</label><br>
-              <input id="cfg_biasThresh" type="number" value="15" step="1">
-            </div>
-            <div>
-              <label>suggestGain（提案の強さ）</label><br>
-              <input id="cfg_suggestGain" type="number" value="0.5" step="0.1">
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label>dayEdgeCosWidth（昼夜境界の滑らかさ）</label><br>
-              <input id="cfg_dayEdgeCosWidth" type="number" value="0.2" step="0.05">
             </div>
             <div>
               <label>kL1（TEC→L1誤差[m/TECU]）</label><br>
@@ -817,7 +786,7 @@
             <h3>13. 検証レポート & 係数提案</h3>
             <pre id="verifyReport">(まだ検証されていません)</pre>
             <h3>14. 現在の計算式</h3>
-            <pre id="formulaText">(kGlobal, 太陽活動, フレア(Sflare), 磁気嵐(Mukhtarov), 緯度依存を含めた最新式をここに表示)</pre>
+            <pre id="formulaText">(kGlobal, 太陽活動, フレア, 磁気嵐(Mukhtarov), 緯度依存を含めた最新式をここに表示)</pre>
           </div>
           <div class="output-col" style="flex:1;">
             <h3>15. 現在の TEC / GPS値</h3>
@@ -1017,41 +986,31 @@
       logInfo("保存されていた BoM 入力を削除しました。（テキスト内容はそのまま）");
     }
 
-    /* ============ Config（係数＋境界＋kL1） ============ */
+    /* ============ Config（係数＋kL1） ============ */
     function getConfigFromUI() {
       return {
-        kGlobal:     parseFloat(document.getElementById("cfg_kGlobal").value)  || 0.55,
-        wF107:       parseFloat(document.getElementById("cfg_wF107").value)    || 0.004,
-        wAp:         parseFloat(document.getElementById("cfg_wAp").value)      || 0.01,
-        wDst:        parseFloat(document.getElementById("cfg_wDst").value)     || -0.002,
-        pX:          parseFloat(document.getElementById("cfg_pX").value)       || 0.2,
-        latShape:    parseFloat(document.getElementById("cfg_latShape").value) || 0.45,
-        latHighCut:  parseFloat(document.getElementById("cfg_latHighCut").value) || 1.05,
-        betaFlare:   parseFloat(document.getElementById("cfg_betaFlare").value)|| 0.5,
-        kX:          parseFloat(document.getElementById("cfg_kX").value)       || 1.0,
-        kM:          parseFloat(document.getElementById("cfg_kM").value)       || 0.3,
-        biasThresh:  parseFloat(document.getElementById("cfg_biasThresh").value)|| 15,
-        suggestGain: parseFloat(document.getElementById("cfg_suggestGain").value)|| 0.5,
-        dayEdgeCosWidth: parseFloat(document.getElementById("cfg_dayEdgeCosWidth").value) || 0.2,
-        kL1:         parseFloat(document.getElementById("cfg_kL1").value)      || 0.16
+        kGlobal:   parseFloat(document.getElementById("cfg_kGlobal").value)   || 0.55,
+        wF107:     parseFloat(document.getElementById("cfg_wF107").value)     || 0.004,
+        wAp:       parseFloat(document.getElementById("cfg_wAp").value)       || 0.01,
+        wDst:      parseFloat(document.getElementById("cfg_wDst").value)      || -0.002,
+        latShape:  parseFloat(document.getElementById("cfg_latShape").value)  || 0.45,
+        betaFlare: parseFloat(document.getElementById("cfg_betaFlare").value) || 0.5,
+        kX:        parseFloat(document.getElementById("cfg_kX").value)        || 1.0,
+        kM:        parseFloat(document.getElementById("cfg_kM").value)        || 0.3,
+        kL1:       parseFloat(document.getElementById("cfg_kL1").value)       || 0.16
       };
     }
 
     function applyConfigToUI(cfg) {
-      document.getElementById("cfg_kGlobal").value     = cfg.kGlobal;
-      document.getElementById("cfg_wF107").value       = cfg.wF107;
-      document.getElementById("cfg_wAp").value         = cfg.wAp;
-      document.getElementById("cfg_wDst").value        = cfg.wDst;
-      document.getElementById("cfg_pX").value          = cfg.pX;
-      document.getElementById("cfg_latShape").value    = cfg.latShape;
-      document.getElementById("cfg_latHighCut").value  = cfg.latHighCut;
-      document.getElementById("cfg_betaFlare").value   = cfg.betaFlare;
-      document.getElementById("cfg_kX").value          = cfg.kX;
-      document.getElementById("cfg_kM").value          = cfg.kM;
-      document.getElementById("cfg_biasThresh").value  = cfg.biasThresh;
-      document.getElementById("cfg_suggestGain").value = cfg.suggestGain;
-      document.getElementById("cfg_dayEdgeCosWidth").value = cfg.dayEdgeCosWidth;
-      document.getElementById("cfg_kL1").value         = cfg.kL1;
+      document.getElementById("cfg_kGlobal").value   = cfg.kGlobal   ?? 0.55;
+      document.getElementById("cfg_wF107").value     = cfg.wF107     ?? 0.004;
+      document.getElementById("cfg_wAp").value       = cfg.wAp       ?? 0.01;
+      document.getElementById("cfg_wDst").value      = cfg.wDst      ?? -0.002;
+      document.getElementById("cfg_latShape").value  = cfg.latShape  ?? 0.45;
+      document.getElementById("cfg_betaFlare").value = cfg.betaFlare ?? 0.5;
+      document.getElementById("cfg_kX").value        = cfg.kX        ?? 1.0;
+      document.getElementById("cfg_kM").value        = cfg.kM        ?? 0.3;
+      document.getElementById("cfg_kL1").value       = cfg.kL1       ?? 0.16;
 
       updateFormulaText(); // 係数が変わったら式も更新
     }
@@ -1486,140 +1445,41 @@
       return last.value ?? last.kp;
     }
 
-    /* ===== Deep Flare Net → Sflare 実装 ===== */
-
-    // 9領域の中心/リム ウェイト
-    const REGION_WEIGHTS = [0.5, 0.7, 0.5,
-                            0.7, 1.0, 0.7,
-                            0.5, 0.7, 0.5];
-
-    // F_flare 飽和用パラメータ
-    const F_SATURATE_F0 = 0.3;  // F_eff = F / (F + F0)
-
-    // UI から Px / Pm / 使用フラグを配列にまとめる
-    // ここで「50% を超えたら 100, それ以下は 0」の二値化を行う
-    function getDeepFlareArraysFromUI() {
-      const PxArr = [];
-      const PmArr = [];
-      const useArr = [];
-
-      for (let r = 1; r <= 9; r++) {
-        const use = document.getElementById("fu" + r).checked;
-        const rawPx = parseFloat(document.getElementById("fx" + r).value) || 0;
-        const rawPm = parseFloat(document.getElementById("fm" + r).value) || 0;
-
-        // 50％超え → 100、 50％以下 → 0
-        const PxEff = (rawPx > 50.0) ? 100.0 : 0.0;
-        const PmEff = (rawPm > 50.0) ? 100.0 : 0.0;
-
-        PxArr.push(PxEff);
-        PmArr.push(PmEff);
-        useArr.push(use);
+    /* ===== Deep Flare Net 入力 → フレア係数 ===== */
+    function getDeepFlareProbs() {
+      let sumX = 0, sumM = 0, count = 0;
+      for (let i=1;i<=9;i++) {
+        const use = document.getElementById("fu"+i).checked;
+        if (!use) continue;
+        const px = parseFloat(document.getElementById("fx"+i).value) || 0;
+        const pm = parseFloat(document.getElementById("fm"+i).value) || 0;
+        sumX += px;
+        sumM += pm;
+        count++;
       }
-      return { PxArr, PmArr, useArr };
+      if (count === 0) return { Px: 0, Pm: 0 };
+      return { Px: sumX/count, Pm: sumM/count };
     }
 
-    // Deep Flare Net (二値化済み Px/Pm) から F_flare を計算
-    // α_X = cfg.kX, α_M = cfg.kM を使う
-    function computeFflareFromUI(cfg) {
-      const { PxArr, PmArr, useArr } = getDeepFlareArraysFromUI();
+    // ★ 2段階モデル：50% を超えたら「起きる」、50% 以下は「起きない」
+    function calcFlareFactor(cfg, ltHour) {
+      const probs = getDeepFlareProbs();
 
-      let num = 0;
-      let den = 0;
+      // 平均値が 50% を超えていれば、そのクラスのフレアが「発生している」とみなす
+      const hitX = (probs.Px > 50) ? 1 : 0;
+      const hitM = (probs.Pm > 50) ? 1 : 0;
 
-      for (let r = 0; r < 9; r++) {
-        if (!useArr[r]) continue;  // 未使用領域は無視
-        const w = REGION_WEIGHTS[r];
+      // X も M も 50% 以下ならフレア効果なし
+      if (hitX === 0 && hitM === 0) return 1.0;
 
-        const Px = PxArr[r] / 100.0;  // 0 or 1
-        const Pm = PmArr[r] / 100.0;  // 0 or 1
+      // どちらか（または両方）発生しているときだけ増強
+      const base = cfg.kX * hitX + cfg.kM * hitM;
 
-        const alphaX = cfg.kX;  // α_X
-        const alphaM = cfg.kM;  // α_M
+      const ltAng = 2*Math.PI*(ltHour/24);
+      const frontWeight = 0.7 + 0.3*Math.cos(ltAng); // 中央子午線付近をやや強調
 
-        // Q_r = α_X·Px_eff + α_M·Pm_eff
-        let Qr = alphaX * Px + alphaM * Pm;
-
-        // 安全のため 0〜1.5 の範囲に軽くクリップ
-        if (Qr < 0) Qr = 0;
-        if (Qr > 1.5) Qr = 1.5;
-
-        num += w * Qr;
-        den += w;
-      }
-
-      if (den <= 0) return 0;
-
-      let F = num / den;  // ざっくり 0〜1.5 程度
-
-      // 0〜1 にきれいに収めたいので、軽く飽和させる
-      if (F_SATURATE_F0 > 0) {
-        F = F / (F + F_SATURATE_F0);
-      }
-
-      // 最終的に 0〜1 にクリップ
-      if (F < 0) F = 0;
-      if (F > 1) F = 1;
-
-      return F;
-    }
-
-    // 緯度ウェイト w_lat(φ)（段階版）
-    function wLatSflare(latDeg) {
-      const X = Math.abs(latDeg);
-      if (X < 20) return 0.8;
-      if (X < 50) return 1.0;
-      if (X < 70) return 0.6;
-      return 0.4;
-    }
-
-    // ローカル時刻ウェイト w_LT(LT)
-    // LT: 0〜24, |LT-12| ≤ 6 の昼側のみ cos² で効かせる
-    function wLTSflare(localTimeLT) {
-      let LT = localTimeLT % 24;
-      if (LT < 0) LT += 24;
-
-      const diff = LT - 12;
-      if (Math.abs(diff) > 6) {
-        return 0;  // 夜側では 0
-      }
-      const p = 2;  // cos^p
-      const arg = Math.PI * diff / 12.0;
-      const val = Math.cos(arg);
-      let w = Math.pow(Math.max(val, 0), p);
-      if (w < 0) w = 0;
-      if (w > 1) w = 1;
-      return w;
-    }
-
-    // TEC_ref(φ)
-    function TECrefSflare(latDeg) {
-      const X = Math.abs(latDeg);
-      if (X < 20) return 35;   // 低緯度
-      if (X < 50) return 30;   // 中緯度
-      if (X < 70) return 20;   // 高緯度
-      return 15;               // 極域
-    }
-
-    // 指定緯度・ローカル時刻における Sflare を計算
-    // ΔTEC_max = 15 TECU
-    function computeSflareAt(latDeg, ltHour, Fflare) {
-      if (Fflare <= 0) return 1.0;
-
-      const w_lat = wLatSflare(latDeg);
-      const w_lt  = wLTSflare(ltHour);
-      const W_geo = w_lat * w_lt;
-
-      const DELTA_TEC_MAX = 15.0;
-      const deltaTEC = Fflare * W_geo * DELTA_TEC_MAX;
-
-      const tecRef = TECrefSflare(latDeg);
-      if (tecRef <= 0) return 1.0;
-
-      const S = 1.0 + deltaTEC / tecRef;
-
-      if (!Number.isFinite(S)) return 1.0;
-      return Math.max(S, 0.0);
+      const f = 1 + cfg.betaFlare * base * frontWeight;
+      return f > 0 ? f : 1.0;
     }
 
     /* ===== Solar / 緯度 / 昼夜 / 磁気嵐 (Mukhtarov風) ===== */
@@ -1628,7 +1488,7 @@
       return 1 + cfg.wF107*dF + cfg.wAp*Ap + cfg.wDst*Dst;
     }
 
-    function calcDayNightFactor(latDeg, ltHour, width) {
+    function calcDayNightFactor(latDeg, ltHour) {
       // 実太陽時（true solar time）の簡易モデル: LT = UTC + λ/15h に基づき、
       // だいたい LT=14h 頃を TEC ピークにする形
       const ang = Math.PI * (ltHour - 14) / 12;
@@ -2125,9 +1985,6 @@
         const Dst   = parseFloat(document.getElementById("inpDst").value) || 0;
         const Fmanual = parseFloat(document.getElementById("inpF107").value) || 150;
 
-        // Deep Flare Net からグローバル F_flare を計算（全ステップ共通）
-        const Fflare_global = computeFflareFromUI(cfg);
-
         const totalSteps = Math.round(FORECAST_HOURS * 60 / DT_MINUTES); // 72h *2 =144
         for (let s=0;s<=totalSteps;s++) {
           const t = new Date(gForecastStart.getTime() + s * DT_MINUTES * 60000);
@@ -2163,15 +2020,12 @@
               let tec0 = baseGrid[i][j];
 
               const solarFactor = calcSolarFactor(cfg, F107_t, F107mean_t, Ap, Dst);
-              const dayFactor   = calcDayNightFactor(lat, ltHour, cfg.dayEdgeCosWidth);
+              const dayFactor   = calcDayNightFactor(lat, ltHour);
               const latFactor   = calcLatShapeFactor(lat, cfg.latShape);
-
-              // ここで Sflare を乗算（Deep Flare Net + 最大 +15 TECU モデル）
-              const Sflare = computeSflareAt(lat, ltHour, Fflare_global);
-
+              const flareFactor = calcFlareFactor(cfg, ltHour);
               const mukFactor   = calcMukhtarovLike(lat, ltHour, kp_t); // simple モードとして使用
 
-              let tec = tec0 * cfg.kGlobal * solarFactor * dayFactor * latFactor * Sflare * mukFactor;
+              let tec = tec0 * cfg.kGlobal * solarFactor * dayFactor * latFactor * flareFactor * mukFactor;
 
               if (!isFinite(tec) || tec < 0) tec = 0;
               frame[i][j] = tec;
@@ -2220,7 +2074,7 @@
       const gpsErr = tec * cfg.kL1;
       const tUtc = gForecastTimes[currentStepIndex];
 
-      // ==== ここで Complicated Sstorm を計算して「正/負層嵐アイコン」を表示 ====
+      // Complicated Sstorm を計算して「正/負層嵐アイコン」を表示
       let sstormText = "";
       if (tUtc) {
         const kp_t = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
@@ -2469,7 +2323,7 @@
   × [1 + wF107·(F10.7(t) - ⟨F10.7⟩(t)) + wAp·Ap + wDst·Dst]
   × DayNight(φ,LT(t,λ))
   × LatShape(φ; latShape)
-  × Sflare(φ,LT; F_flare, W_geo)      ← Deep Flare Net由来（フレア +15 TECU モデル）
+  × FlareFactor_DeepNet( LT(t,λ), β_flare, k_X, k_M )
   × rTEC_Mukhtarov_like(φ,LT(t,λ),Kp(t))
 
   ここで：
@@ -2480,24 +2334,10 @@
     rTEC_Mukhtarov_like = 1 + a1(φ,LT)·Kp + a2(φ,LT)·Kp²
       （低緯度/中緯度/高緯度 ＋ 夜側強調で係数 a1,a2 を設定）
 
-  Deep Flare Net → Sflare:
-    1) 各領域 r=1..9 について
-         Px_r, Pm_r [%] を 2段階化：
-           Px_eff = (Px_r > 50%) ? 100 : 0
-           Pm_eff = (Pm_r > 50%) ? 100 : 0
-    2) 領域ごとのフレア指標 Q_r
-         Q_r = k_X · (Px_eff/100) + k_M · (Pm_eff/100)
-    3) 中心・リムのウェイト w_r をかけて平均：
-         F_flare_raw = Σ( w_r Q_r ) / Σ w_r
-         F_flare = F_flare_raw / (F_flare_raw + F0)   (F0 ≈ 0.3)
-    4) 地球側ウェイト W_geo(φ,LT) = w_lat(φ) · w_LT(LT)
-         |φ| < 20° → 0.8, 20–50° → 1.0, 50–70° → 0.6, 70°〜 → 0.4
-         |LT-12| ≤ 6 の昼側では cos² で 0〜1、夜側は 0
-    5) TEC 増分
-         ΔTEC_flare(φ,LT) = F_flare · W_geo(φ,LT) · 15 [TECU]
-    6) 背景 TEC_ref(φ) に対する倍率
-         TEC_ref(φ) = 35/30/20/15 TECU（低/中/高/極域）
-         Sflare(φ,LT) = 1 + ΔTEC_flare(φ,LT) / TEC_ref(φ)
+  FlareFactor_DeepNet:
+    ・Deep Flare Net の 9領域平均確率 Px, Pm から判定
+    ・Px>50% または Pm>50% を満たすときだけフレア増強
+    ・強さは β_flare, k_X, k_M で調整可能
 
 現在の主な係数:
   kGlobal = ${cfg.kGlobal}
@@ -2505,8 +2345,9 @@
   wAp     = ${cfg.wAp}
   wDst    = ${cfg.wDst}
   latShape= ${cfg.latShape}
-  k_X(=α_X) = ${cfg.kX}
-  k_M(=α_M) = ${cfg.kM}
+  β_flare = ${cfg.betaFlare}
+  k_X     = ${cfg.kX}
+  k_M     = ${cfg.kM}
   kL1     = ${cfg.kL1} [m/TECU]`;
 
       document.getElementById("formulaText").textContent = txt;
