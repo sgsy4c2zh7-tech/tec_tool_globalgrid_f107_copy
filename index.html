@@ -1535,6 +1535,7 @@
       return f;
     }
 
+    // Simple モード（既存 Mukhtarov 風）
     function calcMukhtarovLike(latDeg, ltHour, kp) {
       if (!isFinite(kp)) return 1.0;
       kp = clamp(kp, 0, 9);
@@ -1556,6 +1557,77 @@
 
       const r = a1*kp + a2*kp*kp;
       return 1 + r;
+    }
+
+    // === Complicated モード用 Sstorm（正/負層嵐判定付き） ===
+    function calcSstormComplicated(latDeg, kp, month, ltLocal) {
+      // 1. 月別季節ウェイト（北半球中緯度ベース）
+      const MONTH_WEIGHT_NH = [
+        +0.8, // Jan
+        +0.8, // Feb
+        +0.5, // Mar
+        +0.2, // Apr
+        -0.5, // May
+        -0.8, // Jun
+        -0.8, // Jul
+        -0.5, // Aug
+        +0.1, // Sep
+        +0.3, // Oct
+        +0.6, // Nov
+        +0.8  // Dec
+      ];
+      const isSouth = latDeg < 0;
+      const mIndex0 = (month - 1 + (isSouth ? 6 : 0) + 12) % 12;
+      const MW = MONTH_WEIGHT_NH[mIndex0];
+
+      // 2. 緯度ウェイト
+      const X = Math.abs(latDeg);
+      let LW;
+      if (X < 20)      LW = 0.6;
+      else if (X < 50) LW = 1.0;
+      else if (X < 70) LW = 0.7;
+      else             LW = 0.4;
+
+      // 3. O/N2 指標
+      const S_on2 = MW * LW; // 約 -0.8 ～ +0.8
+
+      // 4. 緯度帯ガウス包絡
+      const lowLat  = Math.exp(-Math.pow(X / 25.0, 2));
+      const midLat  = Math.exp(-Math.pow((X - 30.0) / 15.0, 2));
+      const highLat = Math.exp(-Math.pow((X - 60.0) / 15.0, 2));
+
+      // 5. 昼夜補正
+      const theta = 2 * Math.PI * (ltLocal / 24.0);
+      const nightEnh = 0.7 + 0.3 * Math.cos(theta - Math.PI);
+
+      // 6. a1, a2
+      const a_low1  = 0.02, a_low2  = 0.002;
+      const a_mid1  = 0.03, a_mid2  = 0.003;
+      const a_high1 = 0.05, a_high2 = 0.005;
+
+      const a1 = (a_low1  * lowLat + a_mid1  * midLat + a_high1 * highLat) * nightEnh;
+      const a2 = (a_low2  * lowLat + a_mid2  * midLat + a_high2 * highLat) * nightEnh;
+
+      // 7. Kp クランプ & baseTerm
+      const Kp_c = clamp(kp, 0, 9);
+      const baseTerm = a1 * Kp_c + a2 * Kp_c * Kp_c;
+
+      // 8. O/N2 由来ゲイン
+      const c0 = 0.3;
+      const c1 = 1.0;
+      const gain_raw = c0 + c1 * S_on2;
+      const gain = clamp(gain_raw, -0.8, 1.2);
+
+      // 9. 最終倍率
+      let Sstorm = 1.0 + gain * baseTerm;
+      if (Sstorm < 0.2) Sstorm = 0.2;
+
+      // アイコン用のざっくり判定（±2%は中立扱い）
+      let type = "neutral";
+      if (Sstorm > 1.02) type = "positive";   // 正層嵐寄り
+      else if (Sstorm < 0.98) type = "negative"; // 負層嵐寄り
+
+      return { sstorm: Sstorm, type };
     }
 
     /* ===== Leaflet 初期化 & ヒートマップ描画 ===== */
@@ -1719,14 +1791,13 @@
       drawTecOverlay();
     }
 
-    /* ===== BoMフレーム補間（★時間範囲外はループ利用に変更） ===== */
+    /* ===== BoMフレーム補間（★時間範囲外はループ利用） ===== */
     function interpolateBomFrames(frames, tUtc) {
       const nLat = frames[0].nLat;
       const nLon = frames[0].nLon;
       const out = new Array(nLat);
       for (let i=0;i<nLat;i++) out[i] = new Array(nLon);
 
-      // validTime が無い場合は従来どおり「最初のフレーム固定」
       const hasTime = frames.every(f => f.validTime instanceof Date && !isNaN(f.validTime.getTime()));
       if (!hasTime) {
         const src = frames[0].grid;
@@ -1736,13 +1807,11 @@
         return out;
       }
 
-      // 時刻順に並べる
       frames.sort((a,b) => a.validTime - b.validTime);
       const tMin = frames[0].validTime.getTime();
       const tMax = frames[frames.length-1].validTime.getTime();
       const span = tMax - tMin;
 
-      // span が 0 か極端に短い場合は、固定で良い
       if (span <= 0) {
         const src = frames[0].grid;
         for (let i=0;i<nLat;i++) {
@@ -1751,11 +1820,9 @@
         return out;
       }
 
-      // BoM がカバーしている [tMin, tMax) の区間をぐるぐる周回させて使う
       const tRaw = tUtc.getTime();
-      const tWrap = tMin + (((tRaw - tMin) % span) + span) % span; // [tMin, tMax) に折り返し
+      const tWrap = tMin + (((tRaw - tMin) % span) + span) % span;
 
-      // tWrap に対して線形補間
       if (tWrap <= tMin) {
         const src = frames[0].grid;
         for (let i=0;i<nLat;i++) {
@@ -1984,7 +2051,7 @@
               const dayFactor   = calcDayNightFactor(lat, ltHour, cfg.dayEdgeCosWidth);
               const latFactor   = calcLatShapeFactor(lat, cfg.latShape);
               const flareFactor = calcFlareFactor(cfg, ltHour);
-              const mukFactor   = calcMukhtarovLike(lat, ltHour, kp_t);
+              const mukFactor   = calcMukhtarovLike(lat, ltHour, kp_t); // simple モードとして使用
 
               let tec = tec0 * cfg.kGlobal * solarFactor * dayFactor * latFactor * flareFactor * mukFactor;
 
@@ -2035,11 +2102,32 @@
       const gpsErr = tec * cfg.kL1;
       const tUtc = gForecastTimes[currentStepIndex];
 
+      // ==== ここで Complicated Sstorm を計算して「正/負層嵐アイコン」を表示 ====
+      let sstormText = "";
+      if (tUtc) {
+        const kp_t = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
+        const month = tUtc.getUTCMonth() + 1;
+        const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + gGrid.lonArr[bestJ]/15 + 24) % 24;
+        const { sstorm, type } = calcSstormComplicated(gGrid.latArr[bestI], kp_t, month, ltHour);
+
+        let icon = "";
+        let label = "";
+        if (type === "positive") { icon = "⬆️"; label = "正層嵐寄り"; }
+        else if (type === "negative") { icon = "⬇️"; label = "負層嵐寄り"; }
+        else { icon = "⏸"; label = "中立〜弱"; }
+
+        sstormText =
+          "\nSstorm(complicated) = " + sstorm.toFixed(3) +
+          "  " + icon + " " + label +
+          "（Kp=" + kp_t.toFixed(1) + ", LT≈" + ltHour.toFixed(1) + "h）";
+      }
+
       const txt =
         "UTC: " + (tUtc ? tUtc.toISOString().replace(".000Z","Z") : "N/A") + "\n" +
         "Lat=" + gGrid.latArr[bestI].toFixed(1) + "°, Lon=" + gGrid.lonArr[bestJ].toFixed(1) + "°\n" +
         "TEC = " + tec.toFixed(1) + " TECU\n" +
-        "GPS L1誤差 ≈ " + gpsErr.toFixed(2) + " m";
+        "GPS L1誤差 ≈ " + gpsErr.toFixed(2) + " m" +
+        sstormText;
 
       document.getElementById("pointInfo").textContent = txt;
     }
