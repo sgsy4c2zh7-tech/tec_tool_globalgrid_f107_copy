@@ -786,7 +786,7 @@
             <h3>13. 検証レポート & 係数提案</h3>
             <pre id="verifyReport">(まだ検証されていません)</pre>
             <h3>14. 現在の計算式</h3>
-            <pre id="formulaText">(kGlobal, 太陽活動, フレア, 磁気嵐(Mukhtarov), 緯度依存を含めた最新式をここに表示)</pre>
+            <pre id="formulaText">(kGlobal, 太陽活動, フレア, 磁気嵐(Sstorm Positive), 緯度依存を含めた最新式をここに表示)</pre>
           </div>
           <div class="output-col" style="flex:1;">
             <h3>15. 現在の TEC / GPS値</h3>
@@ -1602,6 +1602,188 @@
       return { sstorm: Sstorm, type };
     }
 
+    /******************************************************
+     * SWIFT-TEC : Sstorm Positive (正層嵐) モデル
+     *  - Mukhtarov et al. の rTEC-Kp 統計を元にした経験式
+     *  - 緯度・季節をガウス補間
+     *  - 南半球は季節を半年反転（+6ヶ月シフト）
+     *  - Kp>=6.5 で緩やかな tail を付与（過大な増加を抑制）
+     *
+     * 入力:
+     *   Kp      : 磁気擾乱指数 (0–9 目安, 実数可)
+     *   latDeg  : 緯度 [deg] (-90〜+90, 北+ / 南-)
+     *   month   : 月 (1〜12)
+     *
+     * 出力:
+     *   rTEC    : ΔTEC / Quiet TEC (比率)
+     *   rStorm  : 1 + rTEC  → TEC倍率としてそのまま使用可
+     ******************************************************/
+
+    // -------------------- パラメータ --------------------
+
+    // 緯度・季節ガウスの幅
+    const SstormPos_SIGMA_LAT = 15.0; // [deg]
+    const SstormPos_SIGMA_M   = 2.0;  // [month]
+
+    // 高Kp tail のパラメータ（緩やか設定）
+    const SstormPos_KC  = 6.5;  // tailが効き始めるKp
+    const SstormPos_W   = 1.2;  // ロジスティック立ち上がり幅
+    const SstormPos_A0  = 0.01; // tailの基本強度
+
+    // -------------------- 基底多項式 --------------------
+    /*
+     * Mukhtarov 図から読み取った 3ケース（正層嵐）:
+     *  - July (40°S, 0°E)
+     *  - November (40°N, 0°E)
+     *  - November (70°N, 0°E)
+     *
+     * rTEC(Kp) = a0 + a1*Kp + a2*Kp^2 + a3*Kp^3
+     */
+
+    const SstormPos_BASIS = [
+      {
+        name:   "July_40S",
+        latAbs: 40.0,
+        month:  7,
+        a: [
+          -0.0742756961,
+           0.08331505314,
+          -0.01888613709,
+           0.002074999214
+        ]
+      },
+      {
+        name:   "Nov_40N",
+        latAbs: 40.0,
+        month:  11,
+        a: [
+          -0.1106197275,
+           0.1320345523,
+          -0.04870525828,
+           0.005143845605
+        ]
+      },
+      {
+        name:   "Nov_70N",
+        latAbs: 70.0,
+        month:  11,
+        a: [
+          -0.3746087246,
+           0.3563156192,
+          -0.09425770425,
+           0.007924840841
+        ]
+      }
+    ];
+
+    // 多項式評価
+    function sstormPos_evalPoly(a, Kp) {
+      const [a0, a1, a2, a3] = a;
+      return a0 + a1*Kp + a2*Kp*Kp + a3*Kp*Kp*Kp;
+    }
+
+    // -------------------- ユーティリティ --------------------
+
+    // 月差（12ヶ月周期）
+    function sstormPos_monthDiff(m, mi) {
+      const d = Math.abs(m - mi);
+      return Math.min(d, 12 - d);
+    }
+
+    // 季節用の月：南半球は +6ヶ月シフト（季節を反転）
+    function sstormPos_seasonMonth(latDeg, month) {
+      if (latDeg < 0) {
+        // 1〜12 を保つ +6シフト
+        return ((month + 6 - 1) % 12) + 1;
+      }
+      return month;
+    }
+
+    // -------------------- ベース rTEC（tailなし） --------------------
+    function sstormPos_rTEC_base(
+      Kp,
+      latDeg,
+      month,
+      sigmaLat = SstormPos_SIGMA_LAT,
+      sigmaM   = SstormPos_SIGMA_M
+    ) {
+      const latAbs = Math.abs(latDeg);
+      const mSeason = sstormPos_seasonMonth(latDeg, month);
+
+      // 生重み計算
+      const weights = SstormPos_BASIS.map(b => {
+        const dLat = latAbs - b.latAbs;
+        const dm   = sstormPos_monthDiff(mSeason, b.month);
+
+        const gLat = Math.exp(-0.5 * (dLat / sigmaLat) ** 2);
+        const gM   = Math.exp(-0.5 * (dm   / sigmaM  ) ** 2);
+
+        return gLat * gM;
+      });
+
+      const sumW = weights.reduce((s, x) => s + x, 0) || 1.0;
+
+      // 正規化して多項式を混合
+      let r = 0;
+      for (let i = 0; i < SstormPos_BASIS.length; i++) {
+        const Wi = weights[i] / sumW;
+        r += Wi * sstormPos_evalPoly(SstormPos_BASIS[i].a, Kp);
+      }
+      return r;
+    }
+
+    // -------------------- 正層嵐 rTEC（tail付き） --------------------
+    function sstormPos_rTEC(
+      Kp,
+      latDeg,
+      month,
+      options = {}
+    ) {
+      const {
+        sigmaLat = SstormPos_SIGMA_LAT,
+        sigmaM   = SstormPos_SIGMA_M,
+        useTail  = true,
+        Kc       = SstormPos_KC,
+        w        = SstormPos_W,
+        A0       = SstormPos_A0
+      } = options;
+
+      // ベース部分（Mukhtarov+ガウス補間）
+      const base = sstormPos_rTEC_base(Kp, latDeg, month, sigmaLat, sigmaM);
+
+      if (!useTail) {
+        // tail 無しで使いたい場合（デバッグ用）
+        return base;
+      }
+
+      // --- 緩やかな高Kp tail ---
+      //  Kp <= Kc ではほぼ何もしない
+      const baseAtKc = sstormPos_rTEC_base(Kc, latDeg, month, sigmaLat, sigmaM);
+
+      // 緯度・季節に応じたスケール（負にならないようにmax）
+      const A = A0 * (1.0 + Math.max(baseAtKc, 0.0));
+
+      // ロジスティックで tail を徐々にON
+      const L = 1.0 / (1.0 + Math.exp(-(Kp - Kc) / w));
+
+      const dK = Math.max(0.0, Kp - Kc);
+      const tail = A * L * dK * dK;  // (Kp-Kc)^2 で高Kpほど強く
+
+      return base + tail;
+    }
+
+    // -------------------- rStorm（倍率）出力 --------------------
+    function sstormPos_rStorm(Kp, latDeg, month, options = {}) {
+      const rTEC = sstormPos_rTEC(Kp, latDeg, month, options);
+      return 1.0 + rTEC;
+    }
+
+    // 必要ならグローバル公開（ブラウザ環境想定）
+    if (typeof window !== "undefined") {
+      window.sstormPos_rTEC   = sstormPos_rTEC;
+      window.sstormPos_rStorm = sstormPos_rStorm;
+    }
+
     /* ===== Leaflet 初期化 & ヒートマップ描画 ===== */
     function initMap() {
       map = L.map("tecMap", {
@@ -2023,7 +2205,10 @@
               const dayFactor   = calcDayNightFactor(lat, ltHour);
               const latFactor   = calcLatShapeFactor(lat, cfg.latShape);
               const flareFactor = calcFlareFactor(cfg, ltHour);
-              const mukFactor   = calcMukhtarovLike(lat, ltHour, kp_t); // simple モードとして使用
+
+              // ★ 正層嵐モデル（Sstorm Positive）を倍率として使用
+              const monthIndex = tUtc.getUTCMonth() + 1;
+              const mukFactor   = sstormPos_rStorm(kp_t, lat, monthIndex); // rStorm = 1 + rTEC
 
               let tec = tec0 * cfg.kGlobal * solarFactor * dayFactor * latFactor * flareFactor * mukFactor;
 
@@ -2324,15 +2509,19 @@
   × DayNight(φ,LT(t,λ))
   × LatShape(φ; latShape)
   × FlareFactor_DeepNet( LT(t,λ), β_flare, k_X, k_M )
-  × rTEC_Mukhtarov_like(φ,LT(t,λ),Kp(t))
+  × Sstorm_Positive(φ, month(t), Kp(t))
 
   ここで：
     F10.7(t)     : NOAA 27日予報テキストからの時系列（日別）
     ⟨F10.7⟩(t)   : F10.7(t) の27日ランニング平均（平均値）
                    → テキストが無い場合は、手入力の F10.7 を使用
     Kp(t)        : NOAA 3日予報テーブルからの3時間ごとの時系列
-    rTEC_Mukhtarov_like = 1 + a1(φ,LT)·Kp + a2(φ,LT)·Kp²
-      （低緯度/中緯度/高緯度 ＋ 夜側強調で係数 a1,a2 を設定）
+
+  Sstorm_Positive(φ, month, Kp):
+    ・Mukhtarov 図の 3ケース（July 40°S, Nov 40°N, Nov 70°N）から読み取った rTEC(Kp) 多項式
+    ・緯度 |φ| と季節 month（南半球は +6ヶ月シフト）をガウス重みで補間して rTEC(Kp,φ,month) を構成
+    ・Kp≳6.5 のとき (Kp-6.5)^2 型の穏やかな tail を加え、高Kpでの過大増加を抑えつつ増強を表現
+    ・最終倍率 rStorm = 1 + rTEC を TEC にそのまま掛け合わせる
 
   FlareFactor_DeepNet:
     ・Deep Flare Net の 9領域平均確率 Px, Pm から判定
