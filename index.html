@@ -652,11 +652,11 @@
           </div>
           <div class="row">
             <div>
-              <label>k_X</label><br>
+              <label>k_X（Xフレア寄与）</label><br>
               <input id="cfg_kX" type="number" value="1.0" step="0.1">
             </div>
             <div>
-              <label>k_M</label><br>
+              <label>k_M（Mフレア寄与）</label><br>
               <input id="cfg_kM" type="number" value="0.3" step="0.1">
             </div>
             <div>
@@ -1445,7 +1445,7 @@
       return last.value ?? last.kp;
     }
 
-    /* ===== Deep Flare Net 入力 → フレア係数 ===== */
+    /* ===== Deep Flare Net 入力 ===== */
     function getDeepFlareProbs() {
       let sumX = 0, sumM = 0, count = 0;
       for (let i=1;i<=9;i++) {
@@ -1458,28 +1458,28 @@
         count++;
       }
       if (count === 0) return { Px: 0, Pm: 0 };
-      return { Px: sumX/count, Pm: sumM/count };
+      return { Px: sumX/count, Pm: sumM/count }; // [%]
     }
 
-    // ★ 2段階モデル：50% を超えたら「起きる」、50% 以下は「起きない」
-    function calcFlareFactor(cfg, ltHour) {
+    // ★ 新：フレアは「倍率」ではなく ΔTEC_flare [TECU] を返す（最大 15 TECU）
+    function calcFlareDtec(cfg, ltHour) {
       const probs = getDeepFlareProbs();
+      // 平均確率を 0〜1 に正規化
+      const pxN = clamp(probs.Px / 100, 0, 1);
+      const pmN = clamp(probs.Pm / 100, 0, 1);
 
-      // 平均値が 50% を超えていれば、そのクラスのフレアが「発生している」とみなす
-      const hitX = (probs.Px > 50) ? 1 : 0;
-      const hitM = (probs.Pm > 50) ? 1 : 0;
+      // X, M の寄与を合成
+      const score = cfg.kX * pxN + cfg.kM * pmN; // だいたい 0〜(kX+kM)
 
-      // X も M も 50% 以下ならフレア効果なし
-      if (hitX === 0 && hitM === 0) return 1.0;
+      // 日側ウェイト（local time）：正午付近で最大、夜側では 0
+      const ltAng = 2 * Math.PI * (ltHour / 24);
+      const dayWeight = Math.max(0, Math.cos(ltAng)); // 昼:1, ターミネータ:0, 夜側は0
 
-      // どちらか（または両方）発生しているときだけ増強
-      const base = cfg.kX * hitX + cfg.kM * hitM;
+      // β_flare で全体スケーリング、上限 15 TECU
+      let dTec = 15.0 * cfg.betaFlare * score * dayWeight;
 
-      const ltAng = 2*Math.PI*(ltHour/24);
-      const frontWeight = 0.7 + 0.3*Math.cos(ltAng); // 中央子午線付近をやや強調
-
-      const f = 1 + cfg.betaFlare * base * frontWeight;
-      return f > 0 ? f : 1.0;
+      dTec = clamp(dTec, 0, 15);  // 0〜15 TECU に制限
+      return dTec;
     }
 
     /* ===== Solar / 緯度 / 昼夜 / 磁気嵐 (Mukhtarov風) ===== */
@@ -1489,8 +1489,7 @@
     }
 
     function calcDayNightFactor(latDeg, ltHour) {
-      // 実太陽時（true solar time）の簡易モデル: LT = UTC + λ/15h に基づき、
-      // だいたい LT=14h 頃を TEC ピークにする形
+      // 実太陽時 LT を使い、だいたい LT=14h 頃を TEC ピークにする形
       const ang = Math.PI * (ltHour - 14) / 12;
       let f = 0.4 + 0.6 * Math.cos(ang);
       if (f < 0.1) f = 0.1;
@@ -1507,7 +1506,7 @@
       return f;
     }
 
-    // Simple モード（既存 Mukhtarov 風）
+    // Simple モード（既存 Mukhtarov 風、今はクリック表示用の補助にだけ使用）
     function calcMukhtarovLike(latDeg, ltHour, kp) {
       if (!isFinite(kp)) return 1.0;
       kp = clamp(kp, 0, 9);
@@ -1619,26 +1618,12 @@
      *   rStorm  : 1 + rTEC  → TEC倍率としてそのまま使用可
      ******************************************************/
 
-    // -------------------- パラメータ --------------------
-
-    // 緯度・季節ガウスの幅
     const SstormPos_SIGMA_LAT = 15.0; // [deg]
     const SstormPos_SIGMA_M   = 2.0;  // [month]
 
-    // 高Kp tail のパラメータ（緩やか設定）
     const SstormPos_KC  = 6.5;  // tailが効き始めるKp
     const SstormPos_W   = 1.2;  // ロジスティック立ち上がり幅
     const SstormPos_A0  = 0.01; // tailの基本強度
-
-    // -------------------- 基底多項式 --------------------
-    /*
-     * Mukhtarov 図から読み取った 3ケース（正層嵐）:
-     *  - July (40°S, 0°E)
-     *  - November (40°N, 0°E)
-     *  - November (70°N, 0°E)
-     *
-     * rTEC(Kp) = a0 + a1*Kp + a2*Kp^2 + a3*Kp^3
-     */
 
     const SstormPos_BASIS = [
       {
@@ -1676,30 +1661,23 @@
       }
     ];
 
-    // 多項式評価
     function sstormPos_evalPoly(a, Kp) {
       const [a0, a1, a2, a3] = a;
       return a0 + a1*Kp + a2*Kp*Kp + a3*Kp*Kp*Kp;
     }
 
-    // -------------------- ユーティリティ --------------------
-
-    // 月差（12ヶ月周期）
     function sstormPos_monthDiff(m, mi) {
       const d = Math.abs(m - mi);
       return Math.min(d, 12 - d);
     }
 
-    // 季節用の月：南半球は +6ヶ月シフト（季節を反転）
     function sstormPos_seasonMonth(latDeg, month) {
       if (latDeg < 0) {
-        // 1〜12 を保つ +6シフト
         return ((month + 6 - 1) % 12) + 1;
       }
       return month;
     }
 
-    // -------------------- ベース rTEC（tailなし） --------------------
     function sstormPos_rTEC_base(
       Kp,
       latDeg,
@@ -1710,7 +1688,6 @@
       const latAbs = Math.abs(latDeg);
       const mSeason = sstormPos_seasonMonth(latDeg, month);
 
-      // 生重み計算
       const weights = SstormPos_BASIS.map(b => {
         const dLat = latAbs - b.latAbs;
         const dm   = sstormPos_monthDiff(mSeason, b.month);
@@ -1723,7 +1700,6 @@
 
       const sumW = weights.reduce((s, x) => s + x, 0) || 1.0;
 
-      // 正規化して多項式を混合
       let r = 0;
       for (let i = 0; i < SstormPos_BASIS.length; i++) {
         const Wi = weights[i] / sumW;
@@ -1732,7 +1708,6 @@
       return r;
     }
 
-    // -------------------- 正層嵐 rTEC（tail付き） --------------------
     function sstormPos_rTEC(
       Kp,
       latDeg,
@@ -1748,37 +1723,29 @@
         A0       = SstormPos_A0
       } = options;
 
-      // ベース部分（Mukhtarov+ガウス補間）
       const base = sstormPos_rTEC_base(Kp, latDeg, month, sigmaLat, sigmaM);
 
       if (!useTail) {
-        // tail 無しで使いたい場合（デバッグ用）
         return base;
       }
 
-      // --- 緩やかな高Kp tail ---
-      //  Kp <= Kc ではほぼ何もしない
       const baseAtKc = sstormPos_rTEC_base(Kc, latDeg, month, sigmaLat, sigmaM);
 
-      // 緯度・季節に応じたスケール（負にならないようにmax）
       const A = A0 * (1.0 + Math.max(baseAtKc, 0.0));
 
-      // ロジスティックで tail を徐々にON
       const L = 1.0 / (1.0 + Math.exp(-(Kp - Kc) / w));
 
       const dK = Math.max(0.0, Kp - Kc);
-      const tail = A * L * dK * dK;  // (Kp-Kc)^2 で高Kpほど強く
+      const tail = A * L * dK * dK;
 
       return base + tail;
     }
 
-    // -------------------- rStorm（倍率）出力 --------------------
     function sstormPos_rStorm(Kp, latDeg, month, options = {}) {
       const rTEC = sstormPos_rTEC(Kp, latDeg, month, options);
       return 1.0 + rTEC;
     }
 
-    // 必要ならグローバル公開（ブラウザ環境想定）
     if (typeof window !== "undefined") {
       window.sstormPos_rTEC   = sstormPos_rTEC;
       window.sstormPos_rStorm = sstormPos_rStorm;
@@ -2204,13 +2171,18 @@
               const solarFactor = calcSolarFactor(cfg, F107_t, F107mean_t, Ap, Dst);
               const dayFactor   = calcDayNightFactor(lat, ltHour);
               const latFactor   = calcLatShapeFactor(lat, cfg.latShape);
-              const flareFactor = calcFlareFactor(cfg, ltHour);
 
               // ★ 正層嵐モデル（Sstorm Positive）を倍率として使用
               const monthIndex = tUtc.getUTCMonth() + 1;
               const mukFactor   = sstormPos_rStorm(kp_t, lat, monthIndex); // rStorm = 1 + rTEC
 
-              let tec = tec0 * cfg.kGlobal * solarFactor * dayFactor * latFactor * flareFactor * mukFactor;
+              // 背景 TEC（Quiet + Sstorm + 太陽活動など）
+              const baseTec = tec0 * cfg.kGlobal * solarFactor * dayFactor * latFactor * mukFactor;
+
+              // ★フレア起源の ΔTEC_flare（最大 15 TECU, 日側のみ）
+              const dFlare  = calcFlareDtec(cfg, ltHour);
+
+              let tec = baseTec + dFlare;
 
               if (!isFinite(tec) || tec < 0) tec = 0;
               frame[i][j] = tec;
@@ -2237,14 +2209,14 @@
     /* ===== クリック情報 ===== */
     function onMapClick(e) {
       if (!gGrid || !gForecastFrames.length) return;
-      const lat = e.latlng.lat;
-      const lon = e.latlng.lng;
+      const latClick = e.latlng.lat;
+      const lonClick = e.latlng.lng;
 
       let bestI = 0, bestJ = 0, bestD = 1e9;
       for (let i=0;i<gGrid.nLat;i++) {
-        const dLat = Math.abs(gGrid.latArr[i] - lat);
+        const dLat = Math.abs(gGrid.latArr[i] - latClick);
         for (let j=0;j<gGrid.nLon;j++) {
-          const dLon = Math.abs(gGrid.lonArr[j] - lon);
+          const dLon = Math.abs(gGrid.lonArr[j] - lonClick);
           const d = dLat + dLon;
           if (d < bestD) {
             bestD = d;
@@ -2259,12 +2231,19 @@
       const gpsErr = tec * cfg.kL1;
       const tUtc = gForecastTimes[currentStepIndex];
 
+      // Local time（クリック地点の経度）
+      const lon = gGrid.lonArr[bestJ];
+      const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lon/15 + 24) % 24;
+
+      // フレア由来 ΔTEC_flare を再計算（地球側では LT のみで決まるモデルにしている）
+      const dFlare = calcFlareDtec(cfg, ltHour);
+      const baseTec = tec - dFlare;
+
       // Complicated Sstorm を計算して「正/負層嵐アイコン」を表示
       let sstormText = "";
       if (tUtc) {
         const kp_t = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
         const month = tUtc.getUTCMonth() + 1;
-        const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + gGrid.lonArr[bestJ]/15 + 24) % 24;
         const { sstorm, type } = calcSstormComplicated(gGrid.latArr[bestI], kp_t, month, ltHour);
 
         let icon = "";
@@ -2282,7 +2261,9 @@
       const txt =
         "UTC: " + (tUtc ? tUtc.toISOString().replace(".000Z","Z") : "N/A") + "\n" +
         "Lat=" + gGrid.latArr[bestI].toFixed(1) + "°, Lon=" + gGrid.lonArr[bestJ].toFixed(1) + "°\n" +
-        "TEC = " + tec.toFixed(1) + " TECU\n" +
+        "Base TEC（フレア無） ≈ " + baseTec.toFixed(1) + " TECU\n" +
+        "ΔTEC_flare ≈ " + dFlare.toFixed(1) + " TECU\n" +
+        "合計 TEC = " + tec.toFixed(1) + " TECU\n" +
         "GPS L1誤差 ≈ " + gpsErr.toFixed(2) + " m" +
         sstormText;
 
@@ -2503,17 +2484,18 @@
       const cfg = getConfigFromUI();
       const txt =
 `TEC_eff(φ,λ,t) =
-  TEC_BoM(φ,λ,t)
-  × kGlobal
-  × [1 + wF107·(F10.7(t) - ⟨F10.7⟩(t)) + wAp·Ap + wDst·Dst]
-  × DayNight(φ,LT(t,λ))
-  × LatShape(φ; latShape)
-  × FlareFactor_DeepNet( LT(t,λ), β_flare, k_X, k_M )
-  × Sstorm_Positive(φ, month(t), Kp(t))
+  { TEC_BoM(φ,λ,t)
+    × kGlobal
+    × [1 + wF107·(F10.7(t) - ⟨F10.7⟩(t)) + wAp·Ap + wDst·Dst]
+    × DayNight(φ,LT(t,λ))
+    × LatShape(φ; latShape)
+    × Sstorm_Positive(φ, month(t), Kp(t))
+  }
+  + ΔTEC_flare( LT(t,λ); DeepFlareNet, β_flare, k_X, k_M )
 
   ここで：
     F10.7(t)     : NOAA 27日予報テキストからの時系列（日別）
-    ⟨F10.7⟩(t)   : F10.7(t) の27日ランニング平均（平均値）
+    ⟨F10.7⟩(t)   : F10.7(t) の27日ランニング平均
                    → テキストが無い場合は、手入力の F10.7 を使用
     Kp(t)        : NOAA 3日予報テーブルからの3時間ごとの時系列
 
@@ -2523,10 +2505,14 @@
     ・Kp≳6.5 のとき (Kp-6.5)^2 型の穏やかな tail を加え、高Kpでの過大増加を抑えつつ増強を表現
     ・最終倍率 rStorm = 1 + rTEC を TEC にそのまま掛け合わせる
 
-  FlareFactor_DeepNet:
-    ・Deep Flare Net の 9領域平均確率 Px, Pm から判定
-    ・Px>50% または Pm>50% を満たすときだけフレア増強
-    ・強さは β_flare, k_X, k_M で調整可能
+  ΔTEC_flare( LT; DeepFlareNet ):
+    ・Deep Flare Net の 9領域平均確率 Px, Pm からスコアを算出
+       PxN = Px/100, PmN = Pm/100
+       score = k_X·PxN + k_M·PmN
+    ・日側ウェイト w_day(LT) = max(0, cos(2π·LT/24))
+       → 昼側で最大, 夜側では 0
+    ・ΔTEC_flare = clamp( 15 · β_flare · score · w_day, 0, 15 ) [TECU]
+       → 物理的なフレア起源増加を「最大 +15 TECU」の範囲に制限
 
 現在の主な係数:
   kGlobal = ${cfg.kGlobal}
