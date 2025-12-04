@@ -794,17 +794,39 @@
     }
     function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 
-    /* ===== 日サイド/夜間ウェイト ===== */
+    /* ===== Local Time & 昼夜ウェイト（Base用 LT減衰） ===== */
+    // ★修正ポイント1：UTではなく「地方時 LT」で昼夜判定し、
+    //   BaseTEC の夜間減衰は LT のみで 24h 周期にする
+
+    // UTC と経度から Local Time [h]（0〜24）を計算
+    function getLocalTimeHours(tUtc, lonDeg) {
+      let lt = tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lonDeg/15;
+      lt = ((lt % 24) + 24) % 24;
+      return lt;
+    }
+
+    // フレアや SuperStorm など「昼側だけ効かせる」ための DaySide(LT)
     function calcDaySideWeight(ltHour) {
       const ang = Math.PI * (ltHour - 14.0) / 12.0;
       const w = Math.cos(ang);
       return w > 0 ? w : 0;
     }
 
-    // Base用：真夜中0.3, 昼1.0 くらいのイメージ
-    function calcDayBaseWeight(ltHour) {
-      const ds = calcDaySideWeight(ltHour);
-      return 0.3 + 0.7 * ds;
+    // BaseTEC 用：LTベースの夜間減衰（UT日付には依存しない）
+    // ・LT≈14h で 1.0
+    // ・深夜帯で ≈0.3
+    // ・同じ LT なら何日目でも同じ係数
+    function calcBaseNightFactor(ltHour) {
+      const maxFactor = 1.0;
+      const minFactor = 0.3;
+      const offsetHours = -2; // LT=14h で最大になるよう補正 → (LT-2) がピーク中心
+
+      let x = (ltHour + offsetHours + 24) % 24;
+      const nightFactor =
+        minFactor +
+        (maxFactor - minFactor) * 0.5 * (1 + Math.cos(2 * Math.PI * (x / 24)));
+
+      return nightFactor;
     }
 
     /* ===== SuperStorm: ΔTEC_max(φ) & S_super(Kp,LT) ===== */
@@ -1413,7 +1435,7 @@
         if (latDeg < ev.latMin || latDeg > ev.latMax) continue;
         if (lonDeg < ev.lonMin || lonDeg > ev.lonMax) continue;
 
-        const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lonDeg/15 + 24) % 24;
+        const ltHour = getLocalTimeHours(tUtc, lonDeg);
         const dayW = calcDaySideWeight(ltHour);
         if (dayW <= 0) continue;
 
@@ -1952,8 +1974,8 @@
             for (let j=0;j<nLon;j++) {
               const lon = gGrid.lonArr[j];
 
-              // 実太陽時（近似）LT = UTC + λ/15h
-              const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lon/15 + 24) % 24;
+              // 実太陽時（近似）LT = UTC + λ/15h （UT日付によらず 24h 周期）
+              const ltHour = getLocalTimeHours(tUtc, lon);
               const monthIndex = tUtc.getUTCMonth() + 1;
 
               const tecIn = tecInGrid[i][j];
@@ -1977,8 +1999,8 @@
               }
 
               if (!isFinite(tecBaseRaw)) tecBaseRaw = 0;
-              const dayBaseW = calcDayBaseWeight(ltHour);
-              let tecBase = cfg.kBase * tecBaseRaw * dayBaseW;
+              const nightFactor = calcBaseNightFactor(ltHour);   // ★修正ポイント2：BaseTEC にだけ LT夜間減衰
+              let tecBase = cfg.kBase * tecBaseRaw * nightFactor;
               if (tecBase < 0) tecBase = 0;
 
               // --- 予報側 ΔStorm (Kp_fcst) ---
@@ -2118,8 +2140,11 @@
       LT(t,λ) = UTC(t) + λ/15h (mod 24)
 
     昼夜ウェイト:
-      DaySide(LT) = max(0, cos(π(LT-14)/12))
-      DayBase(LT) = 0.3 + 0.7·DaySide(LT)
+      DaySide(LT) = max(0, cos(π(LT-14)/12))       // フレア・SuperStorm の昼側判定用
+      Base 夜間減衰 (UT日付非依存):
+        NightBase(LT)
+          = 0.3 + 0.7 · 0.5 · { 1 + cos[ 2π((LT-2)/24) ] }
+          （LT≒14h で ≒1.0, 深夜帯で ≒0.3）
 
     Base用フレア（手動イベント）:
       ・イベント i = 1..N について
@@ -2154,7 +2179,7 @@
 
     最終 BaseTEC（夜間減衰 + kBase）:
       BaseTEC(φ,λ,t)
-        = max(0, kBase · TEC_base_raw(φ,λ,t) · DayBase(LT(t,λ)))
+        = max(0, kBase · TEC_base_raw(φ,λ,t) · NightBase(LT(t,λ)))
 
   2. 予報側 ΔStorm (Kp_fcst) + ΔFlare_forecast (DeepFlareNet)
 
