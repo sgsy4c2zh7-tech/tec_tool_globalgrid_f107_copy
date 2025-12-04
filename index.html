@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool (Leaflet版, 3日予報・加算モデル)</title>
+  <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool (Leaflet版, 3日予報・加算+SuperStorm+Base手動Flare)</title>
 
   <!-- Leaflet CSS -->
   <link
@@ -266,14 +266,14 @@
       <div class="card">
         <div class="card-header">
           <h1>SWIFT-TEC v3</h1>
-          <span>Global TEC Forecast (3-day, 加算モデル)</span>
+          <span>Global TEC Forecast (3-day, 加算+SuperStorm+Base手動Flare)</span>
         </div>
         <div class="small">
           ・BoM TEC（最大9枚）から <b>3日 / 30min</b> 予報を生成<br>
-          ・BaseTEC（静穏）を「入力TEC − Sstorm_base − Sflare_base」から逆算<br>
-          ・Base に昼夜ウェイト（夜間減衰）を適用して横長ノッペリを抑制<br>
-          ・NOAAテキスト / Kpテーブルから Kp(t) を自動読取<br>
-          ・Leaflet 地図で TEC / GPS誤差を確認、地域フォーカスも可能
+          ・BaseTEC（静穏）＋ ΔStorm(Kp) ＋ ΔFlare<br>
+          ・Base用フレア：<b>実測イベントを手動入力</b><br>
+          ・予報用フレア：<b>DeepFlareNet 9領域確率</b><br>
+          ・Kp≦7: Mukhtarov, Kp≧8: SuperStorm ΔTECmax(EIA) モード
         </div>
       </div>
 
@@ -316,18 +316,24 @@
         </div>
       </div>
 
-      <!-- 2. NOAA Kp テキスト（予報用） -->
+      <!-- 2. NOAA Kp テキスト（Base用+予報用） -->
       <div class="card">
         <div class="card-header">
-          <h2>2. NOAA Kp テキスト（予報用）</h2>
-          <span>3-Day Forecast を丸ごと貼付</span>
+          <h2>2. Kp テキスト</h2>
+          <span>Base 実測 / 予報</span>
         </div>
         <div class="small">
-          ・Kp（3日予報）：<br>
-          　→ <b>3-Day Forecast</b> をそのまま貼り付け<br>
-          形式が合わない場合は、簡易フォーマット：<br>
-          <code>YYYY-MM-DD HH Kp</code><br>
-          に整形すると確実です。
+          ●Base逆算用 Kp（実測 or 解析値）<br>
+          　→ 例の JSON テーブル<br>
+          　　<code>[["time_tag","Kp",...],["2025-11-26 00:00:00.000","3.33",...],...]</code><br>
+          ●予報用 Kp<br>
+          　→ <b>3-Day Forecast</b> を丸ごと貼り付け or 簡易形式
+        </div>
+        <div class="row">
+          <div>
+            <label>Kp 実測テキスト（BaseTEC 逆算用）</label><br>
+            <textarea id="noaaKpBaseText" placeholder='[["time_tag","Kp","a_running","station_count"],["2025-11-26 00:00:00.000","3.33","18","8"], ...]'></textarea>
+          </div>
         </div>
         <div class="row">
           <div>
@@ -337,36 +343,81 @@
         </div>
       </div>
 
-      <!-- 2b. Base用 Kp シリーズ -->
+      <!-- 3. Base用フレアイベント（手動） -->
       <div class="card">
         <div class="card-header">
-          <h2>2b. Base用 Kp シリーズ</h2>
-          <span>Base 抽出用 Kp(time) テーブル</span>
+          <h2>3. Base用フレアイベント（実測）</h2>
+          <span>BaseTEC 逆算でのみ使用</span>
         </div>
         <div class="small">
-          ・例：NOAAの観測Kpを JSON 配列で貼り付け<br>
-          　[["time_tag","Kp","a_running","station_count"],<br>
-          　&nbsp;["2025-11-26 00:00:00.000","3.33",...], ...]<br>
-          ・空欄の場合は 2. の Kp(t) を Base 用にも流用します。
+          ・ここで入力したフレアは <b>BaseTEC 逆算にだけ効く</b><br>
+          ・予報側のフレアは DeepFlareNet 9領域で別計算<br>
+          ・時間はUTCで指定（例: <code>2025-11-26 03:00</code> や <code>2025-11-26T03:00Z</code>）<br>
+          ・範囲は緯度・経度の矩形で指定（空欄なら全地球）<br>
+          ・ΔTECmax はそのイベントの最大増分[TECU]（推奨 0〜15）
         </div>
-        <div class="row">
-          <div style="flex:1;">
-            <textarea id="baseKpText" placeholder='Base作成用Kpテーブル（上の形式など）を貼り付け'></textarea>
-          </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>開始UTC</th>
+              <th>終了UTC</th>
+              <th>Lat min</th>
+              <th>Lat max</th>
+              <th>Lon min</th>
+              <th>Lon max</th>
+              <th>ΔTECmax</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td><input id="baseFlareStart1" type="text" placeholder="2025-11-26 03:00"></td>
+              <td><input id="baseFlareEnd1"   type="text" placeholder="2025-11-26 06:00"></td>
+              <td><input id="baseFlareLatMin1" type="number" step="1" style="width:60px;" placeholder="-90"></td>
+              <td><input id="baseFlareLatMax1" type="number" step="1" style="width:60px;" placeholder="90"></td>
+              <td><input id="baseFlareLonMin1" type="number" step="1" style="width:60px;" placeholder="-180"></td>
+              <td><input id="baseFlareLonMax1" type="number" step="1" style="width:60px;" placeholder="180"></td>
+              <td><input id="baseFlareDelta1"  type="number" step="0.5" style="width:60px;" placeholder="10"></td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td><input id="baseFlareStart2" type="text"></td>
+              <td><input id="baseFlareEnd2"   type="text"></td>
+              <td><input id="baseFlareLatMin2" type="number" step="1" style="width:60px;"></td>
+              <td><input id="baseFlareLatMax2" type="number" step="1" style="width:60px;"></td>
+              <td><input id="baseFlareLonMin2" type="number" step="1" style="width:60px;"></td>
+              <td><input id="baseFlareLonMax2" type="number" step="1" style="width:60px;"></td>
+              <td><input id="baseFlareDelta2"  type="number" step="0.5" style="width:60px;"></td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td><input id="baseFlareStart3" type="text"></td>
+              <td><input id="baseFlareEnd3"   type="text"></td>
+              <td><input id="baseFlareLatMin3" type="number" step="1" style="width:60px;"></td>
+              <td><input id="baseFlareLatMax3" type="number" step="1" style="width:60px;"></td>
+              <td><input id="baseFlareLonMin3" type="number" step="1" style="width:60px;"></td>
+              <td><input id="baseFlareLonMax3" type="number" step="1" style="width:60px;"></td>
+              <td><input id="baseFlareDelta3"  type="number" step="0.5" style="width:60px;"></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="small" style="margin-top:4px;">
+          ※ΔTECの実効値は <b>DaySide(LT)</b> を掛けて昼側だけ効くようにしています（Base用）。
         </div>
       </div>
 
-      <!-- 3. Deep Flare Net 9領域（予報用＆Base用共通） -->
+      <!-- 4. Deep Flare Net 9領域（予報用） -->
       <div class="card">
         <div class="card-header">
-          <h2>3. Deep Flare Net 領域</h2>
-          <span>9分割フレア確率（3×3）</span>
+          <h2>4. Deep Flare Net 領域（予報）</h2>
+          <span>9分割フレア確率</span>
         </div>
         <div class="small">
           太陽円盤を 3×3 の 9領域に分割し、各領域ごとの Xクラス / Mクラス発生確率 [%] を入力。<br>
           位置イメージ：<br>
           R1=北西, R2=北, R3=北東 / R4=西, R5=中央, R6=東 / R7=南西, R8=南, R9=南東<br>
-          ※現状、Base 抽出・予報とも同じ確率を使用
+          → ここから <b>予報用 ΔFlare</b> を計算（Baseには使わない）。
         </div>
         <table>
           <thead>
@@ -433,10 +484,10 @@
         </table>
       </div>
 
-      <!-- 4. TEC カラーマップ設定 -->
+      <!-- 5. TEC カラーマップ設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>4. TEC カラーマップ設定</h2>
+          <h2>5. TEC カラーマップ設定</h2>
           <span>TEC値 → 色を任意設定</span>
         </div>
         <div class="small">
@@ -475,10 +526,10 @@
         </div>
       </div>
 
-      <!-- 5. GPS L1誤差 カラーマップ設定 -->
+      <!-- 6. GPS L1誤差 カラーマップ設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>5. GPS L1誤差 カラーマップ</h2>
+          <h2>6. GPS L1誤差 カラーマップ</h2>
           <span>誤差[m] → 色を任意設定</span>
         </div>
         <div class="small">
@@ -517,10 +568,10 @@
         </div>
       </div>
 
-      <!-- 6. 係数設定（加算モデル用） -->
+      <!-- 7. 係数設定 -->
       <div class="card">
         <div class="card-header">
-          <h2>6. 係数設定（Advanced）</h2>
+          <h2>7. 係数設定（Advanced）</h2>
           <span>Base / Storm / Flare / GPS変換</span>
         </div>
         <div class="small">※いじり過ぎる前に現在値をどこかにメモ推奨。</div>
@@ -537,15 +588,15 @@
           </div>
           <div class="row">
             <div>
-              <label>β_flare</label><br>
+              <label>β_flare（予報用）</label><br>
               <input id="cfg_betaFlare" type="number" value="0.7" step="0.05">
             </div>
             <div>
-              <label>k_X（Xフレア寄与）</label><br>
+              <label>k_X（予報：Xフレア寄与）</label><br>
               <input id="cfg_kX" type="number" value="1.0" step="0.1">
             </div>
             <div>
-              <label>k_M（Mフレア寄与）</label><br>
+              <label>k_M（予報：Mフレア寄与）</label><br>
               <input id="cfg_kM" type="number" value="0.5" step="0.1">
             </div>
           </div>
@@ -562,10 +613,10 @@
         </div>
       </div>
 
-      <!-- 7. 地域フォーカス -->
+      <!-- 8. 地域フォーカス -->
       <div class="card">
         <div class="card-header">
-          <h2>7. 地域フォーカス</h2>
+          <h2>8. 地域フォーカス</h2>
           <span>地図ズームに反映</span>
         </div>
         <div class="row">
@@ -608,10 +659,10 @@
         </div>
       </div>
 
-      <!-- 8. 実行 -->
+      <!-- 9. 実行 -->
       <div class="card">
         <div class="card-header">
-          <h2>8. 実行</h2>
+          <h2>9. 実行</h2>
           <span>予報 & 描画</span>
         </div>
         <div class="row small">
@@ -669,11 +720,11 @@
       <div class="card output-card">
         <div class="output-row">
           <div class="output-col" style="flex:2;">
-            <h3>9. 現在の計算式（加算モデル）</h3>
-            <pre id="formulaText">(BaseTEC + ΔStorm + ΔFlare の式をここに表示)</pre>
+            <h3>10. 現在の計算式（加算+SuperStorm+Base手動Flare）</h3>
+            <pre id="formulaText">(Base + ΔStorm + ΔFlare の式をここに表示)</pre>
           </div>
           <div class="output-col" style="flex:1;">
-            <h3>10. 現在の TEC / GPS値</h3>
+            <h3>11. 現在の TEC / GPS値</h3>
             <pre id="pointInfo">地図上をクリックすると、その格子点のTEC・GPS L1誤差と位置が表示されます。</pre>
           </div>
         </div>
@@ -690,9 +741,9 @@
     const DT_MINUTES     = 30;       // 30分刻み
 
     let gGrid = null;              // {latArr, lonArr, nLat, nLon}
-    let gForecastFrames = [];      // [step][iLat][iLon] TEC
+    let gForecastFrames = [];      // [step][iLat][iLon] TEC_total
     let gForecastTimes  = [];      // Date[]
-    let gForecastStart  = null;    // Date (UTC, from BoM選択)
+    let gForecastStart  = null;    // Date (UTC)
     let currentStepIndex = 0;
 
     // TEC カラー
@@ -711,9 +762,9 @@
       { limit: 40, color: "#ff0000" }
     ];
 
-    // NOAA 由来 Kp(t) シリーズ
-    let gKpSeries        = []; // [{time: Date(UTC), kp}] 予報用
-    let gKpBaseSeries    = []; // Base 抽出用
+    // Kp(t) シリーズ
+    let gKpSeries        = []; // 予報用（3-Day Forecast）
+    let gKpSeriesBase    = []; // Base逆算用（実測JSONなど）
 
     // Leaflet 関連
     let map = null;
@@ -727,10 +778,14 @@
     // 地域フォーカス
     let currentFocus = null; // {latMin,latMax,lonMin,lonMax}
 
-    const STORAGE_KEY_CONFIG   = "swifttec_config_v4_additive";
-    const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v4_additive";  // 9枚対応版
+    const STORAGE_KEY_CONFIG   = "swifttec_config_v5_additive_superstorm_baseflare";
+    const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v5_additive_superstorm_baseflare";
     const STORAGE_KEY_TCOL     = "swifttec_teccol_v3";
     const STORAGE_KEY_GCOL     = "swifttec_gpscol_v1";
+
+    // SuperStorm パラメータ（Kp>=8用）
+    const SUPERSTORM_KP8 = 0.7;  // Kp=8 → S_super ≈ 0.7 (昼側)
+    const SUPERSTORM_KP9 = 1.0;  // Kp=9 → S_super ≈ 1.0 (昼側)
 
     function logInfo(msg) {
       const div = document.getElementById("runInfo");
@@ -738,6 +793,41 @@
       console.log(msg);
     }
     function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+    /* ===== 日サイド/夜間ウェイト ===== */
+    function calcDaySideWeight(ltHour) {
+      const ang = Math.PI * (ltHour - 14.0) / 12.0;
+      const w = Math.cos(ang);
+      return w > 0 ? w : 0;
+    }
+
+    // Base用：真夜中0.3, 昼1.0 くらいのイメージ
+    function calcDayBaseWeight(ltHour) {
+      const ds = calcDaySideWeight(ltHour);
+      return 0.3 + 0.7 * ds;
+    }
+
+    /* ===== SuperStorm: ΔTEC_max(φ) & S_super(Kp,LT) ===== */
+
+    // Zakharenkova 風 EIA二山プロファイル
+    // ΔTEC_max(φ) = 20 + 80 [ exp(-(φ-25)^2/10^2) + exp(-(φ+25)^2/10^2) ]
+    function sstorm_super_deltaMax(latDeg) {
+      const x1 = (latDeg - 25.0) / 10.0;
+      const x2 = (latDeg + 25.0) / 10.0;
+      return 20.0 + 80.0 * (Math.exp(-x1 * x1) + Math.exp(-x2 * x2));
+    }
+
+    // S_super(Kp,LT):
+    //  - Kp=8 → ≈0.7, Kp=9 → 1.0 (昼側)
+    //  - 夜側は DaySide(LT)=0 で 0
+    function sstorm_super_factor(Kp, ltHour) {
+      const dayW = calcDaySideWeight(ltHour);
+      if (dayW <= 0) return 0.0;
+
+      const norm = clamp((Kp - 8.0) / 1.0, 0.0, 1.0);
+      const fKp = SUPERSTORM_KP8 + (SUPERSTORM_KP9 - SUPERSTORM_KP8) * norm; // 8→0.7,9→1.0
+      return dayW * fKp;
+    }
 
     /* ===== 日付パース: VALID DATE/TIME: 11/11/2025 00:00:00UTC ===== */
     function parseBomValidTime(text) {
@@ -1040,10 +1130,54 @@
       }
     }
 
-    /* ===== NOAA Kp テキストパーサ（予報用） ===== */
+    /* ===== NOAA / JSON Kp テキストパーサ ===== */
+
+    function tryParseKpJsonTable(text) {
+      let arr;
+      try {
+        arr = JSON.parse(text);
+      } catch (e) {
+        return null;
+      }
+      if (!Array.isArray(arr) || arr.length < 2 || !Array.isArray(arr[0])) return null;
+      const header = arr[0];
+      const idxTime = header.indexOf("time_tag");
+      const idxKp   = header.indexOf("Kp");
+      if (idxTime < 0 || idxKp < 0) return null;
+
+      const out = [];
+      for (let i = 1; i < arr.length; i++) {
+        const row = arr[i];
+        if (!Array.isArray(row)) continue;
+        const ts = row[idxTime];
+        const kpStr = row[idxKp];
+        if (!ts || kpStr == null) continue;
+
+        const m = String(ts).match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+        if (!m) continue;
+        const y  = parseInt(m[1],10);
+        const mo = parseInt(m[2],10);
+        const d  = parseInt(m[3],10);
+        const hh = parseInt(m[4],10);
+        const mm = parseInt(m[5],10);
+        const ss = parseInt(m[6],10);
+        const t = new Date(Date.UTC(y, mo-1, d, hh, mm, ss));
+
+        const kp = parseFloat(kpStr);
+        if (isNaN(kp)) continue;
+
+        out.push({ time: t, kp: kp });
+      }
+      out.sort((a,b) => a.time - b.time);
+      return out;
+    }
 
     function parseKpText(raw) {
       const text = raw || "";
+
+      const jsonResult = tryParseKpJsonTable(text);
+      if (jsonResult && jsonResult.length) return jsonResult;
+
       if (/NOAA Kp index breakdown/i.test(text)) {
         return parseKpFrom3Day(text);
       }
@@ -1113,7 +1247,7 @@
           break;
         }
       }
-      if (!headerLine || year === null) return out;
+     	if (!headerLine || year === null) return out;
 
       const headerTokens = headerLine.trim().split(/\s+/);
       if (headerTokens.length % 2 !== 0) return out;
@@ -1134,7 +1268,6 @@
         if (!m) continue;
         const startHour = parseInt(m[1],10);
         const tokens = line.trim().split(/\s+/);
-
         if (tokens.length < 1 + colDates.length) continue;
 
         for (let c=0;c<colDates.length;c++) {
@@ -1155,73 +1288,6 @@
 
       out.sort((a,b) => a.time - b.time);
       return out;
-    }
-
-    // Base用 Kp テーブル（JSON / 配列）パーサ
-    function parseBaseKpText(raw) {
-      const text = (raw || "").trim();
-      if (!text) return [];
-
-      // 1) JSON配列（今回の NOAA 監視Kp 形式）を試す
-      try {
-        const data = JSON.parse(text);
-        const out = [];
-
-        if (Array.isArray(data) && data.length > 1) {
-          if (Array.isArray(data[0])) {
-            // [["time_tag","Kp",...], ["2025-11-26 00:00:00.000","3.33",...], ...]
-            const header = data[0].map(x => String(x).toLowerCase());
-            const idxTime = header.indexOf("time_tag") >= 0 ? header.indexOf("time_tag") : header.indexOf("time");
-            const idxKp   = header.indexOf("kp");
-            if (idxTime >= 0 && idxKp >= 0) {
-              for (let i=1;i<data.length;i++) {
-                const row = data[i];
-                if (!Array.isArray(row)) continue;
-                const tStr = String(row[idxTime]);
-                const kpStr = String(row[idxKp]);
-                const t = parseBaseKpTime(tStr);
-                const kp = parseFloat(kpStr);
-                if (!isNaN(kp) && t) {
-                  out.push({ time: t, kp: kp });
-                }
-              }
-            }
-          } else if (typeof data[0] === "object" && data[0] !== null) {
-            // [{time_tag:"...", Kp:"..."}] 形式
-            for (const rec of data) {
-              const tStr = rec.time_tag || rec.time || rec.Time || rec.TIME;
-              const kpStr = rec.Kp || rec.kp || rec.KP;
-              if (!tStr || kpStr==null) continue;
-              const t = parseBaseKpTime(String(tStr));
-              const kp = parseFloat(kpStr);
-              if (!isNaN(kp) && t) {
-                out.push({ time: t, kp: kp });
-              }
-            }
-          }
-        }
-
-        if (out.length) {
-          out.sort((a,b) => a.time - b.time);
-          return out;
-        }
-      } catch(e) {
-        // JSONでない場合は無視して次へ
-      }
-
-      // 2) それ以外は汎用フォーマットとして parseKpText に任せる
-      return parseKpText(text);
-    }
-
-    function parseBaseKpTime(str) {
-      const s = str.trim();
-      if (!s) return null;
-      // "2025-11-26 00:00:00.000" → "2025-11-26T00:00:00.000Z"
-      let iso = s.replace(" ", "T");
-      if (!/Z$/.test(iso)) iso += "Z";
-      const t = new Date(iso);
-      if (isNaN(t.getTime())) return null;
-      return t;
     }
 
     function sampleSeriesAtUtc(series, tUtc, stepLike=false) {
@@ -1248,7 +1314,7 @@
       return last.kp;
     }
 
-    /* ===== Deep Flare Net 入力 → ΔFlare ===== */
+    /* ===== Deep Flare Net 入力 → 予報用 ΔFlare ===== */
     function getDeepFlareProbs() {
       let sumX = 0, sumM = 0, count = 0;
       for (let i=1;i<=9;i++) {
@@ -1264,40 +1330,100 @@
       return { Px: sumX/count, Pm: sumM/count };
     }
 
-    // ΔFlare(φ,λ,t) [TECU] を返す（最大 +15 TECU）
-    function calcFlareDelta(cfg, ltHour) {
+    // 予報用 ΔFlare_forecast(λ,t) [TECU]（最大 +15 TECU）
+    function calcFlareDeltaForecast(cfg, ltHour) {
       const probs = getDeepFlareProbs();
       const Px = probs.Px;  // %
       const Pm = probs.Pm;  // %
 
       if (Px <= 0 && Pm <= 0) return 0.0;
 
-      // ざっくり：X > M、確率は0–100%を0–1に
       const level = cfg.kX*(Px/100) + cfg.kM*(Pm/100); // 0〜(kX+kM)
       if (level <= 0) return 0.0;
 
-      // 昼側を強める（日中LT=14hで最大、夜側は0）
-      const ang = Math.PI * (ltHour - 14) / 12;
-      let dayWeight = Math.cos(ang);
-      if (dayWeight < 0) dayWeight = 0; // 夜側では0
+      const dayWeight = calcDaySideWeight(ltHour);
 
-      // 基本最大 15 TECU、β_flare で調整
       const raw = 15.0 * cfg.betaFlare * level * dayWeight;
-      // 絶対上限 15 TECU
       return clamp(raw, 0, 15);
     }
 
-    // BaseTEC 用 昼夜ウェイト（夜間減衰）
-    // LT=14h 付近で 1.0、真夜中付近で ~0.3 まで緩やかに下げる
-    function calcBaseNightWeight(ltHour) {
-      const ang = Math.PI * (ltHour - 14) / 12;
-      let daySide = Math.cos(ang);
-      if (daySide < 0) daySide = 0;
-      const w = 0.3 + 0.7 * daySide; // 夜:0.3, 昼:1.0
-      return w;
+    /* ===== Base用 手動フレアイベント ===== */
+
+    function parseUtcFromInput(str) {
+      if (!str) return null;
+      const s = str.trim();
+      if (!s) return null;
+
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) return d;
+
+      const m = s.match(/(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+      if (m) {
+        const y  = parseInt(m[1],10);
+        const mo = parseInt(m[2],10);
+        const d2 = parseInt(m[3],10);
+        const hh = parseInt(m[4],10);
+        const mm = parseInt(m[5],10);
+        return new Date(Date.UTC(y, mo-1, d2, hh, mm, 0));
+      }
+      return null;
     }
 
-    /* ===== Simple Sstorm Positive (Mukhtarovベース) ===== */
+    function getBaseFlareEvents() {
+      const events = [];
+      for (let i=1;i<=3;i++) {
+        const startStr = document.getElementById("baseFlareStart"+i).value;
+        const endStr   = document.getElementById("baseFlareEnd"+i).value;
+        const start = parseUtcFromInput(startStr);
+        const end   = parseUtcFromInput(endStr);
+        let dTecMax = parseFloat(document.getElementById("baseFlareDelta"+i).value);
+        if (!start || !end || isNaN(dTecMax) || dTecMax <= 0) continue;
+
+        let latMin = parseFloat(document.getElementById("baseFlareLatMin"+i).value);
+        let latMax = parseFloat(document.getElementById("baseFlareLatMax"+i).value);
+        let lonMin = parseFloat(document.getElementById("baseFlareLonMin"+i).value);
+        let lonMax = parseFloat(document.getElementById("baseFlareLonMax"+i).value);
+
+        if (isNaN(latMin)) latMin = -90;
+        if (isNaN(latMax)) latMax =  90;
+        if (isNaN(lonMin)) lonMin = -180;
+        if (isNaN(lonMax)) lonMax =  180;
+
+        if (end.getTime() <= start.getTime()) continue;
+
+        events.push({
+          start, end,
+          latMin, latMax,
+          lonMin, lonMax,
+          dTecMax
+        });
+      }
+      return events;
+    }
+
+    // Base用 ΔFlare_base(φ,λ,t) [TECU]（最大 +15 TECU）
+    function calcFlareDeltaBaseManual(tUtc, latDeg, lonDeg) {
+      const events = getBaseFlareEvents();
+      if (!events.length) return 0.0;
+      const tMs = tUtc.getTime();
+      let sum = 0;
+
+      for (const ev of events) {
+        if (tMs < ev.start.getTime() || tMs > ev.end.getTime()) continue;
+        if (latDeg < ev.latMin || latDeg > ev.latMax) continue;
+        if (lonDeg < ev.lonMin || lonDeg > ev.lonMax) continue;
+
+        const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lonDeg/15 + 24) % 24;
+        const dayW = calcDaySideWeight(ltHour);
+        if (dayW <= 0) continue;
+
+        const contrib = ev.dTecMax * dayW;
+        sum += contrib;
+      }
+      return clamp(sum, 0, 15);
+    }
+
+    /* ===== Simple Sstorm Positive (Mukhtarovベース, SuperStormは外で分岐) ===== */
     const SstormPos_SIGMA_LAT = 15.0;
     const SstormPos_SIGMA_M   = 2.0;
     const SstormPos_KC  = 6.5;
@@ -1401,17 +1527,14 @@
       } = options;
 
       const base = sstormPos_rTEC_base(Kp, latDeg, month, sigmaLat, sigmaM);
-
       if (!useTail) {
         return base;
       }
 
       const baseAtKc = sstormPos_rTEC_base(Kc, latDeg, month, sigmaLat, sigmaM);
-
       const A = A0 * (1.0 + Math.max(baseAtKc, 0.0));
 
       const L = 1.0 / (1.0 + Math.exp(-(Kp - Kc) / w));
-
       const dK = Math.max(0.0, Kp - Kc);
       const tail = A * L * dK * dK;
 
@@ -1572,6 +1695,7 @@
       const scale = (mapMode === "tec") ? gTecColorScale : gGpsColorScale;
       const stops = scale.map(s => s.color).join(",");
       bar.style.background = "linear-gradient(to top," + stops + ")";
+
       labelsDiv.innerHTML =
         "<span>" + scale[0].limit + "</span><span>" + scale[scale.length-1].limit + "</span>";
       title.textContent = (mapMode === "tec") ? "TEC [TECU]" : "GPS L1誤差 [m]";
@@ -1734,7 +1858,7 @@
       if (info) info.textContent = "BoMの有効時刻から選択できます。変更後は再度「TEC予報を計算」を押してください。";
     }
 
-    /* ===== 予報計算（Base逆算＋加算モデル） ===== */
+    /* ===== 予報計算（加算+SuperStorm+Base手動Flare） ===== */
     function runForecast() {
       try {
         logInfo("TEC予報を計算中...");
@@ -1779,10 +1903,8 @@
           nLon:   first.nLon
         };
 
-        // BoMの有効時刻リストをセレクトに反映
         updateForecastStartSelect(frames);
 
-        // ユーザー選択 or 最初の有効時刻を予報スタートに
         let startTime = first.validTime || new Date();
         const sel = document.getElementById("forecastStartSelect");
         if (sel && sel.options.length > 0 && sel.value) {
@@ -1793,18 +1915,10 @@
         }
         gForecastStart = startTime;
 
-        // 予報用 Kpシリーズ（NOAA 3-Day Forecast テキスト）
-        gKpSeries = parseKpText(document.getElementById("noaaKpText").value);
-
-        // Base抽出用 Kpシリーズ（監視Kp テーブルなど）
-        const baseKpRaw = document.getElementById("baseKpText")
-          ? document.getElementById("baseKpText").value
-          : "";
-        gKpBaseSeries = parseBaseKpText(baseKpRaw);
-        if (!gKpBaseSeries.length) {
-          // 未入力の場合は予報用と同じ系列を流用
-          gKpBaseSeries = gKpSeries.slice();
-        }
+        const baseKpText = document.getElementById("noaaKpBaseText").value;
+        const fcstKpText = document.getElementById("noaaKpText").value;
+        gKpSeriesBase = parseKpText(baseKpText);
+        gKpSeries     = parseKpText(fcstKpText);
 
         const cfg   = getConfigFromUI();
 
@@ -1820,14 +1934,14 @@
         for (let s=0;s<gForecastTimes.length;s++) {
           const tUtc = gForecastTimes[s];
 
-          // BoMから「入力TEC」（嵐＋フレア込み）を取得
-          const inputTecGrid = interpolateBomFrames(frames, tUtc);
+          const tecInGrid = interpolateBomFrames(frames, tUtc);
 
-          // 予報用 / Base用 Kp(t)
-          const kpForecast = sampleSeriesAtUtc(gKpSeries,    tUtc, true) ?? 0;
-          const kpBase     = sampleSeriesAtUtc(gKpBaseSeries,tUtc, true) ?? kpForecast;
-
-          const monthIndex = tUtc.getUTCMonth() + 1;
+          const kp_fcst = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
+          const kp_base = sampleSeriesAtUtc(
+            (gKpSeriesBase && gKpSeriesBase.length) ? gKpSeriesBase : gKpSeries,
+            tUtc,
+            true
+          ) ?? 0;
 
           const frame = new Array(nLat);
 
@@ -1840,42 +1954,48 @@
 
               // 実太陽時（近似）LT = UTC + λ/15h
               const ltHour = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lon/15 + 24) % 24;
+              const monthIndex = tUtc.getUTCMonth() + 1;
 
-              const tecInput = inputTecGrid[i][j];
+              const tecIn = tecInGrid[i][j];
 
-              // ----- [1] Base 抽出（入力 TEC から Sstorm_base, Sflare_base を除去） -----
+              // --- BaseTEC 逆算 (入力TEC - Sstorm_base - BaseFlare_manual) ---
+              const dFlare_base = calcFlareDeltaBaseManual(tUtc, lat, lon);
 
-              // ΔFlare_base: 現状は DeepFlareNet 入力を共用
-              const dFlareBase = calcFlareDelta(cfg, ltHour);
+              let tecBaseRaw;
+              if (kp_base <= 7.0) {
+                // Kp<=7: Mukhtarov モード
+                const rStormBase = sstormPos_rStorm(kp_base, lat, monthIndex);
+                const denom = 1.0 + cfg.kStorm * (rStormBase - 1.0);
+                const denomSafe = Math.max(denom, 0.2);
+                tecBaseRaw = (tecIn - dFlare_base) / denomSafe;
+              } else {
+                // Kp>=8: SuperStorm モード
+                const deltaMaxBase = sstorm_super_deltaMax(lat);
+                const sSuperBase   = sstorm_super_factor(kp_base, ltHour);
+                const corr = cfg.kStorm * sSuperBase * deltaMaxBase + dFlare_base;
+                tecBaseRaw = tecIn - corr;
+              }
 
-              // rStorm_base: Mukhtarov 正層嵐モデル＋tail
-              const rStormBase = sstormPos_rStorm(kpBase, lat, monthIndex);
+              if (!isFinite(tecBaseRaw)) tecBaseRaw = 0;
+              const dayBaseW = calcDayBaseWeight(ltHour);
+              let tecBase = cfg.kBase * tecBaseRaw * dayBaseW;
+              if (tecBase < 0) tecBase = 0;
 
-              // TEC_input ≈ Base_raw × (1 + kStorm·(rStorm_base − 1)) + ΔFlare_base
-              let num   = tecInput - dFlareBase;
-              let denom = 1 + cfg.kStorm * (rStormBase - 1.0);
-              if (denom < 0.2) denom = 0.2; // ゼロ割・暴走防止
+              // --- 予報側 ΔStorm (Kp_fcst) ---
+              let dStorm;
+              if (kp_fcst <= 7.0) {
+                const rStormFcst = sstormPos_rStorm(kp_fcst, lat, monthIndex);
+                dStorm = cfg.kStorm * tecBase * (rStormFcst - 1.0);
+              } else {
+                const deltaMax = sstorm_super_deltaMax(lat);
+                const sSuper   = sstorm_super_factor(kp_fcst, ltHour);
+                dStorm = cfg.kStorm * sSuper * deltaMax;
+              }
 
-              let baseRaw = num / denom;
-              if (!isFinite(baseRaw) || baseRaw < 0) baseRaw = 0;
+              // --- 予報用 ΔFlare（DeepFlareNet ベース） ---
+              const dFlare_fcst = calcFlareDeltaForecast(cfg, ltHour);
 
-              // 昼夜ウェイト（夜間減衰）を Base に適用
-              const wBase = calcBaseNightWeight(ltHour);
-              let baseTec = baseRaw * wBase;
-
-              // BoM由来の BaseTEC に全体スケール(kBase)を掛ける（微調整用）
-              baseTec *= cfg.kBase;
-
-              // ----- [2] 予報シナリオの ΔStorm, ΔFlare を加算 -----
-
-              const rStormForecast = sstormPos_rStorm(kpForecast, lat, monthIndex);
-              const dStormForecast = cfg.kStorm * baseTec * (rStormForecast - 1.0);
-
-              // 現状 ΔFlare_forecast も同じ DeepFlareNet 入力を利用
-              const dFlareForecast = calcFlareDelta(cfg, ltHour);
-
-              let tec = baseTec + dStormForecast + dFlareForecast;
-
+              let tec = tecBase + dStorm + dFlare_fcst;
               if (!isFinite(tec) || tec < 0) tec = 0;
               frame[i][j] = tec;
             }
@@ -1983,72 +2103,96 @@
       if (map) map.setView([0,0], 2);
     }
 
-    /* ===== 式テキスト（Base逆算＋加算モデル版） ===== */
+    /* ===== 式テキスト（加算+SuperStorm+Base手動Flare版） ===== */
     function updateFormulaText() {
       const cfg = getConfigFromUI();
       const txt =
-`加算モデル（Mode A, Base逆算＋夜間減衰付き）
+`加算+SuperStorm+Base手動Flare モデル:
 
-[1] Base 抽出フェーズ（入力 BoM TEC → 静穏 BaseTEC）
+  1. BaseTEC 逆算（BoM入力TEC → 静穏成分）
 
-  入力：
-    TEC_input(φ,λ,t) : BoM TEC 9枚を時間補間した値（嵐＋フレア込み）
+    入力 TEC:
+      TEC_in(φ,λ,t) = BoM TEC を時間補間した値
 
-  近似モデル：
-    TEC_input(φ,λ,t) ≈ Base_raw(φ,λ,t)
-                         × { 1 + kStorm · [ rStorm_base(φ,month(t),Kp_base(t)) − 1 ] }
-                         + ΔFlare_base(λ,LT(t,λ))
+    実太陽時:
+      LT(t,λ) = UTC(t) + λ/15h (mod 24)
 
-  ここで：
-    Kp_base(t)       : Base 抽出用 Kp シリーズ（「2b. Base用 Kp」欄）
-    rStorm_base      : Mukhtarov 正層嵐モデル＋tail（Kp=Kp_base）
-    ΔFlare_base      : Deep Flare Net確率と LT から計算（最大15 TECU）
+    昼夜ウェイト:
+      DaySide(LT) = max(0, cos(π(LT-14)/12))
+      DayBase(LT) = 0.3 + 0.7·DaySide(LT)
 
-  実装：
-    Base_raw(φ,λ,t) =
-      { TEC_input(φ,λ,t) − ΔFlare_base(λ,LT) }
-      / { 1 + kStorm·[rStorm_base(φ,month,Kp_base) − 1] }
+    Base用フレア（手動イベント）:
+      ・イベント i = 1..N について
+         start_i, end_i : UTC 時刻
+         [latMin_i, latMax_i], [lonMin_i, lonMax_i] : 領域
+         ΔTECmax_i : 最大増分 [TECU]
 
-    BaseTEC(φ,λ,t) = max( 0 ,
-                           kBase × Base_raw(φ,λ,t) × DayBase(LT(t,λ))
-                         )
+      ΔFlare_base(φ,λ,t)
+        = Σ_i { ΔTECmax_i · DaySide(LT(t,λ))
+                （t∈[start_i,end_i], かつ φ,λ が矩形内） } を 0〜15 TECU にクリップ
 
-  DayBase(LT) :
-    DaySide(LT) ≈ cos[ π·(LT−14)/12 ]  （昼側(LT≒14h)で1, 夜側で0）
-    DayBase(LT) = 0.3 + 0.7 · DaySide(LT)
-      → 真夜中で ~0.3, 正午〜午後で 1.0
+    (1) Kp_base ≤ 7: Mukhtarov モード
 
-[2] 予報フェーズ（BaseTEC ＋ 予報用 Kp/フレア）
+      r_storm_base(φ,t) = 1 + r_TEC_Mukhtarov(Kp_base(t), φ, season(t))
 
-  TEC_total(φ,λ,t) =
+      TEC_base_raw(φ,λ,t)
+        = [ TEC_in(φ,λ,t) - ΔFlare_base(φ,λ,t) ]
+          / { 1 + kStorm·[r_storm_base(φ,t) - 1] }
+
+    (2) Kp_base ≥ 8: SuperStorm モード
+
+      ΔTEC_max(φ)
+        = 20 + 80[ exp(-((φ-25)/10)^2) + exp(-((φ+25)/10)^2) ]
+
+      S_super_base(Kp_base,LT)
+        = DaySide(LT) · f(Kp_base)   // Kp=8→0.7, Kp=9→1.0
+
+      TEC_base_raw(φ,λ,t)
+        = TEC_in(φ,λ,t)
+          - kStorm·S_super_base·ΔTEC_max(φ)
+          - ΔFlare_base(φ,λ,t)
+
+    最終 BaseTEC（夜間減衰 + kBase）:
       BaseTEC(φ,λ,t)
-    + ΔStorm_forecast(φ,λ,t)
-    + ΔFlare_forecast(λ,LT(t,λ))
+        = max(0, kBase · TEC_base_raw(φ,λ,t) · DayBase(LT(t,λ)))
 
-  ΔStorm_forecast(φ,λ,t) =
-      kStorm × BaseTEC(φ,λ,t)
-             × { rStorm_forecast(φ,month(t),Kp_forecast(t)) − 1 }
+  2. 予報側 ΔStorm (Kp_fcst) + ΔFlare_forecast (DeepFlareNet)
 
-  ΔFlare_forecast(λ,LT) =
-      min( 15 TECU,
-           15 × β_flare × [k_X·(Px/100) + k_M·(Pm/100)] × DaySide(LT)
-         )
+    (1) Kp_fcst ≤ 7: Mukhtarov モード
 
-  ここで：
-    Kp_forecast(t) : NOAA 3-Day Forecast テキスト（「2. NOAA Kp」欄）からの Kp(t)
-    Px, Pm         : Deep Flare Net 9領域の X/M クラス発生確率 [%]（現状 Base/予報共通）
-    DaySide(LT)    : 昼側(LT≒14h)で1, 夜側で0 となる cos 型重み
+      r_storm_fcst(φ,t) = 1 + r_TEC_Mukhtarov(Kp_fcst(t), φ, season(t))
 
-GPS 誤差：
-  σ_L1(φ,λ,t) ≈ TEC_total(φ,λ,t) × kL1   [m]
+      ΔStorm_fcst(φ,λ,t)
+        = kStorm · BaseTEC(φ,λ,t) · [ r_storm_fcst(φ,t) - 1 ]
 
-現在の係数:
-  kBase   = ${cfg.kBase}
-  kStorm  = ${cfg.kStorm}
-  β_flare = ${cfg.betaFlare}
-  k_X     = ${cfg.kX}
-  k_M     = ${cfg.kM}
-  kL1     = ${cfg.kL1} [m/TECU]`;
+    (2) Kp_fcst ≥ 8: SuperStorm モード
+
+      ΔStorm_fcst(φ,λ,t)
+        = kStorm · S_super(Kp_fcst(t),LT(t,λ)) · ΔTEC_max(φ)
+
+    予報用フレア（DeepFlareNet 9領域）:
+      Px, Pm = DeepFlareNet からの平均 P(X≥), P(M≥) [%]
+      level  = k_X·(Px/100) + k_M·(Pm/100)
+      ΔFlare_forecast(λ,t)
+        = min(15,
+               15·β_flare·level·DaySide(LT(t,λ)))
+
+  3. 最終 TEC & GPS誤差
+
+      TEC_total(φ,λ,t)
+        = BaseTEC(φ,λ,t)
+        + ΔStorm_fcst(φ,λ,t)
+        + ΔFlare_forecast(λ,t)
+
+      σ_L1(φ,λ,t) ≈ TEC_total(φ,λ,t) · kL1   [m]
+
+  現在の係数:
+    kBase   = ${cfg.kBase}
+    kStorm  = ${cfg.kStorm}
+    β_flare = ${cfg.betaFlare}  (予報用)
+    k_X     = ${cfg.kX}
+    k_M     = ${cfg.kM}
+    kL1     = ${cfg.kL1} [m/TECU]`;
 
       document.getElementById("formulaText").textContent = txt;
     }
@@ -2080,7 +2224,6 @@ GPS 誤差：
       updateTimeLabel();
       updateUtcLabel(0);
       updateKpLabelForStep(0);
-      updateTecLegend();
       updateFormulaText();
     });
   </script>
