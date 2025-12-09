@@ -637,6 +637,9 @@
           <button onclick="runForecast()">TEC予報を計算</button>
           <button class="secondary" onclick="resetAll()">リセット</button>
         </div>
+        <div class="row" style="margin-top:4px;">
+          <button onclick="exportTecCsv3day()">3日分TECをCSV出力</button>
+        </div>
         <div id="runInfo" class="small"></div>
       </div>
     </div>
@@ -1775,7 +1778,7 @@
     function updateForecastStartSelect(frames) {
       const sel = document.getElementById("forecastStartSelect");
       const info = document.getElementById("forecastStartInfo");
-      if (!sel) return;
+      if (!(sel && info)) return;
       sel.innerHTML = "";
 
       const times = frames
@@ -1794,7 +1797,7 @@
       }
 
       if (!uniqueTimes.length) {
-        if (info) info.textContent = "BoMに有効時刻が含まれていないため、最初のフレーム時刻を基準に3日予報を行います。";
+        info.textContent = "BoMに有効時刻が含まれていないため、最初のフレーム時刻を基準に3日予報を行います。";
         return;
       }
 
@@ -1806,7 +1809,7 @@
         sel.appendChild(opt);
       });
 
-      if (info) info.textContent = "BoMの有効時刻から選択できます。変更後は再度「TEC予報を計算」を押してください。";
+      info.textContent = "BoMの有効時刻から選択できます。変更後は再度「TEC予報を計算」を押してください。";
     }
 
     /* ===== 予報計算（Base抽出＋加算モデル） ===== */
@@ -2119,6 +2122,60 @@
   kL1     = ${cfg.kL1} [m/TECU]`;
 
       document.getElementById("formulaText").textContent = txt;
+    }
+
+    /* ===== 3日分 TEC 予報を CSV 出力（DOPツール入力用） ===== */
+    function exportTecCsv3day() {
+      // まず計算されているかチェック
+      if (!gForecastFrames || !gForecastFrames.length || !gGrid || !gForecastTimes.length) {
+        alert("まず「TEC予報を計算」を押して、3日分のTEC予報を作ってください。");
+        return;
+      }
+
+      const latArr = gGrid.latArr;
+      const lonArr = gGrid.lonArr;
+      const nLat   = gGrid.nLat;
+      const nLon   = gGrid.nLon;
+
+      // 1行 = 1時刻・1格子点
+      const lines = [];
+      lines.push("time_utc,lat_deg,lon_deg,tec_tecu");
+
+      for (let s = 0; s < gForecastFrames.length; s++) {
+        const tUtc = gForecastTimes[s];
+        if (!(tUtc instanceof Date) || isNaN(tUtc.getTime())) continue;
+
+        // 秒以下は要らないので「YYYY-MM-DDTHH:MM」まで
+        const tStr = tUtc.toISOString().slice(0, 16); // 例: 2025-12-09T00:00
+
+        const frame = gForecastFrames[s];
+
+        for (let i = 0; i < nLat; i++) {
+          const lat = latArr[i];
+          for (let j = 0; j < nLon; j++) {
+            const lon = lonArr[j];
+            const tec = frame[i][j];
+
+            const tecVal = Number.isFinite(tec) ? tec.toFixed(2) : "";
+
+            lines.push(`${tStr},${lat},${lon},${tecVal}`);
+          }
+        }
+      }
+
+      const csvText = lines.join("\r\n");
+      const blob = new Blob([csvText], { type: "text/csv" });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "SWIFTTEC_TEC_3day.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      logInfo("3日分TEC予報を CSV として出力しました。（SWIFTTEC_TEC_3day.csv）");
     }
 
     /* ===== リセット ===== */
