@@ -258,6 +258,17 @@
       padding: 3px 2px;
     }
   </style>
+  <script>
+  (function () {
+    const PASSWORD = "Haneishi"; // 
+    const input = prompt("パスワードを入力してください");
+    if (input !== PASSWORD) {
+      alert("パスワードが違います");
+      document.documentElement.innerHTML = "";
+      throw new Error("Unauthorized");
+    }
+  })();
+</script>
 </head>
 <body>
   <div class="page">
@@ -2336,3 +2347,4 @@
   </script>
 </body>
 </html>
+
