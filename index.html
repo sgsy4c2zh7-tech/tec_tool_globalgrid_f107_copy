@@ -281,8 +281,22 @@
       <div class="card">
         <div class="card-header">
           <h2>1. BoM TEC（入力・最大9枚）</h2>
-          <span>World0000_tec.txt などをコピペ</span>
+          <span>World0000_tec.txt など</span>
         </div>
+
+        <div class="small">
+          ・API取得は <b>0000/0300/0600/0900/1200/1500/1800/2100/2330</b> の計9枚を取得します。<br>
+          ・もし取得に失敗する場合は、ブラウザのCORS制限の可能性があります（その場合は従来通りコピペ運用）。
+        </div>
+
+        <div class="row">
+          <button onclick="fetchBomTec9FromApi(false)">BoM 9枚をAPI取得 → 入力欄へ</button>
+          <button class="secondary" onclick="fetchBomTec9FromApi(true)">取得して保存</button>
+        </div>
+        <div class="small" id="bomApiStatus"></div>
+
+        <hr>
+
         <div class="row small">
           <div>BoM #1</div><div>BoM #2</div><div>BoM #3</div>
         </div>
@@ -320,20 +334,22 @@
       <div class="card">
         <div class="card-header">
           <h2>2. NOAA Kp テキスト（予報用）</h2>
-          <span>3-Day Forecast を丸ごと貼付</span>
+          <span>3-Day Geomag Forecast を取得可</span>
         </div>
         <div class="small">
-          ・Kp（3日予報）：<br>
-          　→ <b>3-Day Forecast</b> をそのまま貼り付け<br>
-          形式が合わない場合は、簡易フォーマット：<br>
-          <code>YYYY-MM-DD HH Kp</code><br>
-          に整形すると確実です。<br>
-          ※この入力は「予報用（Sstorm / Sflare）」に使用
+          ・Kp（3日予報）は、NOAAの <b>3-day geomag forecast (text)</b> を自動取得できます。<br>
+          ・このテキストには <code>NOAA Kp index breakdown</code> が含まれるため、現行パーサで安定します。
         </div>
+
+        <div class="row">
+          <button onclick="fetchNoaa3DayGeomagToTextarea()">NOAA 3-day（Kp）をAPI取得 → 貼付</button>
+          <span class="small" id="noaa3dayStatus"></span>
+        </div>
+
         <div class="row">
           <div>
-            <label>Kp 予報テキスト（3-Day Forecast）</label><br>
-            <textarea id="noaaKpText" placeholder=":Product: 3-Day Forecast から最後までを丸ごと貼り付け"></textarea>
+            <label>Kp 予報テキスト（NOAA 3-day geomag forecast）</label><br>
+            <textarea id="noaaKpText" placeholder="自動取得 or 手動貼付"></textarea>
           </div>
         </div>
       </div>
@@ -345,13 +361,16 @@
           <span>入力TECから嵐・フレア成分を引き算</span>
         </div>
         <div class="small">
-          ・Base用 Kp：NOAA 実測 Kp の JSON 配列を貼付<br>
-          　例：<code>[["time_tag","Kp","a_running","station_count"],["2025-11-26 00:00:00.000","3.33",...],...]</code><br>
+          ・Base用 Kp：NOAA 実測 Kp の JSON 配列を貼付、またはAPI取得<br>
           ・Base用 フレア：時間ごとの Px / Pm を JSON で入力<br>
-          　例：<br>
-          　<code>[{"time":"2025-11-26T00:00:00Z","Px":5,"Pm":15}, ...]</code><br>
           ※空の場合：Kp は「予報用」を流用、フレアは 0 とみなす
         </div>
+
+        <div class="row">
+          <button onclick="fetchNoaaPlanetaryKIndex1DayToBase()">NOAA K-index（1日分）をAPI取得 → Base用Kpへ</button>
+          <span class="small" id="kindexStatus"></span>
+        </div>
+
         <div class="row">
           <div>
             <label>Base 用 Kp（JSON 配列）</label><br>
@@ -698,6 +717,95 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
+    /* ============================
+     *  API endpoints（追加）
+     * ============================ */
+    const BOM_TEC_BASE_URL = "https://downloads.sws.bom.gov.au/data/Satellite/";
+    // 指定どおり：0000→3時間おき、最後だけ2330（計9枚）
+    const BOM_TEC_FILES_9 = [
+      "World0000_tec.txt",
+      "World0300_tec.txt",
+      "World0600_tec.txt",
+      "World0900_tec.txt",
+      "World1200_tec.txt",
+      "World1500_tec.txt",
+      "World1800_tec.txt",
+      "World2100_tec.txt",
+      "World2330_tec.txt"
+    ];
+
+    // NOAA：Kp breakdown を含むテキスト（現行パーサと相性◎）
+    const NOAA_3DAY_GEOMAG_TEXT_URL = "https://services.swpc.noaa.gov/text/3-day-geomag-forecast.txt";
+
+    // NOAA：Planetary K index（ユーザー指定URL）
+    const NOAA_PLANETARY_K_INDEX_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
+
+    async function fetchText(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return await res.text();
+    }
+    async function fetchJson(url) {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      return await res.json();
+    }
+
+    function setStatus(id, msg) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = msg || "";
+    }
+
+    async function fetchBomTec9FromApi(saveAfter=false) {
+      try {
+        setStatus("bomApiStatus", "BoM TEC を取得中…（9枚）");
+        const texts = await Promise.all(
+          BOM_TEC_FILES_9.map(fn => fetchText(BOM_TEC_BASE_URL + fn))
+        );
+        const ids = ["bomInput1","bomInput2","bomInput3","bomInput4","bomInput5","bomInput6","bomInput7","bomInput8","bomInput9"];
+        for (let i=0;i<ids.length;i++) {
+          const ta = document.getElementById(ids[i]);
+          if (ta) ta.value = texts[i] || "";
+        }
+        // 有効時刻をざっくり表示
+        const times = texts.map(t => {
+          const d = parseBomValidTime(t);
+          return d ? d.toISOString().replace(".000Z","Z") : "--";
+        });
+        setStatus("bomApiStatus", "BoM API取得OK: " + times.join(" / "));
+        if (saveAfter) saveBomInputs();
+      } catch (e) {
+        console.error(e);
+        setStatus("bomApiStatus", "BoM API取得失敗: " + e.message + "（CORS制限なら手動コピペ運用）");
+      }
+    }
+
+    async function fetchNoaa3DayGeomagToTextarea() {
+      try {
+        setStatus("noaa3dayStatus", "取得中…");
+        const txt = await fetchText(NOAA_3DAY_GEOMAG_TEXT_URL);
+        const ta = document.getElementById("noaaKpText");
+        if (ta) ta.value = txt;
+        setStatus("noaa3dayStatus", "OK");
+      } catch (e) {
+        console.error(e);
+        setStatus("noaa3dayStatus", "失敗: " + e.message);
+      }
+    }
+
+    async function fetchNoaaPlanetaryKIndex1DayToBase() {
+      try {
+        setStatus("kindexStatus", "取得中…");
+        const data = await fetchJson(NOAA_PLANETARY_K_INDEX_URL);
+        const ta = document.getElementById("baseKpJson");
+        if (ta) ta.value = JSON.stringify(data);
+        setStatus("kindexStatus", "OK（Base用Kpへ反映）");
+      } catch (e) {
+        console.error(e);
+        setStatus("kindexStatus", "失敗: " + e.message);
+      }
+    }
+
     /* ============ グローバル状態 ============ */
     const FORECAST_HOURS = 24 * 3;   // 3日分
     const DT_MINUTES     = 30;       // 30分刻み
@@ -1196,7 +1304,28 @@
       return last.kp;
     }
 
-    /* ===== Base 用 Kp JSON パーサ ===== */
+    /* ===== Base 用 Kp JSON パーサ（NOAA time_tag対応：修正） ===== */
+    function toUtcDateFromSwpcTimeTag(tStr) {
+      const s = String(tStr || "").trim();
+      if (!s) return null;
+
+      // 典型例: "2025-11-26 00:00:00.000"
+      // → ISOへ: "2025-11-26T00:00:00.000Z"
+      let iso = s.includes("T") ? s : s.replace(" ", "T");
+      if (!/[zZ]$/.test(iso)) iso += "Z";
+      let d = new Date(iso);
+      if (!isNaN(d.getTime())) return d;
+
+      // フォールバック: ミリ秒なし
+      const m = s.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+      if (m) {
+        const y = parseInt(m[1],10), mo=parseInt(m[2],10), da=parseInt(m[3],10);
+        const hh=parseInt(m[4],10), mm=parseInt(m[5],10), ss=parseInt(m[6]||"0",10);
+        return new Date(Date.UTC(y, mo-1, da, hh, mm, ss));
+      }
+      return null;
+    }
+
     function parseBaseKpJson(text) {
       const raw = (text || "").trim();
       if (!raw) return [];
@@ -1220,9 +1349,9 @@
             if (!row || row.length <= Math.max(timeIdx,kpIdx)) continue;
             const tStr = String(row[timeIdx]);
             const kpStr = String(row[kpIdx]);
-            const d = new Date(tStr.endsWith("Z") ? tStr : (tStr + "Z"));
+            const d = toUtcDateFromSwpcTimeTag(tStr);
             const kp = parseFloat(kpStr);
-            if (!isNaN(d.getTime()) && !isNaN(kp)) {
+            if (d && !isNaN(kp)) {
               series.push({ time: d, kp });
             }
           }
@@ -1234,9 +1363,9 @@
           const tStr = obj.time || obj.time_tag;
           const kpVal = obj.kp ?? obj.Kp;
           if (!tStr || kpVal === undefined) continue;
-          const d = new Date(String(tStr).endsWith("Z") ? tStr : (String(tStr) + "Z"));
+          const d = toUtcDateFromSwpcTimeTag(tStr);
           const kp = parseFloat(kpVal);
-          if (!isNaN(d.getTime()) && !isNaN(kp)) {
+          if (d && !isNaN(kp)) {
             series.push({ time: d, kp });
           }
         }
@@ -2105,7 +2234,7 @@
            )
 
     ここで：
-      Kp_forecast(t) : NOAA 3-Day Forecast の Kp(t)
+      Kp_forecast(t) : NOAA 3-day（テキスト）Kp(t)
       rStorm         : Mukhtarov rTEC(Kp) を季節・緯度で補間＋高Kp tail
       Px_DFN, Pm_DFN : Deep Flare Net 9領域 UI 入力の平均 [%]
       DaySide(φ,λ,t) : 太陽天頂角 χ < 90° のとき cosχ を元に 0〜1 へ正規化したウェイト
@@ -2126,7 +2255,6 @@
 
     /* ===== 3日分 TEC 予報を CSV 出力（DOPツール入力用） ===== */
     function exportTecCsv3day() {
-      // まず計算されているかチェック
       if (!gForecastFrames || !gForecastFrames.length || !gGrid || !gForecastTimes.length) {
         alert("まず「TEC予報を計算」を押して、3日分のTEC予報を作ってください。");
         return;
@@ -2137,7 +2265,6 @@
       const nLat   = gGrid.nLat;
       const nLon   = gGrid.nLon;
 
-      // 1行 = 1時刻・1格子点
       const lines = [];
       lines.push("time_utc,lat_deg,lon_deg,tec_tecu");
 
@@ -2145,8 +2272,7 @@
         const tUtc = gForecastTimes[s];
         if (!(tUtc instanceof Date) || isNaN(tUtc.getTime())) continue;
 
-        // 秒以下は要らないので「YYYY-MM-DDTHH:MM」まで
-        const tStr = tUtc.toISOString().slice(0, 16); // 例: 2025-12-09T00:00
+        const tStr = tUtc.toISOString().slice(0, 16);
 
         const frame = gForecastFrames[s];
 
