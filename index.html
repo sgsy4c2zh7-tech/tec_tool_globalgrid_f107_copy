@@ -720,18 +720,18 @@
     /* ============================
      *  API endpoints（追加）
      * ============================ */
-    const BOM_TEC_BASE_URL = "https://downloads.sws.bom.gov.au/data/Satellite/";
-    // 指定どおり：0000→3時間おき、最後だけ2330（計9枚）
-    const BOM_TEC_FILES_9 = [
-      "World0000_tec.txt",
-      "World0300_tec.txt",
-      "World0600_tec.txt",
-      "World0900_tec.txt",
-      "World1200_tec.txt",
-      "World1500_tec.txt",
-      "World1800_tec.txt",
-      "World2100_tec.txt",
-      "World2330_tec.txt"
+
+    // ✅✅✅ BoM: フルURL固定（あなた指定の9本をそのまま使う）
+    const BOM_TEC_URLS_9 = [
+      "https://downloads.sws.bom.gov.au/data/Satellite/World0000_tec.txt",
+      "https://downloads.sws.bom.gov.au/data/Satellite/World0300_tec.txt",
+      "https://downloads.sws.bom.gov.au/data/Satellite/World0600_tec.txt",
+      "https://downloads.sws.bom.gov.au/data/Satellite/World0900_tec.txt",
+      "https://downloads.sws.bom.gov.au/data/Satellite/World1200_tec.txt",
+      "https://downloads.sws.bom.gov.au/data/Satellite/World1500_tec.txt",
+      "https://downloads.sws.bom.gov.au/data/Satellite/World1800_tec.txt",
+      "https://downloads.sws.bom.gov.au/data/Satellite/World2100_tec.txt",
+      "https://downloads.sws.bom.gov.au/data/Satellite/World2330_tec.txt"
     ];
 
     // NOAA：Kp breakdown を含むテキスト（現行パーサと相性◎）
@@ -756,17 +756,21 @@
       if (el) el.textContent = msg || "";
     }
 
+    // ✅✅✅ BoM 9枚取得（フルURL配列から fetch）
     async function fetchBomTec9FromApi(saveAfter=false) {
       try {
-        setStatus("bomApiStatus", "BoM TEC を取得中…（9枚）");
+        setStatus("bomApiStatus", "BoM TEC を取得中…（9枚 / フルURL固定）");
+
         const texts = await Promise.all(
-          BOM_TEC_FILES_9.map(fn => fetchText(BOM_TEC_BASE_URL + fn))
+          BOM_TEC_URLS_9.map(url => fetchText(url))
         );
+
         const ids = ["bomInput1","bomInput2","bomInput3","bomInput4","bomInput5","bomInput6","bomInput7","bomInput8","bomInput9"];
         for (let i=0;i<ids.length;i++) {
           const ta = document.getElementById(ids[i]);
           if (ta) ta.value = texts[i] || "";
         }
+
         // 有効時刻をざっくり表示
         const times = texts.map(t => {
           const d = parseBomValidTime(t);
@@ -1164,7 +1168,6 @@
     }
 
     /* ===== NOAA Kp テキストパーサ（予報用） ===== */
-
     function parseKpText(raw) {
       const text = raw || "";
       if (/NOAA Kp index breakdown/i.test(text)) {
@@ -1309,14 +1312,11 @@
       const s = String(tStr || "").trim();
       if (!s) return null;
 
-      // 典型例: "2025-11-26 00:00:00.000"
-      // → ISOへ: "2025-11-26T00:00:00.000Z"
       let iso = s.includes("T") ? s : s.replace(" ", "T");
       if (!/[zZ]$/.test(iso)) iso += "Z";
       let d = new Date(iso);
       if (!isNaN(d.getTime())) return d;
 
-      // フォールバック: ミリ秒なし
       const m = s.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
       if (m) {
         const y = parseInt(m[1],10), mo=parseInt(m[2],10), da=parseInt(m[3],10);
@@ -1338,7 +1338,6 @@
       }
       const series = [];
 
-      // パターン1: [["time_tag","Kp",...],["2025-11-26 00:00:00.000","3.33",...],...]
       if (Array.isArray(data) && data.length && Array.isArray(data[0])) {
         const header = data[0];
         const timeIdx = header.indexOf("time_tag");
@@ -1357,7 +1356,6 @@
           }
         }
       } else if (Array.isArray(data)) {
-        // パターン2: [{time:"...", kp:3.0}, ...] など
         for (const obj of data) {
           if (!obj) continue;
           const tStr = obj.time || obj.time_tag;
@@ -1375,7 +1373,6 @@
       return series;
     }
 
-    /* ===== Base 用 フレア JSON パーサ ===== */
     function parseBaseFlareJson(text) {
       const raw = (text || "").trim();
       if (!raw) return [];
@@ -1404,7 +1401,6 @@
 
     function sampleFlareSeriesAtUtc(series, tUtc) {
       if (!series || !series.length) return { Px:0, Pm:0 };
-      // 一番近い時刻を採用（シンプルに）
       let best = series[0];
       let bestDiff = Math.abs(tUtc - best.time);
       for (let i=1;i<series.length;i++) {
@@ -1417,7 +1413,6 @@
       return { Px: best.Px, Pm: best.Pm };
     }
 
-    /* ===== Deep Flare Net 入力 → ΔFlare（予報用） ===== */
     function getDeepFlareProbs() {
       let sumX = 0, sumM = 0, count = 0;
       for (let i=1;i<=9;i++) {
@@ -1433,18 +1428,15 @@
       return { Px: sumX/count, Pm: sumM/count };
     }
 
-    // 昼夜境界: 太陽天頂角ベースの DaySide ウェイト
     function calcDayWeight(latDeg, lonDeg, tUtc) {
       if (!(tUtc instanceof Date) || isNaN(tUtc.getTime())) return 0;
       const rad = Math.PI / 180;
       const phi = latDeg * rad;
 
-      // 通し日 N（1〜365/366）
       const y = tUtc.getUTCFullYear();
       const startOfYear = Date.UTC(y, 0, 1, 0, 0, 0);
       const N = Math.floor((tUtc.getTime() - startOfYear) / (24*3600*1000)) + 1;
 
-      // 太陽赤緯 δ [rad]（NOAA 簡易式）
       const gamma = 2 * Math.PI * (N - 1) / 365;
       const delta = 0.006918
                   - 0.399912 * Math.cos(gamma)
@@ -1454,35 +1446,28 @@
                   - 0.002697 * Math.cos(3*gamma)
                   + 0.00148  * Math.sin(3*gamma);
 
-      // ローカル太陽時 [h]
       const ltSolar = (tUtc.getUTCHours() + tUtc.getUTCMinutes()/60 + lonDeg / 15 + 24) % 24;
-      const H = (ltSolar - 12) * 15 * rad; // 時角 [rad]
+      const H = (ltSolar - 12) * 15 * rad;
 
       const cosChi = Math.sin(phi)*Math.sin(delta) + Math.cos(phi)*Math.cos(delta)*Math.cos(H);
 
-      if (cosChi <= 0) return 0; // 夜側
-      // cosχ=1 で真上。0.2 以下は薄明として抑える。
+      if (cosChi <= 0) return 0;
       const w = (cosChi - 0.2) / (1 - 0.2);
       return clamp(w, 0, 1);
     }
 
-    // 共通：確率 Px/Pm から ΔFlare [TECU] を計算（最大 +15 TECU）
     function calcFlareDeltaFromProbs(cfg, latDeg, lonDeg, tUtc, Px, Pm) {
       if (Px <= 0 && Pm <= 0) return 0.0;
 
-      // ざっくり：X > M、確率は0–100%を0–1に
-      const level = cfg.kX*(Px/100) + cfg.kM*(Pm/100); // 0〜(kX+kM)
+      const level = cfg.kX*(Px/100) + cfg.kM*(Pm/100);
       if (level <= 0) return 0.0;
 
       const dayWeight = calcDayWeight(latDeg, lonDeg, tUtc);
 
-      // 基本最大 15 TECU、β_flare で調整
       const raw = 15.0 * cfg.betaFlare * level * dayWeight;
-      // 絶対上限 15 TECU
       return clamp(raw, 0, 15);
     }
 
-    // 予報用：DFN UI から Px/Pm を取り ΔFlare を返す
     function calcFlareDeltaForecast(cfg, latDeg, lonDeg, tUtc) {
       const probs = getDeepFlareProbs();
       return calcFlareDeltaFromProbs(cfg, latDeg, lonDeg, tUtc, probs.Px, probs.Pm);
@@ -1809,8 +1794,6 @@
         return out;
       }
 
-      // BoM が 1日程度（〜24h）をカバーしているときは
-      // 「最後の1ステップ分」を足して 24h 周期でループさせる。
       let period = span;
       const oneDayMs = 24 * 3600 * 1000;
       if (span > 6*3600*1000 && span < 27*3600*1000) {
@@ -1862,7 +1845,6 @@
       return out;
     }
 
-    /* ===== 時間ラベル / Kpラベル / UTCラベル ===== */
     function updateTimeLabel() {
       const slider = document.getElementById("timeSlider");
       const idx = parseInt(slider.value,10) || 0;
@@ -1903,7 +1885,6 @@
       drawTecOverlay();
     }
 
-    /* ===== 予報スタート選択セレクトの更新 ===== */
     function updateForecastStartSelect(frames) {
       const sel = document.getElementById("forecastStartSelect");
       const info = document.getElementById("forecastStartInfo");
@@ -1986,10 +1967,8 @@
           nLon:   first.nLon
         };
 
-        // BoMの有効時刻リストをセレクトに反映
         updateForecastStartSelect(frames);
 
-        // ユーザー選択 or 最初の有効時刻を予報スタートに
         let startTime = first.validTime || new Date();
         const sel = document.getElementById("forecastStartSelect");
         if (sel && sel.options.length > 0 && sel.value) {
@@ -2000,16 +1979,14 @@
         }
         gForecastStart = startTime;
 
-        // 予報用 Kp シリーズ
         gKpSeries   = parseKpText(document.getElementById("noaaKpText").value);
 
-        // Base用 Kp / Flare シリーズ
         gBaseKpSeries    = parseBaseKpJson(document.getElementById("baseKpJson").value);
         gBaseFlareSeries = parseBaseFlareJson(document.getElementById("baseFlareJson").value);
 
         const cfg   = getConfigFromUI();
 
-        const totalSteps = Math.round(FORECAST_HOURS * 60 / DT_MINUTES); // 72h *2 =144
+        const totalSteps = Math.round(FORECAST_HOURS * 60 / DT_MINUTES);
         for (let s=0;s<=totalSteps;s++) {
           const t = new Date(gForecastStart.getTime() + s * DT_MINUTES * 60000);
           gForecastTimes.push(t);
@@ -2021,13 +1998,10 @@
         for (let s=0;s<gForecastTimes.length;s++) {
           const tUtc = gForecastTimes[s];
 
-          // BoMから「観測TEC（入力TEC）」を取得
           const inputTecGrid = interpolateBomFrames(frames, tUtc);
 
-          // 予報用 Kp(t)
           const kpForecast = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
 
-          // Base抽出用 Kp(t) / フレア(Px, Pm)
           let kpBase = kpForecast;
           if (gBaseKpSeries.length) {
             const tmp = sampleSeriesAtUtc(gBaseKpSeries, tUtc, true);
@@ -2052,26 +2026,19 @@
 
               const tecInput = inputTecGrid[i][j];
 
-              // ======== [Step 1] Base 抽出: 入力TEC から Sstorm_base & Sflare_base を除去 ========
-              // ΔFlare_base（Base用 Px/Pm）: 最大15 TECU, 昼側のみ
               const dFlareBase = calcFlareDeltaFromProbs(cfg, lat, lon, tUtc, basePx, basePm);
 
-              // 正層嵐倍率 rStorm_base
               const rStormBase = sstormPos_rStorm(kpBase, lat, monthIndex);
 
-              // 「TEC_input ≈ BaseTEC × (1 + kStorm·(rStorm_base−1)) + ΔFlare_base」
-              // とみなして BaseTEC を逆算
               let num   = tecInput - dFlareBase;
               let denom = 1 + cfg.kStorm * (rStormBase - 1.0);
-              if (denom < 0.2) denom = 0.2; // ゼロ割・暴走防止
+              if (denom < 0.2) denom = 0.2;
 
               let baseTec = num / denom;
               if (!isFinite(baseTec) || baseTec < 0) baseTec = 0;
 
-              // BoM由来の BaseTEC に全体スケール(kBase)を掛ける（微調整用）
               baseTec *= cfg.kBase;
 
-              // ======== [Step 2] BaseTEC に 予報用 ΔStorm / ΔFlare を加算 ========
               const rStormForecast = sstormPos_rStorm(kpForecast, lat, monthIndex);
               const dStormForecast = cfg.kStorm * baseTec * (rStormForecast - 1.0);
 
@@ -2101,7 +2068,6 @@
       }
     }
 
-    /* ===== クリック情報 ===== */
     function onMapClick(e) {
       if (!gGrid || !gForecastFrames.length) return;
       const lat = e.latlng.lat;
@@ -2139,7 +2105,6 @@
       document.getElementById("pointInfo").textContent = txt;
     }
 
-    /* ===== 地域フォーカス ===== */
     function focusRegion(name) {
       if (!map) return;
       let latMin,latMax,lonMin,lonMax;
@@ -2186,7 +2151,6 @@
       if (map) map.setView([0,0], 2);
     }
 
-    /* ===== 式テキスト（Base抽出＋加算モデル版） ===== */
     function updateFormulaText() {
       const cfg = getConfigFromUI();
       const txt =
@@ -2233,12 +2197,6 @@
              15 × β_flare × [k_X·(Px_DFN/100) + k_M·(Pm_DFN/100)] × DaySide(φ,λ,t)
            )
 
-    ここで：
-      Kp_forecast(t) : NOAA 3-day（テキスト）Kp(t)
-      rStorm         : Mukhtarov rTEC(Kp) を季節・緯度で補間＋高Kp tail
-      Px_DFN, Pm_DFN : Deep Flare Net 9領域 UI 入力の平均 [%]
-      DaySide(φ,λ,t) : 太陽天頂角 χ < 90° のとき cosχ を元に 0〜1 へ正規化したウェイト
-
   GPS 誤差：
     σ_L1(φ,λ,t) ≈ TEC_total(φ,λ,t) × kL1   [m]
 
@@ -2253,7 +2211,6 @@
       document.getElementById("formulaText").textContent = txt;
     }
 
-    /* ===== 3日分 TEC 予報を CSV 出力（DOPツール入力用） ===== */
     function exportTecCsv3day() {
       if (!gForecastFrames || !gForecastFrames.length || !gGrid || !gForecastTimes.length) {
         alert("まず「TEC予報を計算」を押して、3日分のTEC予報を作ってください。");
@@ -2304,7 +2261,6 @@
       logInfo("3日分TEC予報を CSV として出力しました。（SWIFTTEC_TEC_3day.csv）");
     }
 
-    /* ===== リセット ===== */
     function resetAll() {
       gForecastFrames = [];
       gForecastTimes  = [];
@@ -2321,7 +2277,6 @@
       logInfo("計算結果をリセットしました。");
     }
 
-    /* ===== 起動時処理 ===== */
     document.addEventListener("DOMContentLoaded", () => {
       initMap();
       loadBomInputsFromStorage();
