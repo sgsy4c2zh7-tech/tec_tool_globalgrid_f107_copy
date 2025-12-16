@@ -261,17 +261,18 @@
 
   <!-- パスワード保護 -->
   <script>
-  (function () {
-    const PASSWORD = "Haneishi"; // 
-    const input = prompt("パスワードを入力してください");
-    if (input !== PASSWORD) {
-      alert("パスワードが違います");
-      document.documentElement.innerHTML = "";
-      throw new Error("Unauthorized");
-    }
-  })();
-</script>
+    (function () {
+      const PASSWORD = "Haneishi";
+      const input = prompt("パスワードを入力してください");
+      if (input !== PASSWORD) {
+        alert("パスワードが違います");
+        document.documentElement.innerHTML = "";
+        throw new Error("Unauthorized");
+      }
+    })();
+  </script>
 </head>
+
 <body>
   <div class="page">
     <!-- ============= サイドバー ============= -->
@@ -351,7 +352,7 @@
         </div>
         <div class="small">
           ・Kp（3日予報）は、NOAAの <b>3-day geomag forecast (text)</b> を自動取得できます。<br>
-          ・このテキストには <code>NOAA Kp index breakdown</code> が含まれるため、現行パーサで安定します。
+          ・このテキストは <code>NOAA Kp index breakdown</code> 形式だけでなく、あなたの貼った <code>NOAA Kp index forecast 16 Dec - 18 Dec</code> 形式も読めます。
         </div>
 
         <div class="row">
@@ -361,7 +362,7 @@
 
         <div class="row">
           <div>
-            <label>Kp 予報テキスト（NOAA 3-day geomag forecast）</label><br>
+            <label>Kp 予報テキスト（NOAA geomag forecast）</label><br>
             <textarea id="noaaKpText" placeholder="自動取得 or 手動貼付"></textarea>
           </div>
         </div>
@@ -376,7 +377,8 @@
         <div class="small">
           ・Base用 Kp：NOAA 実測 Kp の JSON 配列を貼付、またはAPI取得<br>
           ・Base用 フレア：<b>NOAA最新 X-ray flare（M/Xのみ）</b>をAPI取得して自動入力可能<br>
-          ※空の場合：Kp は「予報用」を流用、フレアは 0 とみなす
+          ※空の場合：Kp は「予報用」を流用、フレアは 0 とみなす<br>
+          ※BaseKpが時系列範囲外の時刻は、<b>予報Kpへ自動で戻します</b>（張り付き防止）。
         </div>
 
         <div class="row">
@@ -384,7 +386,6 @@
           <span class="small" id="kindexStatus"></span>
         </div>
 
-        <!-- ★追加：NOAA 最新フレア（M/X） -->
         <div class="row">
           <button onclick="fetchNoaaXrayFlareLatestToBase()">NOAA 最新X-rayフレア（M/X）をAPI取得 → Base用フレアへ</button>
           <span class="small" id="xrayflareStatus"></span>
@@ -691,7 +692,7 @@
           <input type="range" id="timeSlider" min="0" max="144" value="0" oninput="onSliderChange()">
           <span id="timeLabel">t = 0.00 h</span>
           <span id="utcLabel">UTC: --</span>
-          <span id="kpNowLabel">Kp=--</span>
+          <span id="kpNowLabel">KpF=-- / KpB=--</span>
         </div>
         <div class="row small" style="margin-top:4px;">
           <div style="flex:1;">
@@ -737,10 +738,9 @@
 
   <script>
     /* ============================
-     *  API endpoints（追加）
+     *  API endpoints
      * ============================ */
     const BOM_TEC_BASE_URL = "https://downloads.sws.bom.gov.au/data/Satellite/";
-    // 指定どおり：0000→3時間おき、最後だけ2330（計9枚）
     const BOM_TEC_FILES_9 = [
       "World0000_tec.txt",
       "World0300_tec.txt",
@@ -753,13 +753,8 @@
       "World2330_tec.txt"
     ];
 
-    // NOAA：Kp breakdown を含むテキスト（現行パーサと相性◎）
     const NOAA_3DAY_GEOMAG_TEXT_URL = "https://services.swpc.noaa.gov/text/3-day-geomag-forecast.txt";
-
-    // NOAA：Planetary K index
     const NOAA_PLANETARY_K_INDEX_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
-
-    // ★追加：NOAA 最新 X-ray flare（M/Xのみ拾うのに使う）
     const NOAA_XRAY_FLARES_LATEST_URL = "https://services.swpc.noaa.gov/json/goes/primary/xray-flares-latest.json";
 
     async function fetchText(url) {
@@ -789,7 +784,6 @@
           const ta = document.getElementById(ids[i]);
           if (ta) ta.value = texts[i] || "";
         }
-        // 有効時刻をざっくり表示
         const times = texts.map(t => {
           const d = parseBomValidTime(t);
           return d ? d.toISOString().replace(".000Z","Z") : "--";
@@ -828,12 +822,6 @@
       }
     }
 
-    /* ============================
-     *  ★追加：NOAA 最新フレアを Base用フレアへ
-     *  - M / X のみ採用
-     *  - C以下は []（=0扱い）
-     *  - Px/Pmは0〜100%の疑似入力として扱い、既存 calcFlareDeltaFromProbs を流用
-     * ============================ */
     function parseFlareClass(cls) {
       const s = String(cls || "").trim().toUpperCase();
       if (!s) return null;
@@ -863,20 +851,16 @@
           return;
         }
 
-        // 強度 0..1（あなたの方針：Xは最大扱い）
         let strength01 = 0;
         if (p.head === "M") {
-          // M1=0.2, M5=0.6, M9=0.9（頭打ち）
           strength01 = Math.min(0.9, 0.2 + 0.08 * p.mag);
         } else {
-          strength01 = 1.0; // Xは最大扱い
+          strength01 = 1.0;
         }
 
-        // ダブルカウント防止：XはPxのみ、MはPmのみ
         const Px = (p.head === "X") ? (strength01 * 100) : 0;
         const Pm = (p.head === "M") ? (strength01 * 100) : 0;
 
-        // time_tag候補
         const t = toUtcDateFromSwpcTimeTag(f.time_tag || f.max_time || f.peak_time || "");
 
         const obj = [{
@@ -894,16 +878,15 @@
     }
 
     /* ============ グローバル状態 ============ */
-    const FORECAST_HOURS = 24 * 3;   // 3日分
-    const DT_MINUTES     = 30;       // 30分刻み
+    const FORECAST_HOURS = 24 * 3;
+    const DT_MINUTES     = 30;
 
-    let gGrid = null;              // {latArr, lonArr, nLat, nLon}
-    let gForecastFrames = [];      // [step][iLat][iLon] TEC_total
-    let gForecastTimes  = [];      // Date[]
-    let gForecastStart  = null;    // Date (UTC, from BoM選択)
+    let gGrid = null;
+    let gForecastFrames = [];
+    let gForecastTimes  = [];
+    let gForecastStart  = null;
     let currentStepIndex = 0;
 
-    // TEC カラー
     let gTecColorScale = [
       { limit: 10,  color: "#00ff00" },
       { limit: 30,  color: "#ffff00" },
@@ -911,7 +894,6 @@
       { limit: 120, color: "#ff0000" }
     ];
 
-    // GPS L1 誤差 カラー
     let gGpsColorScale = [
       { limit: 5,  color: "#00ff00" },
       { limit: 10, color: "#ffff00" },
@@ -919,26 +901,20 @@
       { limit: 40, color: "#ff0000" }
     ];
 
-    // NOAA 由来 Kp(t) シリーズ（予報用）
-    let gKpSeries        = []; // [{time: Date(UTC), kp}]
-    // Base 抽出用 Kp / Flare シリーズ
-    let gBaseKpSeries    = []; // [{time: Date(UTC), kp}]
-    let gBaseFlareSeries = []; // [{time: Date(UTC), Px, Pm}]
+    let gKpSeries        = []; // 予報Kp
+    let gBaseKpSeries    = []; // BaseKp
+    let gBaseFlareSeries = []; // Base flare
 
-    // Leaflet 関連
     let map = null;
     let tecCanvas = null;
     let tecCtx = null;
     let tecLegendControl = null;
     let tecAlpha = 0.8;
-
-    let mapMode = "tec";   // 'tec' or 'gps'
-
-    // 地域フォーカス
-    let currentFocus = null; // {latMin,latMax,lonMin,lonMax}
+    let mapMode = "tec";
+    let currentFocus = null;
 
     const STORAGE_KEY_CONFIG   = "swifttec_config_v4_additive_base";
-    const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v4_additive_base";  // 9枚対応版
+    const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v4_additive_base";
     const STORAGE_KEY_TCOL     = "swifttec_teccol_v3";
     const STORAGE_KEY_GCOL     = "swifttec_gpscol_v1";
 
@@ -1089,7 +1065,6 @@
       document.getElementById("cfg_kX").value        = cfg.kX        ?? 1.0;
       document.getElementById("cfg_kM").value        = cfg.kM        ?? 0.5;
       document.getElementById("cfg_kL1").value       = cfg.kL1       ?? 0.16;
-
       updateFormulaText();
     }
 
@@ -1250,26 +1225,42 @@
       }
     }
 
-    /* ===== NOAA Kp テキストパーサ（予報用） ===== */
-
+    /* ============================
+     *  NOAA Kp パーサ（強化版）
+     *  - breakdown形式
+     *  - "NOAA Kp index forecast 16 Dec - 18 Dec" 表形式（あなたの貼付）
+     * ============================ */
     function parseKpText(raw) {
-      const text = raw || "";
+      const text = String(raw || "");
+
       if (/NOAA Kp index breakdown/i.test(text)) {
-        return parseKpFrom3Day(text);
+        return parseKpFrom3DayBreakdown(text);
       }
 
+      if (/NOAA Kp index forecast/i.test(text)) {
+        const s2 = parseKpFromGeomagForecastTable(text);
+        if (s2.length) return s2;
+      }
+
+      return parseKpGenericLine(text);
+    }
+
+    function parseKpGenericLine(text) {
       const lines = text.split(/\r?\n/);
       const out = [];
       for (const line of lines) {
         const m = line.match(/(\d{4})[\/\-\s](\d{1,2})[\/\-\s](\d{1,2})[T\s]+(\d{1,2})/);
         if (!m) continue;
+
         const y  = parseInt(m[1],10);
         const mo = parseInt(m[2],10);
         const d  = parseInt(m[3],10);
         const hh = parseInt(m[4],10);
+
         const tokens = line.trim().split(/\s+/);
         if (!tokens.length) continue;
         const kpToken = tokens[tokens.length-1];
+
         let kp = null;
         let m3 = kpToken.match(/^(\d+(\.\d+)?)/);
         if (m3) {
@@ -1284,6 +1275,7 @@
           }
         }
         if (kp === null || isNaN(kp)) continue;
+
         const t = new Date(Date.UTC(y, mo-1, d, hh, 0, 0));
         out.push({ time: t, kp: kp });
       }
@@ -1291,7 +1283,7 @@
       return out;
     }
 
-    function parseKpFrom3Day(raw) {
+    function parseKpFrom3DayBreakdown(raw) {
       const lines = raw.split(/\r?\n/);
       const out = [];
       const monthMap = {
@@ -1301,10 +1293,7 @@
 
       let idxBreak = -1;
       for (let i=0;i<lines.length;i++) {
-        if (/NOAA Kp index breakdown/i.test(lines[i])) {
-          idxBreak = i;
-          break;
-        }
+        if (/NOAA Kp index breakdown/i.test(lines[i])) { idxBreak = i; break; }
       }
       if (idxBreak < 0) return out;
 
@@ -1327,11 +1316,12 @@
 
       const headerTokens = headerLine.trim().split(/\s+/);
       if (headerTokens.length % 2 !== 0) return out;
+
       const colDates = [];
       for (let i=0;i<headerTokens.length;i+=2) {
         const mon = headerTokens[i];
         const day = parseInt(headerTokens[i+1],10);
-        const mi  = monthMap[mon] !== undefined ? monthMap[mon] : monthMap[mon.slice(0,3)];
+        const mi  = monthMap[mon] !== undefined ? monthMap[mon] : monthMap[String(mon).slice(0,3)];
         if (mi === undefined || isNaN(day)) continue;
         colDates.push(new Date(Date.UTC(year, mi, day, 0, 0, 0)));
       }
@@ -1342,9 +1332,9 @@
         const line = lines[i];
         const m = line.match(patUT);
         if (!m) continue;
+
         const startHour = parseInt(m[1],10);
         const tokens = line.trim().split(/\s+/);
-
         if (tokens.length < 1 + colDates.length) continue;
 
         for (let c=0;c<colDates.length;c++) {
@@ -1367,11 +1357,78 @@
       return out;
     }
 
+    // ★あなたの貼付形式: "NOAA Kp index forecast 16 Dec - 18 Dec" + 表
+    function parseKpFromGeomagForecastTable(raw) {
+      const lines = raw.split(/\r?\n/);
+      const out = [];
+      const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+
+      // :Issued: 2025 Dec 15 ...
+      let year = null;
+      for (const ln of lines) {
+        const m = ln.match(/:Issued:\s*(\d{4})\s+([A-Za-z]{3})\s+(\d{1,2})/);
+        if (m) { year = parseInt(m[1],10); break; }
+      }
+      if (!year) year = new Date().getUTCFullYear();
+
+      let idx = -1;
+      for (let i=0;i<lines.length;i++) {
+        if (/NOAA Kp index forecast/i.test(lines[i])) { idx = i; break; }
+      }
+      if (idx < 0) return out;
+
+      // ヘッダ行： Dec 16 Dec 17 Dec 18
+      let headerLine = null;
+      for (let i=idx; i<Math.min(lines.length, idx+12); i++) {
+        const ln = lines[i].trim();
+        if (!ln) continue;
+        if (/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}/.test(ln) && !/UT/.test(ln)) {
+          headerLine = ln;
+          break;
+        }
+      }
+      if (!headerLine) return out;
+
+      const toks = headerLine.trim().split(/\s+/);
+      if (toks.length < 4 || toks.length % 2 !== 0) return out;
+
+      const days = [];
+      for (let k=0;k<toks.length;k+=2) {
+        const mon = toks[k];
+        const day = parseInt(toks[k+1],10);
+        const mi  = monthMap[mon] ?? monthMap[String(mon).slice(0,3)];
+        if (mi === undefined || isNaN(day)) continue;
+        days.push(new Date(Date.UTC(year, mi, day, 0, 0, 0)));
+      }
+      if (!days.length) return out;
+
+      const rowRe = /^\s*(\d{2})-(\d{2})UT\s+(.+)$/;
+      for (const lnRaw of lines) {
+        const m = lnRaw.match(rowRe);
+        if (!m) continue;
+        const startHour = parseInt(m[1],10);
+        const rest = m[3].trim().split(/\s+/);
+        if (rest.length < days.length) continue;
+
+        for (let c=0;c<days.length;c++) {
+          const kpVal = parseFloat(rest[c]);
+          if (isNaN(kpVal)) continue;
+          const d0 = days[c];
+          const t = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate(), startHour, 0, 0));
+          out.push({ time: t, kp: kpVal });
+        }
+      }
+
+      out.sort((a,b)=>a.time-b.time);
+      return out;
+    }
+
     function sampleSeriesAtUtc(series, tUtc, stepLike=false) {
       if (!series || series.length === 0) return null;
       if (tUtc <= series[0].time) return series[0].kp;
       const last = series[series.length-1];
       if (tUtc >= last.time) return last.kp;
+
       for (let i=1;i<series.length;i++) {
         if (tUtc < series[i].time) {
           if (stepLike) {
@@ -1389,6 +1446,20 @@
         }
       }
       return last.kp;
+    }
+
+    // ★BaseKp：範囲外は予報Kpへ戻す（張り付き防止）
+    function getKpBaseAtUtc(tUtc, kpForecast) {
+      if (!gBaseKpSeries || gBaseKpSeries.length === 0) return kpForecast;
+
+      const t0 = gBaseKpSeries[0].time.getTime();
+      const t1 = gBaseKpSeries[gBaseKpSeries.length - 1].time.getTime();
+      const tt = tUtc.getTime();
+
+      if (tt < t0 || tt > t1) return kpForecast;
+
+      const tmp = sampleSeriesAtUtc(gBaseKpSeries, tUtc, true);
+      return (tmp == null) ? kpForecast : tmp;
     }
 
     /* ===== Base 用 Kp JSON パーサ（NOAA time_tag対応） ===== */
@@ -1484,11 +1555,10 @@
       return series;
     }
 
-    // ★差し替え：1点だけのフレアが72hずっと効く事故を防ぐ（有効窓）
     function sampleFlareSeriesAtUtc(series, tUtc) {
       if (!series || !series.length) return { Px:0, Pm:0 };
 
-      const ACTIVE_WINDOW_MIN = 120; // ★ここ好みで変更（例：60, 180など）
+      const ACTIVE_WINDOW_MIN = 120;
       const activeMs = ACTIVE_WINDOW_MIN * 60 * 1000;
 
       let best = series[0];
@@ -1521,7 +1591,6 @@
       return { Px: sumX/count, Pm: sumM/count };
     }
 
-    // 昼夜境界: 太陽天頂角ベースの DaySide ウェイト
     function calcDayWeight(latDeg, lonDeg, tUtc) {
       if (!(tUtc instanceof Date) || isNaN(tUtc.getTime())) return 0;
       const rad = Math.PI / 180;
@@ -1550,7 +1619,6 @@
       return clamp(w, 0, 1);
     }
 
-    // 共通：確率 Px/Pm から ΔFlare [TECU] を計算（最大 +15 TECU）
     function calcFlareDeltaFromProbs(cfg, latDeg, lonDeg, tUtc, Px, Pm) {
       if (Px <= 0 && Pm <= 0) return 0.0;
 
@@ -1558,7 +1626,6 @@
       if (level <= 0) return 0.0;
 
       const dayWeight = calcDayWeight(latDeg, lonDeg, tUtc);
-
       const raw = 15.0 * cfg.betaFlare * level * dayWeight;
       return clamp(raw, 0, 15);
     }
@@ -1892,16 +1959,20 @@
       lbl.textContent = "UTC: " + tUtc.toISOString().replace(".000Z","Z");
     }
 
+    // ★予報Kp(KpF)とBaseKp(KpB)を同時表示
     function updateKpLabelForStep(stepIndex) {
-      const kpLbl   = document.getElementById("kpNowLabel");
+      const kpLbl = document.getElementById("kpNowLabel");
       if (!gForecastTimes.length || !gForecastTimes[stepIndex]) {
-        if (kpLbl) kpLbl.textContent = "Kp=--";
+        if (kpLbl) kpLbl.textContent = "KpF=-- / KpB=--";
         return;
       }
       const tUtc = gForecastTimes[stepIndex];
-      let kp_t = sampleSeriesAtUtc(gKpSeries, tUtc, true);
-      if (kp_t == null) kp_t = 0;
-      if (kpLbl) kpLbl.textContent = "Kp=" + kp_t.toFixed(1);
+
+      let kpF = sampleSeriesAtUtc(gKpSeries, tUtc, true);
+      if (kpF == null) kpF = 0;
+
+      const kpB = getKpBaseAtUtc(tUtc, kpF);
+      if (kpLbl) kpLbl.textContent = `KpF=${kpF.toFixed(2)} / KpB=${kpB.toFixed(2)}`;
     }
 
     function onSliderChange() {
@@ -2006,12 +2077,14 @@
         }
         gForecastStart = startTime;
 
-        gKpSeries   = parseKpText(document.getElementById("noaaKpText").value);
+        // 予報Kp
+        gKpSeries = parseKpText(document.getElementById("noaaKpText").value);
 
+        // BaseKp / BaseFlare
         gBaseKpSeries    = parseBaseKpJson(document.getElementById("baseKpJson").value);
         gBaseFlareSeries = parseBaseFlareJson(document.getElementById("baseFlareJson").value);
 
-        const cfg   = getConfigFromUI();
+        const cfg = getConfigFromUI();
 
         const totalSteps = Math.round(FORECAST_HOURS * 60 / DT_MINUTES);
         for (let s=0;s<=totalSteps;s++) {
@@ -2024,16 +2097,13 @@
 
         for (let s=0;s<gForecastTimes.length;s++) {
           const tUtc = gForecastTimes[s];
-
           const inputTecGrid = interpolateBomFrames(frames, tUtc);
 
           const kpForecast = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
 
-          let kpBase = kpForecast;
-          if (gBaseKpSeries.length) {
-            const tmp = sampleSeriesAtUtc(gBaseKpSeries, tUtc, true);
-            if (tmp != null) kpBase = tmp;
-          }
+          // ★BaseKpは範囲外なら予報Kpへ戻す
+          const kpBase = getKpBaseAtUtc(tUtc, kpForecast);
+
           let basePx = 0, basePm = 0;
           if (gBaseFlareSeries.length) {
             const bf = sampleFlareSeriesAtUtc(gBaseFlareSeries, tUtc);
@@ -2050,7 +2120,6 @@
 
             for (let j=0;j<nLon;j++) {
               const lon = gGrid.lonArr[j];
-
               const tecInput = inputTecGrid[i][j];
 
               // [Step 1] Base抽出
@@ -2063,7 +2132,6 @@
 
               let baseTec = num / denom;
               if (!isFinite(baseTec) || baseTec < 0) baseTec = 0;
-
               baseTec *= cfg.kBase;
 
               // [Step 2] 予報加算
@@ -2121,7 +2189,8 @@
       const gpsErr = tec * cfg.kL1;
       const tUtc = gForecastTimes[currentStepIndex];
 
-      const kp_t = tUtc ? (sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0) : 0;
+      const kpF = tUtc ? (sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0) : 0;
+      const kpB = tUtc ? getKpBaseAtUtc(tUtc, kpF) : 0;
       const month = tUtc ? (tUtc.getUTCMonth() + 1) : 1;
 
       const txt =
@@ -2129,7 +2198,8 @@
         "Lat=" + gGrid.latArr[bestI].toFixed(1) + "°, Lon=" + gGrid.lonArr[bestJ].toFixed(1) + "°\n" +
         "TEC = " + tec.toFixed(1) + " TECU\n" +
         "GPS L1誤差 ≈ " + gpsErr.toFixed(2) + " m\n" +
-        "Kp(予報) ≈ " + kp_t.toFixed(1) + " (month=" + month + ")";
+        "KpF(予報) ≈ " + kpF.toFixed(2) + "\n" +
+        "KpB(Base) ≈ " + kpB.toFixed(2) + " (month=" + month + ")";
 
       document.getElementById("pointInfo").textContent = txt;
     }
