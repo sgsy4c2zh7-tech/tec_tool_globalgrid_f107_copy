@@ -287,7 +287,33 @@
           ・まず <b>BaseTEC = 入力TEC − Sflare_base − Sstorm_base</b> で静穏ベースを抽出<br>
           ・その BaseTEC に ΔStorm(Kp予報) ＋ ΔFlare(Deep Flare Net) を<b>足し算</b><br>
           ・NOAAテキスト / JSON から Kp(t) を自動読取（Base用と予報用を分離）<br>
-          ・Leaflet 地図で TEC / GPS誤差を確認、地域フォーカスも可能
+          ・Leaflet 地図で TEC / GPS誤差を確認、地域フォーカスも可能<br>
+          ・★追加：TEC入力を <b>BoM</b> or <b>NOAA(GloTEC)</b> で切替（NOAAは過去24hをAPI取得→9枚サンプリング）
+        </div>
+      </div>
+
+      <!-- 0. 入力TECソース（BoM/NOAA切替） -->
+      <div class="card">
+        <div class="card-header">
+          <h2>0. 入力TECソース</h2>
+          <span>BoM / NOAA</span>
+        </div>
+        <div class="row">
+          <div style="flex:1;">
+            <label>TEC入力元</label><br>
+            <select id="tecSourceSelect" style="width:100%;">
+              <option value="bom" selected>BoM (WorldXXXX_tec.txt 9枚)</option>
+              <option value="noaa">NOAA (GloTEC 過去24h→9枚, 2°×5°へ格子化)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <button onclick="fetchNoaaGloTec9FromApi(false)">NOAA 9枚をAPI取得 → 入力欄へ</button>
+          <button class="secondary" onclick="fetchNoaaGloTec9FromApi(true)">取得して保存</button>
+        </div>
+        <div class="small" id="noaaTecStatus"></div>
+        <div class="small">
+          ※ブラウザCORSの都合で NOAA ディレクトリ一覧取得が失敗する場合があります。その場合はBoM同様、手動コピペ運用にしてください。
         </div>
       </div>
 
@@ -312,7 +338,7 @@
         <hr>
 
         <div class="row small">
-          <div>BoM #1</div><div>BoM #2</div><div>BoM #3</div>
+          <div>BoM/NOAA #1</div><div>BoM/NOAA #2</div><div>BoM/NOAA #3</div>
         </div>
         <div class="row">
           <div><textarea id="bomInput1" placeholder="# PRODUCT NAME..."></textarea></div>
@@ -320,7 +346,7 @@
           <div><textarea id="bomInput3"></textarea></div>
         </div>
         <div class="row small">
-          <div>BoM #4</div><div>BoM #5</div><div>BoM #6</div>
+          <div>BoM/NOAA #4</div><div>BoM/NOAA #5</div><div>BoM/NOAA #6</div>
         </div>
         <div class="row">
           <div><textarea id="bomInput4"></textarea></div>
@@ -328,7 +354,7 @@
           <div><textarea id="bomInput6"></textarea></div>
         </div>
         <div class="row small">
-          <div>BoM #7</div><div>BoM #8</div><div>BoM #9</div>
+          <div>BoM/NOAA #7</div><div>BoM/NOAA #8</div><div>BoM/NOAA #9</div>
         </div>
         <div class="row">
           <div><textarea id="bomInput7"></textarea></div>
@@ -336,11 +362,11 @@
           <div><textarea id="bomInput9"></textarea></div>
         </div>
         <div class="row">
-          <button onclick="saveBomInputs()">BoM入力を保存</button>
+          <button onclick="saveBomInputs()">入力（BoM/NOAA）を保存</button>
           <button class="secondary" onclick="clearBomInputsStorage()">保存を削除</button>
         </div>
         <div class="small" id="bomInfo">
-          ※「BoM入力を保存」を押した時点の内容をブラウザに保存。次回起動時に自動復元。
+          ※「入力を保存」を押した時点の内容をブラウザに保存。次回起動時に自動復元。
         </div>
       </div>
 
@@ -424,60 +450,15 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>R1</td><td>北西</td>
-              <td><input id="fx1" type="number" value="0" style="width:50px;"></td>
-              <td><input id="fm1" type="number" value="10" style="width:50px;"></td>
-              <td><input id="fu1" type="checkbox" checked></td>
-            </tr>
-            <tr>
-              <td>R2</td><td>北</td>
-              <td><input id="fx2" type="number" value="0" style="width:50px;"></td>
-              <td><input id="fm2" type="number" value="10" style="width:50px;"></td>
-              <td><input id="fu2" type="checkbox" checked></td>
-            </tr>
-            <tr>
-              <td>R3</td><td>北東</td>
-              <td><input id="fx3" type="number" value="0" style="width:50px;"></td>
-              <td><input id="fm3" type="number" value="10" style="width:50px;"></td>
-              <td><input id="fu3" type="checkbox" checked></td>
-            </tr>
-            <tr>
-              <td>R4</td><td>西</td>
-              <td><input id="fx4" type="number" value="0" style="width:50px;"></td>
-              <td><input id="fm4" type="number" value="10" style="width:50px;"></td>
-              <td><input id="fu4" type="checkbox" checked></td>
-            </tr>
-            <tr>
-              <td>R5</td><td>中央</td>
-              <td><input id="fx5" type="number" value="0" style="width:50px;"></td>
-              <td><input id="fm5" type="number" value="10" style="width:50px;"></td>
-              <td><input id="fu5" type="checkbox" checked></td>
-            </tr>
-            <tr>
-              <td>R6</td><td>東</td>
-              <td><input id="fx6" type="number" value="0" style="width:50px;"></td>
-              <td><input id="fm6" type="number" value="10" style="width:50px;"></td>
-              <td><input id="fu6" type="checkbox" checked></td>
-            </tr>
-            <tr>
-              <td>R7</td><td>南西</td>
-              <td><input id="fx7" type="number" value="0" style="width:50px;"></td>
-              <td><input id="fm7" type="number" value="10" style="width:50px;"></td>
-              <td><input id="fu7" type="checkbox" checked></td>
-            </tr>
-            <tr>
-              <td>R8</td><td>南</td>
-              <td><input id="fx8" type="number" value="0" style="width:50px;"></td>
-              <td><input id="fm8" type="number" value="10" style="width:50px;"></td>
-              <td><input id="fu8" type="checkbox" checked></td>
-            </tr>
-            <tr>
-              <td>R9</td><td>南東</td>
-              <td><input id="fx9" type="number" value="0" style="width:50px;"></td>
-              <td><input id="fm9" type="number" value="10" style="width:50px;"></td>
-              <td><input id="fu9" type="checkbox" checked></td>
-            </tr>
+            <tr><td>R1</td><td>北西</td><td><input id="fx1" type="number" value="0" style="width:50px;"></td><td><input id="fm1" type="number" value="10" style="width:50px;"></td><td><input id="fu1" type="checkbox" checked></td></tr>
+            <tr><td>R2</td><td>北</td><td><input id="fx2" type="number" value="0" style="width:50px;"></td><td><input id="fm2" type="number" value="10" style="width:50px;"></td><td><input id="fu2" type="checkbox" checked></td></tr>
+            <tr><td>R3</td><td>北東</td><td><input id="fx3" type="number" value="0" style="width:50px;"></td><td><input id="fm3" type="number" value="10" style="width:50px;"></td><td><input id="fu3" type="checkbox" checked></td></tr>
+            <tr><td>R4</td><td>西</td><td><input id="fx4" type="number" value="0" style="width:50px;"></td><td><input id="fm4" type="number" value="10" style="width:50px;"></td><td><input id="fu4" type="checkbox" checked></td></tr>
+            <tr><td>R5</td><td>中央</td><td><input id="fx5" type="number" value="0" style="width:50px;"></td><td><input id="fm5" type="number" value="10" style="width:50px;"></td><td><input id="fu5" type="checkbox" checked></td></tr>
+            <tr><td>R6</td><td>東</td><td><input id="fx6" type="number" value="0" style="width:50px;"></td><td><input id="fm6" type="number" value="10" style="width:50px;"></td><td><input id="fu6" type="checkbox" checked></td></tr>
+            <tr><td>R7</td><td>南西</td><td><input id="fx7" type="number" value="0" style="width:50px;"></td><td><input id="fm7" type="number" value="10" style="width:50px;"></td><td><input id="fu7" type="checkbox" checked></td></tr>
+            <tr><td>R8</td><td>南</td><td><input id="fx8" type="number" value="0" style="width:50px;"></td><td><input id="fm8" type="number" value="10" style="width:50px;"></td><td><input id="fu8" type="checkbox" checked></td></tr>
+            <tr><td>R9</td><td>南東</td><td><input id="fx9" type="number" value="0" style="width:50px;"></td><td><input id="fm9" type="number" value="10" style="width:50px;"></td><td><input id="fu9" type="checkbox" checked></td></tr>
           </tbody>
         </table>
       </div>
@@ -496,26 +477,10 @@
             <tr><th>レベル</th><th>TEC上限[TECU]</th><th>色</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td>L1</td>
-              <td><input id="tLimit1" type="number" value="10" style="width:60px;"></td>
-              <td><input id="tColor1" type="color" value="#00ff00"></td>
-            </tr>
-            <tr>
-              <td>L2</td>
-              <td><input id="tLimit2" type="number" value="30" style="width:60px;"></td>
-              <td><input id="tColor2" type="color" value="#ffff00"></td>
-            </tr>
-            <tr>
-              <td>L3</td>
-              <td><input id="tLimit3" type="number" value="60" style="width:60px;"></td>
-              <td><input id="tColor3" type="color" value="#ff9900"></td>
-            </tr>
-            <tr>
-              <td>L4</td>
-              <td><input id="tLimit4" type="number" value="120" style="width:60px;"></td>
-              <td><input id="tColor4" type="color" value="#ff0000"></td>
-            </tr>
+            <tr><td>L1</td><td><input id="tLimit1" type="number" value="10" style="width:60px;"></td><td><input id="tColor1" type="color" value="#00ff00"></td></tr>
+            <tr><td>L2</td><td><input id="tLimit2" type="number" value="30" style="width:60px;"></td><td><input id="tColor2" type="color" value="#ffff00"></td></tr>
+            <tr><td>L3</td><td><input id="tLimit3" type="number" value="60" style="width:60px;"></td><td><input id="tColor3" type="color" value="#ff9900"></td></tr>
+            <tr><td>L4</td><td><input id="tLimit4" type="number" value="120" style="width:60px;"></td><td><input id="tColor4" type="color" value="#ff0000"></td></tr>
           </tbody>
         </table>
         <div class="row">
@@ -538,26 +503,10 @@
             <tr><th>レベル</th><th>誤差上限[m]</th><th>色</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td>L1</td>
-              <td><input id="gLimit1" type="number" value="5" style="width:60px;"></td>
-              <td><input id="gColor1" type="color" value="#00ff00"></td>
-            </tr>
-            <tr>
-              <td>L2</td>
-              <td><input id="gLimit2" type="number" value="10" style="width:60px;"></td>
-              <td><input id="gColor2" type="color" value="#ffff00"></td>
-            </tr>
-            <tr>
-              <td>L3</td>
-              <td><input id="gLimit3" type="number" value="20" style="width:60px;"></td>
-              <td><input id="gColor3" type="color" value="#ff9900"></td>
-            </tr>
-            <tr>
-              <td>L4</td>
-              <td><input id="gLimit4" type="number" value="40" style="width:60px;"></td>
-              <td><input id="gColor4" type="color" value="#ff0000"></td>
-            </tr>
+            <tr><td>L1</td><td><input id="gLimit1" type="number" value="5" style="width:60px;"></td><td><input id="gColor1" type="color" value="#00ff00"></td></tr>
+            <tr><td>L2</td><td><input id="gLimit2" type="number" value="10" style="width:60px;"></td><td><input id="gColor2" type="color" value="#ffff00"></td></tr>
+            <tr><td>L3</td><td><input id="gLimit3" type="number" value="20" style="width:60px;"></td><td><input id="gColor3" type="color" value="#ff9900"></td></tr>
+            <tr><td>L4</td><td><input id="gLimit4" type="number" value="40" style="width:60px;"></td><td><input id="gColor4" type="color" value="#ff0000"></td></tr>
           </tbody>
         </table>
         <div class="row">
@@ -576,7 +525,7 @@
         <div class="flex-col">
           <div class="row">
             <div>
-              <label>kBase（BoM静穏ベース倍率）</label><br>
+              <label>kBase（静穏ベース倍率）</label><br>
               <input id="cfg_kBase" type="number" value="1.0" step="0.1">
             </div>
             <div>
@@ -665,12 +614,12 @@
         </div>
         <div class="row small">
           <div style="flex:1;">
-            予報スタート時刻（UTC, BoM有効時刻から選択）:<br>
+            予報スタート時刻（UTC, 入力フレーム有効時刻から選択）:<br>
             <select id="forecastStartSelect" style="width:100%;"></select>
           </div>
         </div>
         <div class="small" id="forecastStartInfo">
-          BoMを読み込むと候補が自動で入ります。未選択時は最も早い有効時刻から開始します。
+          入力（BoM/NOAA）を読み込むと候補が自動で入ります。未選択時は最も早い有効時刻から開始します。
         </div>
         <div class="row" style="margin-top:4px;">
           <button onclick="runForecast()">TEC予報を計算</button>
@@ -756,6 +705,11 @@
     const NOAA_3DAY_GEOMAG_TEXT_URL = "https://services.swpc.noaa.gov/text/3-day-geomag-forecast.txt";
     const NOAA_PLANETARY_K_INDEX_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
     const NOAA_XRAY_FLARES_LATEST_URL = "https://services.swpc.noaa.gov/json/goes/primary/xray-flares-latest.json";
+
+    // ★NOAA GloTEC (GeoJSON) directory (SWPC)
+    const NOAA_GLOTEC_DIR_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt/";
+    // 9枚サンプルしたいUTC時刻（BoMと同じ思想）
+    const TARGET_UTC_TIMES = ["00:00","03:00","06:00","09:00","12:00","15:00","18:00","21:00","23:30"];
 
     async function fetchText(url) {
       const res = await fetch(url, { cache: "no-store" });
@@ -877,7 +831,102 @@
       }
     }
 
-    /* ============ グローバル状態 ============ */
+    /* ============================
+     *  ★ NOAA GloTEC 24h → 9枚サンプリング → 入力欄へ
+     * ============================ */
+    function parseUtcFromFilename(fn) {
+      // 例: glotec_..._20251217T003500Z.geojson
+      const m = String(fn).match(/_(\d{8})T(\d{6})Z\.geojson$/i);
+      if (!m) return null;
+      const y = parseInt(m[1].slice(0,4),10);
+      const mo= parseInt(m[1].slice(4,6),10);
+      const d = parseInt(m[1].slice(6,8),10);
+      const hh= parseInt(m[2].slice(0,2),10);
+      const mm= parseInt(m[2].slice(2,4),10);
+      const ss= parseInt(m[2].slice(4,6),10);
+      return new Date(Date.UTC(y, mo-1, d, hh, mm, ss));
+    }
+
+    function pick9Closest(files) {
+      if (!files.length) return [];
+      files.sort((a,b)=>a.tUtc-b.tUtc);
+
+      const latest = files[files.length-1].tUtc;
+      const y = latest.getUTCFullYear(), m = latest.getUTCMonth(), d = latest.getUTCDate();
+
+      const targets = TARGET_UTC_TIMES.map(hm => {
+        const [H,M] = hm.split(":").map(x=>parseInt(x,10));
+        return new Date(Date.UTC(y,m,d,H,M||0,0));
+      });
+
+      const chosen = [];
+      for (const t0 of targets) {
+        let best = null, bestDiff = 1e99;
+        for (const f of files) {
+          const diff = Math.abs(f.tUtc - t0);
+          if (diff < bestDiff) { bestDiff = diff; best = f; }
+        }
+        if (best && !chosen.some(x=>x.fn===best.fn)) chosen.push(best);
+      }
+      if (chosen.length < 9) {
+        for (let i=files.length-1;i>=0 && chosen.length<9;i--) {
+          const f = files[i];
+          if (!chosen.some(x=>x.fn===f.fn)) chosen.push(f);
+        }
+      }
+      chosen.sort((a,b)=>a.tUtc-b.tUtc);
+      return chosen.slice(0,9);
+    }
+
+    async function fetchNoaaGloTec9FromApi(saveAfter=false) {
+      try {
+        setStatus("noaaTecStatus", "NOAA GloTEC 一覧取得中…");
+        const html = await fetchText(NOAA_GLOTEC_DIR_URL);
+
+        const hrefs = [];
+        const re = /href="([^"]+\.geojson)"/ig;
+        let mm;
+        while ((mm = re.exec(html)) !== null) {
+          const fn = mm[1].split("/").pop();
+          if (fn && fn.toLowerCase().endsWith(".geojson")) hrefs.push(fn);
+        }
+        const uniq = Array.from(new Set(hrefs));
+
+        const now = new Date();
+        const tMin = now.getTime() - 24*3600*1000;
+
+        const files = uniq.map(fn => ({ fn, tUtc: parseUtcFromFilename(fn) }))
+                          .filter(x => x.tUtc && x.tUtc.getTime() >= tMin);
+
+        if (!files.length) throw new Error("過去24hのGloTECが見つかりません（一覧HTML仕様変更 or CORSの可能性）");
+
+        const pick = pick9Closest(files);
+        setStatus("noaaTecStatus", `過去24hから9枚選定: ${pick.map(x=>x.tUtc.toISOString().slice(11,16)).join(", ")}`);
+
+        const texts = await Promise.all(
+          pick.map(x => fetchText(NOAA_GLOTEC_DIR_URL + x.fn))
+        );
+
+        const ids = ["bomInput1","bomInput2","bomInput3","bomInput4","bomInput5","bomInput6","bomInput7","bomInput8","bomInput9"];
+        for (let i=0;i<ids.length;i++) {
+          const ta = document.getElementById(ids[i]);
+          if (ta) ta.value = texts[i] || "";
+        }
+
+        // 予報スタートセレクトのために、validTime を各入力テキスト先頭に擬似ヘッダで埋める…はしない（解析で決め打ちしない）
+        // → runForecast側で「NOAAの場合は validTime無しでもOK」にしてある（後述）
+
+        if (saveAfter) saveBomInputs();
+        setStatus("noaaTecStatus", "NOAA 9枚投入OK（入力欄へ反映）");
+      } catch (e) {
+        console.error(e);
+        setStatus("noaaTecStatus", "失敗: " + e.message);
+      }
+    }
+
+    /* ============================
+     *  グローバル状態
+     * ============================ */
     const FORECAST_HOURS = 24 * 3;
     const DT_MINUTES     = 30;
 
@@ -914,7 +963,7 @@
     let currentFocus = null;
 
     const STORAGE_KEY_CONFIG   = "swifttec_config_v4_additive_base";
-    const STORAGE_KEY_BOM      = "swifttec_bom_inputs_v4_additive_base";
+    const STORAGE_KEY_BOM      = "swifttec_inputs_v5_bom_or_noaa";
     const STORAGE_KEY_TCOL     = "swifttec_teccol_v3";
     const STORAGE_KEY_GCOL     = "swifttec_gpscol_v1";
 
@@ -1005,9 +1054,89 @@
       return { latArr, lonArr, nLat, nLon, grid, validTime };
     }
 
-    /* ============ BoM 入力保存 ============ */
+    /* ============================
+     *  ★ NOAA GloTEC GeoJSON → 2°×5° Grid
+     * ============================ */
+    function parseNoaaGloTecGeoJson(text, targetLatStep=2.0, targetLonStep=5.0) {
+      let obj;
+      try { obj = JSON.parse(text); } catch { throw new Error("NOAA GeoJSONがJSONとして読めません"); }
+      if (!obj || !Array.isArray(obj.features)) throw new Error("NOAA GeoJSON featuresが見つかりません");
+
+      const candidateKeys = ["tec","vtec","VTEC","TEC","value","Value","grid_value"];
+      let valueKey = null;
+
+      for (const f of obj.features) {
+        const p = f && f.properties;
+        if (!p) continue;
+        for (const k of candidateKeys) {
+          if (p[k] !== undefined && isFinite(parseFloat(p[k]))) { valueKey = k; break; }
+        }
+        if (valueKey) break;
+      }
+      if (!valueKey) throw new Error("TEC値プロパティが特定できません（propertiesにtec/vtec/value等が無い）");
+
+      // ポリゴン中心（座標平均）
+      const pts = [];
+      for (const f of obj.features) {
+        if (!f || !f.geometry) continue;
+        const v = parseFloat(f.properties?.[valueKey]);
+        if (!isFinite(v)) continue;
+
+        const g = f.geometry;
+        let coords = null;
+        if (g.type === "Polygon") coords = g.coordinates?.[0];
+        else if (g.type === "MultiPolygon") coords = g.coordinates?.[0]?.[0];
+        if (!Array.isArray(coords) || coords.length < 3) continue;
+
+        let sumLon=0, sumLat=0, n=0;
+        for (const c of coords) {
+          if (!Array.isArray(c) || c.length < 2) continue;
+          const lon = +c[0], lat = +c[1];
+          if (!isFinite(lat) || !isFinite(lon)) continue;
+          sumLon += lon; sumLat += lat; n++;
+        }
+        if (n===0) continue;
+        let lonC = sumLon/n;
+        // lonを -180..180 へ
+        lonC = ((lonC + 180) % 360) - 180;
+        pts.push({ lat: sumLat/n, lon: lonC, tec: v });
+      }
+      if (!pts.length) throw new Error("GeoJSONから格子点が作れませんでした");
+
+      // ターゲット格子（2×5）
+      const latArr = [];
+      for (let lat=-90; lat<=90+1e-6; lat+=targetLatStep) latArr.push(+lat.toFixed(6));
+      const lonArr = [];
+      for (let lon=-180; lon<=180+1e-6; lon+=targetLonStep) lonArr.push(+lon.toFixed(6));
+
+      const nLat = latArr.length, nLon = lonArr.length;
+      const grid = Array.from({length:nLat}, ()=>Array.from({length:nLon}, ()=>NaN));
+
+      // 最近傍（安定優先）
+      for (let i=0;i<nLat;i++) {
+        const lat0 = latArr[i];
+        for (let j=0;j<nLon;j++) {
+          const lon0 = lonArr[j];
+
+          let best=null, bestD=1e99;
+          for (const p of pts) {
+            let dLon = Math.abs(p.lon - lon0);
+            dLon = Math.min(dLon, 360 - dLon);
+            const d = Math.abs(p.lat - lat0) + dLon;
+            if (d < bestD) { bestD = d; best = p; }
+          }
+          grid[i][j] = best ? best.tec : NaN;
+        }
+      }
+
+      // NOAA側はvalidTimeが無いことが多いので、nullで返す（runForecastでstartTimeをnow-?で扱う）
+      return { latArr, lonArr, nLat, nLon, grid, validTime: null };
+    }
+
+    /* ============ 入力保存 ============ */
     function saveBomInputs() {
       const data = {
+        tecSource: document.getElementById("tecSourceSelect")?.value || "bom",
         bomInput1: document.getElementById("bomInput1").value,
         bomInput2: document.getElementById("bomInput2").value,
         bomInput3: document.getElementById("bomInput3").value,
@@ -1019,7 +1148,7 @@
         bomInput9: document.getElementById("bomInput9").value,
       };
       localStorage.setItem(STORAGE_KEY_BOM, JSON.stringify(data));
-      logInfo("BoM入力を保存しました。（次回起動時に自動復元）");
+      logInfo("入力（BoM/NOAA）を保存しました。（次回起動時に自動復元）");
     }
 
     function loadBomInputsFromStorage() {
@@ -1027,6 +1156,8 @@
       if (!s) return;
       try {
         const data = JSON.parse(s);
+        if (data.tecSource) document.getElementById("tecSourceSelect").value = data.tecSource;
+
         if (data.bomInput1 !== undefined) document.getElementById("bomInput1").value = data.bomInput1;
         if (data.bomInput2 !== undefined) document.getElementById("bomInput2").value = data.bomInput2;
         if (data.bomInput3 !== undefined) document.getElementById("bomInput3").value = data.bomInput3;
@@ -1037,13 +1168,13 @@
         if (data.bomInput8 !== undefined) document.getElementById("bomInput8").value = data.bomInput8;
         if (data.bomInput9 !== undefined) document.getElementById("bomInput9").value = data.bomInput9;
       } catch(e) {
-        console.warn("BoM入力の復元に失敗:", e);
+        console.warn("入力の復元に失敗:", e);
       }
     }
 
     function clearBomInputsStorage() {
       localStorage.removeItem(STORAGE_KEY_BOM);
-      logInfo("保存されていた BoM 入力を削除しました。（テキスト内容はそのまま）");
+      logInfo("保存されていた 入力（BoM/NOAA）を削除しました。（テキスト内容はそのまま）");
     }
 
     /* ============ Config（係数） ============ */
@@ -1227,8 +1358,6 @@
 
     /* ============================
      *  NOAA Kp パーサ（強化版）
-     *  - breakdown形式
-     *  - "NOAA Kp index forecast 16 Dec - 18 Dec" 表形式（あなたの貼付）
      * ============================ */
     function parseKpText(raw) {
       const text = String(raw || "");
@@ -1357,13 +1486,11 @@
       return out;
     }
 
-    // ★あなたの貼付形式: "NOAA Kp index forecast 16 Dec - 18 Dec" + 表
     function parseKpFromGeomagForecastTable(raw) {
       const lines = raw.split(/\r?\n/);
       const out = [];
       const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
 
-      // :Issued: 2025 Dec 15 ...
       let year = null;
       for (const ln of lines) {
         const m = ln.match(/:Issued:\s*(\d{4})\s+([A-Za-z]{3})\s+(\d{1,2})/);
@@ -1377,7 +1504,6 @@
       }
       if (idx < 0) return out;
 
-      // ヘッダ行： Dec 16 Dec 17 Dec 18
       let headerLine = null;
       for (let i=idx; i<Math.min(lines.length, idx+12); i++) {
         const ln = lines[i].trim();
@@ -1448,7 +1574,6 @@
       return last.kp;
     }
 
-    // ★BaseKp：範囲外は予報Kpへ戻す（張り付き防止）
     function getKpBaseAtUtc(tUtc, kpForecast) {
       if (!gBaseKpSeries || gBaseKpSeries.length === 0) return kpForecast;
 
@@ -1871,7 +1996,7 @@
       drawTecOverlay();
     }
 
-    /* ===== BoMフレーム補間（時間範囲外はループ利用） ===== */
+    /* ===== 入力フレーム補間（時間範囲外はループ利用） ===== */
     function interpolateBomFrames(frames, tUtc) {
       const nLat = frames[0].nLat;
       const nLon = frames[0].nLon;
@@ -1880,6 +2005,8 @@
 
       const hasTime = frames.every(f => f.validTime instanceof Date && !isNaN(f.validTime.getTime()));
       if (!hasTime) {
+        // 時刻が無い（NOAA等）は「最初のフレーム」を固定として使う（入力が9枚ある場合でも）
+        // → 予報の時間依存は Kp/Flare で動く
         const src = frames[0].grid;
         for (let i=0;i<nLat;i++) for (let j=0;j<nLon;j++) out[i][j] = src[i][j];
         return out;
@@ -1959,7 +2086,6 @@
       lbl.textContent = "UTC: " + tUtc.toISOString().replace(".000Z","Z");
     }
 
-    // ★予報Kp(KpF)とBaseKp(KpB)を同時表示
     function updateKpLabelForStep(stepIndex) {
       const kpLbl = document.getElementById("kpNowLabel");
       if (!gForecastTimes.length || !gForecastTimes[stepIndex]) {
@@ -2007,7 +2133,7 @@
       }
 
       if (!uniqueTimes.length) {
-        info.textContent = "BoMに有効時刻が含まれていないため、最初のフレーム時刻を基準に3日予報を行います。";
+        info.textContent = "入力フレームに有効時刻が含まれていないため、現在時刻（UTC）を基準に3日予報を行います。";
         return;
       }
 
@@ -2019,7 +2145,7 @@
         sel.appendChild(opt);
       });
 
-      info.textContent = "BoMの有効時刻から選択できます。変更後は再度「TEC予報を計算」を押してください。";
+      info.textContent = "入力の有効時刻から選択できます。変更後は再度「TEC予報を計算」を押してください。";
     }
 
     /* ===== 予報計算（Base抽出＋加算モデル） ===== */
@@ -2031,7 +2157,9 @@
         gGrid = null;
         gForecastStart = null;
 
-        const bomTexts = [
+        const src = document.getElementById("tecSourceSelect")?.value || "bom";
+
+        const texts9 = [
           document.getElementById("bomInput1").value,
           document.getElementById("bomInput2").value,
           document.getElementById("bomInput3").value,
@@ -2044,20 +2172,25 @@
         ];
 
         const frames = [];
-        for (const txt of bomTexts) {
+        for (const txt of texts9) {
           if (!txt.trim()) continue;
           try {
-            const f = parseBoM(txt);
+            const f = (src === "noaa")
+              ? parseNoaaGloTecGeoJson(txt, 2.0, 5.0)   // ★2×5固定
+              : parseBoM(txt);
             frames.push(f);
           } catch(e) {
-            console.warn("BoMパース失敗:", e);
+            console.warn(src === "noaa" ? "NOAAパース失敗:" : "BoMパース失敗:", e);
           }
         }
         if (!frames.length) {
-          logInfo("BoM TEC テキストが1つもありません。");
+          logInfo(src === "noaa" ? "NOAA GloTEC（GeoJSON）が1つもありません。" : "BoM TEC テキストが1つもありません。");
           return;
         }
-        frames.sort((a,b) => (a.validTime || 0) - (b.validTime || 0));
+
+        // sort (validTime がnullのNOAAでもOK)
+        frames.sort((a,b) => ((a.validTime?.getTime?.() ?? 0) - (b.validTime?.getTime?.() ?? 0)));
+
         const first = frames[0];
 
         gGrid = {
@@ -2069,12 +2202,14 @@
 
         updateForecastStartSelect(frames);
 
-        let startTime = first.validTime || new Date();
+        // startTime
+        let startTime = first.validTime || new Date(); // NOAAはvalidTimeが無いのでnow
         const sel = document.getElementById("forecastStartSelect");
         if (sel && sel.options.length > 0 && sel.value) {
           const ms = parseInt(sel.value,10);
           if (!isNaN(ms)) startTime = new Date(ms);
         }
+        // NOAAは "now" だとローカル時刻に見えるが内部はUTC運用なのでそのままOK（toISOStringでUTC表記）
         gForecastStart = startTime;
 
         // 予報Kp
@@ -2101,7 +2236,6 @@
 
           const kpForecast = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
 
-          // ★BaseKpは範囲外なら予報Kpへ戻す
           const kpBase = getKpBaseAtUtc(tUtc, kpForecast);
 
           let basePx = 0, basePm = 0;
@@ -2122,7 +2256,6 @@
               const lon = gGrid.lonArr[j];
               const tecInput = inputTecGrid[i][j];
 
-              // [Step 1] Base抽出
               const dFlareBase = calcFlareDeltaFromProbs(cfg, lat, lon, tUtc, basePx, basePm);
               const rStormBase = sstormPos_rStorm(kpBase, lat, monthIndex);
 
@@ -2134,7 +2267,6 @@
               if (!isFinite(baseTec) || baseTec < 0) baseTec = 0;
               baseTec *= cfg.kBase;
 
-              // [Step 2] 予報加算
               const rStormForecast = sstormPos_rStorm(kpForecast, lat, monthIndex);
               const dStormForecast = cfg.kStorm * baseTec * (rStormForecast - 1.0);
 
@@ -2157,7 +2289,7 @@
         drawTecOverlay();
         updateFormulaText();
 
-        logInfo("TEC予報計算が完了しました。ステップ数: " + gForecastFrames.length);
+        logInfo(`TEC予報計算が完了しました。ステップ数: ${gForecastFrames.length} / 入力源=${src.toUpperCase()}`);
       } catch(e) {
         console.error(e);
         logInfo("エラー: " + e.message);
@@ -2196,8 +2328,8 @@
       const txt =
         "UTC: " + (tUtc ? tUtc.toISOString().replace(".000Z","Z") : "N/A") + "\n" +
         "Lat=" + gGrid.latArr[bestI].toFixed(1) + "°, Lon=" + gGrid.lonArr[bestJ].toFixed(1) + "°\n" +
-        "TEC = " + tec.toFixed(1) + " TECU\n" +
-        "GPS L1誤差 ≈ " + gpsErr.toFixed(2) + " m\n" +
+        "TEC = " + (Number.isFinite(tec) ? tec.toFixed(1) : "NaN") + " TECU\n" +
+        "GPS L1誤差 ≈ " + (Number.isFinite(gpsErr) ? gpsErr.toFixed(2) : "NaN") + " m\n" +
         "KpF(予報) ≈ " + kpF.toFixed(2) + "\n" +
         "KpB(Base) ≈ " + kpB.toFixed(2) + " (month=" + month + ")";
 
@@ -2253,13 +2385,18 @@
     /* ===== 式テキスト（Base抽出＋加算モデル版） ===== */
     function updateFormulaText() {
       const cfg = getConfigFromUI();
+      const src = document.getElementById("tecSourceSelect")?.value || "bom";
+      const srcName = (src === "noaa") ? "NOAA(GloTEC, 2°×5°格子化)" : "BoM(WorldXXXX_tec.txt)";
+
       const txt =
 `Base抽出＋加算モデル（Mode A）:
+
+入力TECソース: ${srcName}
 
   1. Base 抽出フェーズ（入力TEC → 静穏 BaseTEC）
 
     入力：
-      TEC_input(φ,λ,t) : BoM TEC（9枚を時間補間・周期ループ）
+      TEC_input(φ,λ,t) : 入力TEC（BoM or NOAA）を時間補間（時刻無しは固定）
       Kp_base(t)       : Base用 Kp 時系列（JSON入力）
       Px_base(t),Pm_base(t) : Base用フレア確率（JSON入力/NOAA API）
       rStorm_base      : Mukhtarov 正層嵐モデル（季節・緯度依存）
