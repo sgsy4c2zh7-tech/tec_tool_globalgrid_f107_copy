@@ -5,10 +5,7 @@
   <title>SWIFT-TEC v3 – TEC Forecast & Verification Tool (Leaflet版, 3日予報・加算＋Base抽出モデル)</title>
 
   <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
     * { box-sizing: border-box; }
@@ -94,12 +91,9 @@
       padding: 2px 4px;
       font-family: inherit;
     }
-    input[type="checkbox"] {
-      transform: scale(0.9);
-    }
-    label {
-      font-size: 11px;
-    }
+    input[type="checkbox"] { transform: scale(0.9); }
+    label { font-size: 11px; }
+
     .row {
       display: flex;
       gap: 6px;
@@ -107,10 +101,8 @@
       align-items: center;
       flex-wrap: wrap;
     }
-    .row > div {
-      flex: 1;
-      min-width: 80px;
-    }
+    .row > div { flex: 1; min-width: 80px; }
+
     button {
       border-radius: 4px;
       border: 1px solid #3b82f6;
@@ -125,14 +117,10 @@
       border-color: #4b5563;
       background: #111827;
     }
-    button:disabled {
-      opacity: 0.4;
-      cursor: default;
-    }
-    .small {
-      font-size: 10px;
-      opacity: 0.8;
-    }
+    button:disabled { opacity: 0.4; cursor: default; }
+
+    .small { font-size: 10px; opacity: 0.8; }
+
     pre {
       font-size: 11px;
       background: #050814;
@@ -151,21 +139,12 @@
       padding: 2px 4px;
       text-align: center;
     }
-    th {
-      background: #111827;
-    }
-    .flex-col {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
+    th { background: #111827; }
+
+    .flex-col { display: flex; flex-direction: column; gap: 4px; }
 
     .slider-card { flex: 0 0 auto; }
-    .map-card {
-      flex: 1 1 auto;
-      min-height: 55vh;
-      display: flex;
-    }
+    .map-card { flex: 1 1 auto; min-height: 55vh; display: flex; }
     .output-card { flex: 0 0 auto; }
 
     .slider-row {
@@ -175,10 +154,7 @@
       font-size: 11px;
       flex-wrap: wrap;
     }
-    #timeSlider {
-      flex: 1;
-      min-width: 120px;
-    }
+    #timeSlider { flex: 1; min-width: 120px; }
 
     #tecMap {
       flex: 1;
@@ -188,13 +164,10 @@
       overflow: hidden;
       position: relative;
     }
-    .leaflet-container {
-      background: #000;
-    }
+    .leaflet-container { background: #000; }
     .tec-canvas-overlay {
       position: absolute;
-      top: 0;
-      left: 0;
+      top: 0; left: 0;
       pointer-events: none;
       z-index: 400;
     }
@@ -228,35 +201,13 @@
       font-size: 9px;
     }
 
-    .output-row {
-      display: flex;
-      gap: 8px;
-      align-items: stretch;
-      flex-wrap: wrap;
-    }
-    .output-col {
-      flex: 1;
-      min-width: 200px;
-      display: flex;
-      flex-direction: column;
-    }
+    .output-row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+    .output-col { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
+    .output-col pre { max-height: 220px; overflow-y: auto; }
 
-    .output-col pre {
-      max-height: 220px;
-      overflow-y: auto;
-    }
+    hr { border: none; border-top: 1px solid #222b3f; margin: 4px 0; }
 
-    hr {
-      border: none;
-      border-top: 1px solid #222b3f;
-      margin: 4px 0;
-    }
-
-    .focus-btn {
-      width: 100%;
-      font-size: 9px;
-      padding: 3px 2px;
-    }
+    .focus-btn { width: 100%; font-size: 9px; padding: 3px 2px; }
   </style>
 
   <!-- パスワード保護 -->
@@ -288,7 +239,7 @@
           ・その BaseTEC に ΔStorm(Kp予報) ＋ ΔFlare(Deep Flare Net) を<b>足し算</b><br>
           ・NOAAテキスト / JSON から Kp(t) を自動読取（Base用と予報用を分離）<br>
           ・Leaflet 地図で TEC / GPS誤差を確認、地域フォーカスも可能<br>
-          ・★追加：TEC入力を <b>BoM</b> or <b>NOAA(GloTEC)</b> で切替（NOAAは過去24hをAPI取得→9枚サンプリング）
+          ・★追加：TEC入力を <b>BoM</b> or <b>NOAA(GloTEC)</b> で切替（NOAAは <b>最新→過去3時間おき24時間=9枚</b> をAPI取得→2°×5°へ格子化）
         </div>
       </div>
 
@@ -303,7 +254,7 @@
             <label>TEC入力元</label><br>
             <select id="tecSourceSelect" style="width:100%;">
               <option value="bom" selected>BoM (WorldXXXX_tec.txt 9枚)</option>
-              <option value="noaa">NOAA (GloTEC 過去24h→9枚, 2°×5°へ格子化)</option>
+              <option value="noaa">NOAA (GloTEC: 最新→過去3時間おき24h=9枚, 2°×5°へ格子化)</option>
             </select>
           </div>
         </div>
@@ -313,7 +264,7 @@
         </div>
         <div class="small" id="noaaTecStatus"></div>
         <div class="small">
-          ※ブラウザCORSの都合で NOAA ディレクトリ一覧取得が失敗する場合があります。その場合はBoM同様、手動コピペ運用にしてください。
+          ※NOAA側は「一覧JSON（geojson_2d_urt.json）」を読んで9枚選定します。サービス側障害/メンテ中は失敗します（その場合はBoM運用 or 手動コピペ）。
         </div>
       </div>
 
@@ -691,25 +642,17 @@
      * ============================ */
     const BOM_TEC_BASE_URL = "https://downloads.sws.bom.gov.au/data/Satellite/";
     const BOM_TEC_FILES_9 = [
-      "World0000_tec.txt",
-      "World0300_tec.txt",
-      "World0600_tec.txt",
-      "World0900_tec.txt",
-      "World1200_tec.txt",
-      "World1500_tec.txt",
-      "World1800_tec.txt",
-      "World2100_tec.txt",
-      "World2330_tec.txt"
+      "World0000_tec.txt","World0300_tec.txt","World0600_tec.txt","World0900_tec.txt",
+      "World1200_tec.txt","World1500_tec.txt","World1800_tec.txt","World2100_tec.txt","World2330_tec.txt"
     ];
 
     const NOAA_3DAY_GEOMAG_TEXT_URL = "https://services.swpc.noaa.gov/text/3-day-geomag-forecast.txt";
     const NOAA_PLANETARY_K_INDEX_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
     const NOAA_XRAY_FLARES_LATEST_URL = "https://services.swpc.noaa.gov/json/goes/primary/xray-flares-latest.json";
 
-    // ★NOAA GloTEC (GeoJSON) directory (SWPC)
-    const NOAA_GLOTEC_DIR_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt/";
-    // 9枚サンプルしたいUTC時刻（BoMと同じ思想）
-    const TARGET_UTC_TIMES = ["00:00","03:00","06:00","09:00","12:00","15:00","18:00","21:00","23:30"];
+    // ★NOAA GloTEC file list (JSON) + base folder
+    const NOAA_GLOTEC_INDEX_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt.json";
+    const NOAA_GLOTEC_BASE_URL  = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt/";
 
     async function fetchText(url) {
       const res = await fetch(url, { cache: "no-store" });
@@ -738,6 +681,7 @@
           const ta = document.getElementById(ids[i]);
           if (ta) ta.value = texts[i] || "";
         }
+        // NOAAの時刻メタは消さない（BoM取得しても残してOK）。BoM切替で使わないだけ。
         const times = texts.map(t => {
           const d = parseBomValidTime(t);
           return d ? d.toISOString().replace(".000Z","Z") : "--";
@@ -788,7 +732,6 @@
     async function fetchNoaaXrayFlareLatestToBase() {
       try {
         setStatus("xrayflareStatus", "取得中…");
-
         const arr = await fetchJson(NOAA_XRAY_FLARES_LATEST_URL);
         if (!Array.isArray(arr) || arr.length === 0) {
           setStatus("xrayflareStatus", "データなし");
@@ -806,11 +749,8 @@
         }
 
         let strength01 = 0;
-        if (p.head === "M") {
-          strength01 = Math.min(0.9, 0.2 + 0.08 * p.mag);
-        } else {
-          strength01 = 1.0;
-        }
+        if (p.head === "M") strength01 = Math.min(0.9, 0.2 + 0.08 * p.mag);
+        else strength01 = 1.0;
 
         const Px = (p.head === "X") ? (strength01 * 100) : 0;
         const Pm = (p.head === "M") ? (strength01 * 100) : 0;
@@ -832,11 +772,27 @@
     }
 
     /* ============================
-     *  ★ NOAA GloTEC 24h → 9枚サンプリング → 入力欄へ
+     *  ★ NOAA GloTEC: 最新→過去3時間おき24h（9枚）をAPI取得
+     *    - geojson_2d_urt.json を読み、ファイル名からUTC抽出
+     *    - latest から 0,3,6,...,24h のターゲットに最も近いファイルを選定
+     *    - 2°×5°グリッド化して予報に投入（Point/Polygon両対応）
      * ============================ */
+    const NOAA_INPUT_IDS = ["bomInput1","bomInput2","bomInput3","bomInput4","bomInput5","bomInput6","bomInput7","bomInput8","bomInput9"];
+
+    // NOAA入力の時刻メタ（入力欄と1:1で対応）
+    let gNoaaInputTimes = new Array(9).fill(null);
+    let gNoaaInputFiles = new Array(9).fill(null);
+
+    function basename(p) {
+      const s = String(p || "");
+      const parts = s.split("/");
+      return parts[parts.length-1] || s;
+    }
+
     function parseUtcFromFilename(fn) {
       // 例: glotec_..._20251217T003500Z.geojson
-      const m = String(fn).match(/_(\d{8})T(\d{6})Z\.geojson$/i);
+      const s = String(fn || "");
+      const m = s.match(/(\d{8})T(\d{6})Z/i);
       if (!m) return null;
       const y = parseInt(m[1].slice(0,4),10);
       const mo= parseInt(m[1].slice(4,6),10);
@@ -847,17 +803,29 @@
       return new Date(Date.UTC(y, mo-1, d, hh, mm, ss));
     }
 
-    function pick9Closest(files) {
+    function normalizeGloTecIndexJson(js) {
+      // 想定: ["file.geojson", ...] もしくは {"files":[...]} 等にも対応
+      if (Array.isArray(js)) return js;
+      if (js && Array.isArray(js.files)) return js.files;
+      if (js && Array.isArray(js.data)) return js.data;
+      // それっぽい配列を総当たり
+      if (js && typeof js === "object") {
+        for (const k of Object.keys(js)) {
+          if (Array.isArray(js[k])) return js[k];
+        }
+      }
+      return [];
+    }
+
+    function pick9LatestBack3h(files) {
+      // files: [{fn, tUtc, url}]
       if (!files.length) return [];
       files.sort((a,b)=>a.tUtc-b.tUtc);
-
       const latest = files[files.length-1].tUtc;
-      const y = latest.getUTCFullYear(), m = latest.getUTCMonth(), d = latest.getUTCDate();
-
-      const targets = TARGET_UTC_TIMES.map(hm => {
-        const [H,M] = hm.split(":").map(x=>parseInt(x,10));
-        return new Date(Date.UTC(y,m,d,H,M||0,0));
-      });
+      const targets = [];
+      for (let k=0;k<=8;k++) {
+        targets.push(new Date(latest.getTime() - k*3*3600*1000));
+      }
 
       const chosen = [];
       for (const t0 of targets) {
@@ -868,53 +836,60 @@
         }
         if (best && !chosen.some(x=>x.fn===best.fn)) chosen.push(best);
       }
+
+      // 足りない分は最新側から補完
       if (chosen.length < 9) {
         for (let i=files.length-1;i>=0 && chosen.length<9;i--) {
           const f = files[i];
           if (!chosen.some(x=>x.fn===f.fn)) chosen.push(f);
         }
       }
+
       chosen.sort((a,b)=>a.tUtc-b.tUtc);
-      return chosen.slice(0,9);
+      return chosen.slice(-9); // 古い→新しい順で9枚
     }
 
     async function fetchNoaaGloTec9FromApi(saveAfter=false) {
       try {
-        setStatus("noaaTecStatus", "NOAA GloTEC 一覧取得中…");
-        const html = await fetchText(NOAA_GLOTEC_DIR_URL);
+        setStatus("noaaTecStatus", "NOAA GloTEC 一覧(JSON)取得中…");
+        const idx = await fetchJson(NOAA_GLOTEC_INDEX_URL);
+        const list = normalizeGloTecIndexJson(idx)
+          .map(x => String(x))
+          .filter(x => x.toLowerCase().endsWith(".geojson"));
 
-        const hrefs = [];
-        const re = /href="([^"]+\.geojson)"/ig;
-        let mm;
-        while ((mm = re.exec(html)) !== null) {
-          const fn = mm[1].split("/").pop();
-          if (fn && fn.toLowerCase().endsWith(".geojson")) hrefs.push(fn);
+        if (!list.length) throw new Error("一覧JSONから .geojson が見つかりません（サービス側仕様変更/障害の可能性）");
+
+        const files = [];
+        for (const p of list) {
+          const fn = basename(p);
+          const tUtc = parseUtcFromFilename(fn) || parseUtcFromFilename(p);
+          if (!tUtc) continue;
+          const url = (p.startsWith("http://") || p.startsWith("https://")) ? p
+                    : (p.includes("/") ? ("https://services.swpc.noaa.gov/" + p.replace(/^\/+/,""))
+                                       : (NOAA_GLOTEC_BASE_URL + fn));
+          files.push({ fn, tUtc, url });
         }
-        const uniq = Array.from(new Set(hrefs));
 
-        const now = new Date();
-        const tMin = now.getTime() - 24*3600*1000;
+        if (!files.length) throw new Error("ファイル名からUTCが抽出できません（命名規則が想定外）");
 
-        const files = uniq.map(fn => ({ fn, tUtc: parseUtcFromFilename(fn) }))
-                          .filter(x => x.tUtc && x.tUtc.getTime() >= tMin);
-
-        if (!files.length) throw new Error("過去24hのGloTECが見つかりません（一覧HTML仕様変更 or CORSの可能性）");
-
-        const pick = pick9Closest(files);
-        setStatus("noaaTecStatus", `過去24hから9枚選定: ${pick.map(x=>x.tUtc.toISOString().slice(11,16)).join(", ")}`);
-
-        const texts = await Promise.all(
-          pick.map(x => fetchText(NOAA_GLOTEC_DIR_URL + x.fn))
+        // 最新から24h（3h刻み）9枚選定
+        const pick = pick9LatestBack3h(files);
+        const newest = pick[pick.length-1]?.tUtc;
+        const oldest = pick[0]?.tUtc;
+        setStatus("noaaTecStatus",
+          `選定OK（9枚）: oldest=${oldest?.toISOString().slice(11,16)}Z → latest=${newest?.toISOString().slice(11,16)}Z（3h刻みターゲット）`
         );
 
-        const ids = ["bomInput1","bomInput2","bomInput3","bomInput4","bomInput5","bomInput6","bomInput7","bomInput8","bomInput9"];
-        for (let i=0;i<ids.length;i++) {
-          const ta = document.getElementById(ids[i]);
-          if (ta) ta.value = texts[i] || "";
-        }
+        // 取得（9枚）
+        const texts = await Promise.all(pick.map(x => fetchText(x.url)));
 
-        // 予報スタートセレクトのために、validTime を各入力テキスト先頭に擬似ヘッダで埋める…はしない（解析で決め打ちしない）
-        // → runForecast側で「NOAAの場合は validTime無しでもOK」にしてある（後述）
+        // 入力欄へ
+        for (let i=0;i<9;i++) {
+          const ta = document.getElementById(NOAA_INPUT_IDS[i]);
+          if (ta) ta.value = texts[i] || "";
+          gNoaaInputTimes[i] = pick[i]?.tUtc || null;
+          gNoaaInputFiles[i] = pick[i]?.fn || null;
+        }
 
         if (saveAfter) saveBomInputs();
         setStatus("noaaTecStatus", "NOAA 9枚投入OK（入力欄へ反映）");
@@ -963,7 +938,7 @@
     let currentFocus = null;
 
     const STORAGE_KEY_CONFIG   = "swifttec_config_v4_additive_base";
-    const STORAGE_KEY_BOM      = "swifttec_inputs_v5_bom_or_noaa";
+    const STORAGE_KEY_BOM      = "swifttec_inputs_v6_bom_or_noaa_with_noaa_times";
     const STORAGE_KEY_TCOL     = "swifttec_teccol_v3";
     const STORAGE_KEY_GCOL     = "swifttec_gpscol_v1";
 
@@ -1056,13 +1031,18 @@
 
     /* ============================
      *  ★ NOAA GloTEC GeoJSON → 2°×5° Grid
+     *    - Point/Polygon/MultiPolygon対応
+     *    - validTime は外部から渡せる（ファイル名UTC）
      * ============================ */
-    function parseNoaaGloTecGeoJson(text, targetLatStep=2.0, targetLonStep=5.0) {
+    function parseNoaaGloTecGeoJson(text, validTimeFromFilename=null, targetLatStep=2.0, targetLonStep=5.0) {
       let obj;
       try { obj = JSON.parse(text); } catch { throw new Error("NOAA GeoJSONがJSONとして読めません"); }
       if (!obj || !Array.isArray(obj.features)) throw new Error("NOAA GeoJSON featuresが見つかりません");
 
-      const candidateKeys = ["tec","vtec","VTEC","TEC","value","Value","grid_value"];
+      const candidateKeys = [
+        "tec","vtec","VTEC","TEC","value","Value","grid_value","gridValue",
+        "tecu","TECU","ionosphere_tec","iono_tec"
+      ];
       let valueKey = null;
 
       for (const f of obj.features) {
@@ -1073,19 +1053,42 @@
         }
         if (valueKey) break;
       }
-      if (!valueKey) throw new Error("TEC値プロパティが特定できません（propertiesにtec/vtec/value等が無い）");
+      // それでも見つからない場合は「数値っぽいキー」を1つ探す（最後の砦）
+      if (!valueKey) {
+        for (const f of obj.features) {
+          const p = f && f.properties;
+          if (!p) continue;
+          for (const k of Object.keys(p)) {
+            const v = parseFloat(p[k]);
+            if (isFinite(v)) { valueKey = k; break; }
+          }
+          if (valueKey) break;
+        }
+      }
+      if (!valueKey) throw new Error("TEC値プロパティが特定できません（propertiesに数値が無い）");
 
-      // ポリゴン中心（座標平均）
       const pts = [];
+
       for (const f of obj.features) {
         if (!f || !f.geometry) continue;
         const v = parseFloat(f.properties?.[valueKey]);
         if (!isFinite(v)) continue;
 
         const g = f.geometry;
+        if (g.type === "Point" && Array.isArray(g.coordinates) && g.coordinates.length >= 2) {
+          let lon = +g.coordinates[0];
+          let lat = +g.coordinates[1];
+          if (!isFinite(lat) || !isFinite(lon)) continue;
+          lon = ((lon + 180) % 360) - 180;
+          pts.push({ lat, lon, tec: v });
+          continue;
+        }
+
+        // Polygon中心（座標平均）
         let coords = null;
         if (g.type === "Polygon") coords = g.coordinates?.[0];
         else if (g.type === "MultiPolygon") coords = g.coordinates?.[0]?.[0];
+
         if (!Array.isArray(coords) || coords.length < 3) continue;
 
         let sumLon=0, sumLat=0, n=0;
@@ -1097,17 +1100,17 @@
         }
         if (n===0) continue;
         let lonC = sumLon/n;
-        // lonを -180..180 へ
         lonC = ((lonC + 180) % 360) - 180;
         pts.push({ lat: sumLat/n, lon: lonC, tec: v });
       }
-      if (!pts.length) throw new Error("GeoJSONから格子点が作れませんでした");
+
+      if (!pts.length) throw new Error("GeoJSONから格子点が作れませんでした（Point/Polygonが想定外？）");
 
       // ターゲット格子（2×5）
       const latArr = [];
-      for (let lat=-90; lat<=90+1e-6; lat+=targetLatStep) latArr.push(+lat.toFixed(6));
+      for (let lat=-90; lat<=90+1e-9; lat+=targetLatStep) latArr.push(+lat.toFixed(6));
       const lonArr = [];
-      for (let lon=-180; lon<=180+1e-6; lon+=targetLonStep) lonArr.push(+lon.toFixed(6));
+      for (let lon=-180; lon<=180+1e-9; lon+=targetLonStep) lonArr.push(+lon.toFixed(6));
 
       const nLat = latArr.length, nLon = lonArr.length;
       const grid = Array.from({length:nLat}, ()=>Array.from({length:nLon}, ()=>NaN));
@@ -1129,8 +1132,11 @@
         }
       }
 
-      // NOAA側はvalidTimeが無いことが多いので、nullで返す（runForecastでstartTimeをnow-?で扱う）
-      return { latArr, lonArr, nLat, nLon, grid, validTime: null };
+      const validTime = (validTimeFromFilename instanceof Date && !isNaN(validTimeFromFilename.getTime()))
+        ? validTimeFromFilename
+        : null;
+
+      return { latArr, lonArr, nLat, nLon, grid, validTime };
     }
 
     /* ============ 入力保存 ============ */
@@ -1146,6 +1152,9 @@
         bomInput7: document.getElementById("bomInput7").value,
         bomInput8: document.getElementById("bomInput8").value,
         bomInput9: document.getElementById("bomInput9").value,
+        // ★ NOAAの時刻メタも保存（NOAA→予報スタート候補/補間に使う）
+        noaaTimes: (gNoaaInputTimes || []).map(d => (d instanceof Date && !isNaN(d.getTime())) ? d.toISOString() : null),
+        noaaFiles: (gNoaaInputFiles || []).map(x => x || null)
       };
       localStorage.setItem(STORAGE_KEY_BOM, JSON.stringify(data));
       logInfo("入力（BoM/NOAA）を保存しました。（次回起動時に自動復元）");
@@ -1167,6 +1176,23 @@
         if (data.bomInput7 !== undefined) document.getElementById("bomInput7").value = data.bomInput7;
         if (data.bomInput8 !== undefined) document.getElementById("bomInput8").value = data.bomInput8;
         if (data.bomInput9 !== undefined) document.getElementById("bomInput9").value = data.bomInput9;
+
+        // NOAA meta restore
+        if (Array.isArray(data.noaaTimes)) {
+          gNoaaInputTimes = data.noaaTimes.map(x => {
+            if (!x) return null;
+            const d = new Date(x);
+            return isNaN(d.getTime()) ? null : d;
+          });
+          // 9長に揃える
+          while (gNoaaInputTimes.length < 9) gNoaaInputTimes.push(null);
+          gNoaaInputTimes = gNoaaInputTimes.slice(0,9);
+        }
+        if (Array.isArray(data.noaaFiles)) {
+          gNoaaInputFiles = data.noaaFiles.map(x => x || null);
+          while (gNoaaInputFiles.length < 9) gNoaaInputFiles.push(null);
+          gNoaaInputFiles = gNoaaInputFiles.slice(0,9);
+        }
       } catch(e) {
         console.warn("入力の復元に失敗:", e);
       }
@@ -1361,16 +1387,11 @@
      * ============================ */
     function parseKpText(raw) {
       const text = String(raw || "");
-
-      if (/NOAA Kp index breakdown/i.test(text)) {
-        return parseKpFrom3DayBreakdown(text);
-      }
-
+      if (/NOAA Kp index breakdown/i.test(text)) return parseKpFrom3DayBreakdown(text);
       if (/NOAA Kp index forecast/i.test(text)) {
         const s2 = parseKpFromGeomagForecastTable(text);
         if (s2.length) return s2;
       }
-
       return parseKpGenericLine(text);
     }
 
@@ -1415,10 +1436,7 @@
     function parseKpFrom3DayBreakdown(raw) {
       const lines = raw.split(/\r?\n/);
       const out = [];
-      const monthMap = {
-        Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5,
-        Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11
-      };
+      const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
 
       let idxBreak = -1;
       for (let i=0;i<lines.length;i++) {
@@ -1610,12 +1628,7 @@
       const raw = (text || "").trim();
       if (!raw) return [];
       let data;
-      try {
-        data = JSON.parse(raw);
-      } catch(e) {
-        console.warn("Base Kp JSON parse error:", e);
-        return [];
-      }
+      try { data = JSON.parse(raw); } catch(e) { console.warn("Base Kp JSON parse error:", e); return []; }
       const series = [];
 
       if (Array.isArray(data) && data.length && Array.isArray(data[0])) {
@@ -1630,9 +1643,7 @@
             const kpStr = String(row[kpIdx]);
             const d = toUtcDateFromSwpcTimeTag(tStr);
             const kp = parseFloat(kpStr);
-            if (d && !isNaN(kp)) {
-              series.push({ time: d, kp });
-            }
+            if (d && !isNaN(kp)) series.push({ time: d, kp });
           }
         }
       } else if (Array.isArray(data)) {
@@ -1643,9 +1654,7 @@
           if (!tStr || kpVal === undefined) continue;
           const d = toUtcDateFromSwpcTimeTag(tStr);
           const kp = parseFloat(kpVal);
-          if (d && !isNaN(kp)) {
-            series.push({ time: d, kp });
-          }
+          if (d && !isNaN(kp)) series.push({ time: d, kp });
         }
       }
 
@@ -1658,12 +1667,7 @@
       const raw = (text || "").trim();
       if (!raw) return [];
       let data;
-      try {
-        data = JSON.parse(raw);
-      } catch(e) {
-        console.warn("Base Flare JSON parse error:", e);
-        return [];
-      }
+      try { data = JSON.parse(raw); } catch(e) { console.warn("Base Flare JSON parse error:", e); return []; }
       const series = [];
       if (!Array.isArray(data)) return [];
       for (const obj of data) {
@@ -1690,10 +1694,7 @@
       let bestDiff = Math.abs(tUtc - best.time);
       for (let i=1;i<series.length;i++) {
         const diff = Math.abs(tUtc - series[i].time);
-        if (diff < bestDiff) {
-          best = series[i];
-          bestDiff = diff;
-        }
+        if (diff < bestDiff) { best = series[i]; bestDiff = diff; }
       }
 
       if (bestDiff > activeMs) return { Px:0, Pm:0 };
@@ -1708,9 +1709,7 @@
         if (!use) continue;
         const px = parseFloat(document.getElementById("fx"+i).value) || 0;
         const pm = parseFloat(document.getElementById("fm"+i).value) || 0;
-        sumX += px;
-        sumM += pm;
-        count++;
+        sumX += px; sumM += pm; count++;
       }
       if (count === 0) return { Px: 0, Pm: 0 };
       return { Px: sumX/count, Pm: sumM/count };
@@ -1746,7 +1745,6 @@
 
     function calcFlareDeltaFromProbs(cfg, latDeg, lonDeg, tUtc, Px, Pm) {
       if (Px <= 0 && Pm <= 0) return 0.0;
-
       const level = cfg.kX*(Px/100) + cfg.kM*(Pm/100);
       if (level <= 0) return 0.0;
 
@@ -2005,8 +2003,7 @@
 
       const hasTime = frames.every(f => f.validTime instanceof Date && !isNaN(f.validTime.getTime()));
       if (!hasTime) {
-        // 時刻が無い（NOAA等）は「最初のフレーム」を固定として使う（入力が9枚ある場合でも）
-        // → 予報の時間依存は Kp/Flare で動く
+        // 時刻が無い（手動貼付NOAA等）は「最初のフレーム」を固定として使う
         const src = frames[0].grid;
         for (let i=0;i<nLat;i++) for (let j=0;j<nLon;j++) out[i][j] = src[i][j];
         return out;
@@ -2126,10 +2123,7 @@
       const uniqueTimes = [];
       for (const t of times) {
         const ms = t.getTime();
-        if (!uniqueMs.includes(ms)) {
-          uniqueMs.push(ms);
-          uniqueTimes.push(t);
-        }
+        if (!uniqueMs.includes(ms)) { uniqueMs.push(ms); uniqueTimes.push(t); }
       }
 
       if (!uniqueTimes.length) {
@@ -2159,57 +2153,44 @@
 
         const src = document.getElementById("tecSourceSelect")?.value || "bom";
 
-        const texts9 = [
-          document.getElementById("bomInput1").value,
-          document.getElementById("bomInput2").value,
-          document.getElementById("bomInput3").value,
-          document.getElementById("bomInput4").value,
-          document.getElementById("bomInput5").value,
-          document.getElementById("bomInput6").value,
-          document.getElementById("bomInput7").value,
-          document.getElementById("bomInput8").value,
-          document.getElementById("bomInput9").value
-        ];
+        const texts9 = NOAA_INPUT_IDS.map(id => (document.getElementById(id)?.value || ""));
 
         const frames = [];
-        for (const txt of texts9) {
+        for (let k=0;k<texts9.length;k++) {
+          const txt = texts9[k];
           if (!txt.trim()) continue;
           try {
-            const f = (src === "noaa")
-              ? parseNoaaGloTecGeoJson(txt, 2.0, 5.0)   // ★2×5固定
-              : parseBoM(txt);
-            frames.push(f);
+            if (src === "noaa") {
+              const vt = (gNoaaInputTimes && gNoaaInputTimes[k] instanceof Date) ? gNoaaInputTimes[k] : null;
+              const f = parseNoaaGloTecGeoJson(txt, vt, 2.0, 5.0);
+              frames.push(f);
+            } else {
+              const f = parseBoM(txt);
+              frames.push(f);
+            }
           } catch(e) {
             console.warn(src === "noaa" ? "NOAAパース失敗:" : "BoMパース失敗:", e);
           }
         }
+
         if (!frames.length) {
           logInfo(src === "noaa" ? "NOAA GloTEC（GeoJSON）が1つもありません。" : "BoM TEC テキストが1つもありません。");
           return;
         }
 
-        // sort (validTime がnullのNOAAでもOK)
         frames.sort((a,b) => ((a.validTime?.getTime?.() ?? 0) - (b.validTime?.getTime?.() ?? 0)));
 
         const first = frames[0];
-
-        gGrid = {
-          latArr: first.latArr,
-          lonArr: first.lonArr,
-          nLat:   first.nLat,
-          nLon:   first.nLon
-        };
+        gGrid = { latArr: first.latArr, lonArr: first.lonArr, nLat: first.nLat, nLon: first.nLon };
 
         updateForecastStartSelect(frames);
 
-        // startTime
-        let startTime = first.validTime || new Date(); // NOAAはvalidTimeが無いのでnow
+        let startTime = first.validTime || new Date(); // 時刻が無い場合はnow
         const sel = document.getElementById("forecastStartSelect");
         if (sel && sel.options.length > 0 && sel.value) {
           const ms = parseInt(sel.value,10);
           if (!isNaN(ms)) startTime = new Date(ms);
         }
-        // NOAAは "now" だとローカル時刻に見えるが内部はUTC運用なのでそのままOK（toISOStringでUTC表記）
         gForecastStart = startTime;
 
         // 予報Kp
@@ -2235,7 +2216,6 @@
           const inputTecGrid = interpolateBomFrames(frames, tUtc);
 
           const kpForecast = sampleSeriesAtUtc(gKpSeries, tUtc, true) ?? 0;
-
           const kpBase = getKpBaseAtUtc(tUtc, kpForecast);
 
           let basePx = 0, basePm = 0;
@@ -2308,11 +2288,7 @@
         for (let j=0;j<gGrid.nLon;j++) {
           const dLon = Math.abs(gGrid.lonArr[j] - lon);
           const d = dLat + dLon;
-          if (d < bestD) {
-            bestD = d;
-            bestI = i;
-            bestJ = j;
-          }
+          if (d < bestD) { bestD = d; bestI = i; bestJ = j; }
         }
       }
 
@@ -2386,7 +2362,7 @@
     function updateFormulaText() {
       const cfg = getConfigFromUI();
       const src = document.getElementById("tecSourceSelect")?.value || "bom";
-      const srcName = (src === "noaa") ? "NOAA(GloTEC, 2°×5°格子化)" : "BoM(WorldXXXX_tec.txt)";
+      const srcName = (src === "noaa") ? "NOAA(GloTEC, 最新→過去3h刻み24h=9枚, 2°×5°格子化)" : "BoM(WorldXXXX_tec.txt)";
 
       const txt =
 `Base抽出＋加算モデル（Mode A）:
