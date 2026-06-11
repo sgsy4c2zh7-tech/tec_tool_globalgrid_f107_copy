@@ -592,7 +592,7 @@ Mar 11       Mar 12       Mar 13
         <div class="small">
           ・GPS / Galileo / GLONASS / BeiDou / QZSS のTLEを読み込み、選択衛星だけでDOPを計算します。<br>
           ・各衛星は <b>使用ON/OFF</b> と <b>Active/Inactive</b> を手動切替できます。Inactive衛星はDOP計算から除外します。<br>
-          ・DOPモードでは、GDOP / PDOP / HDOP / VDOP / TDOP と DOP×TEC誤差を表示できます。<br>・TEC表示は旧v3方式を踏襲し、格子値をそのまま矩形描画します。フーリエ平滑化や自動再スケールは行いません。
+          ・DOPモードでは、GDOP / PDOP / HDOP / VDOP / TDOP と DOP×TEC誤差を表示できます。<br>・TEC表示は 0 TEC を欠損扱いにし、表示時だけIDW補間＋軽いGaussianで滑らかなヒートマップにします。
         </div>
         <div class="row small" id="gnssConstellationBox" style="margin-top:6px;">
           <label class="small"><input id="gnssConst_gps" type="checkbox" checked> GPS</label>
@@ -607,15 +607,17 @@ Mar 11       Mar 12       Mar 13
             <input id="dopElevationMaskDeg" type="number" value="10" min="0" max="45" step="1" style="width:80px;" onchange="markGnssSelectionChanged()">
           </div>
           <div>
-            <label>描画方式</label><br>
+            <label>描画品質</label><br>
             <select id="heatmapQualitySelect" onchange="requestDraw()">
-              <option value="1.0" selected>旧v3方式</option>
+              <option value="0.50">軽量</option>
+              <option value="0.72" selected>標準</option>
+              <option value="1.00">高精細</option>
             </select>
           </div>
           <div>
-            <label>フーリエ平滑化</label><br>
+            <label>0 TEC処理</label><br>
             <select id="fourierSmoothSelect" onchange="requestDraw(); if (typeof updateLegend === 'function') updateLegend();">
-              <option value="0" selected>OFF（旧v3踏襲）</option>
+              <option value="0" selected>欠損補間ON</option>
             </select>
           </div>
           <div>
