@@ -190,6 +190,12 @@
     @media (max-width: 900px){
       #timeOverlay{ font-size: 40px; }
     }
+
+    .sat-active { color:#86efac; border-color:#166534; }
+    .sat-inactive { color:#fca5a5; border-color:#7f1d1d; }
+    #satelliteSelectionList table td { vertical-align: middle; }
+    #satelliteSelectionList select { font-size:10px; padding:1px 3px; }
+
   </style>
 
   <script>
@@ -561,10 +567,53 @@ Mar 11       Mar 12       Mar 13
         </div>
         <div class="row" style="margin-top:4px;">
           <button class="secondary" onclick="loadTecArchiveIndex(true)">履歴index再読込</button>
-          <button class="secondary" onclick="loadGpsDopData()">GPS TLE読込 / DOP準備</button>
+          <button class="secondary" onclick="loadGpsDopData()">GNSS TLE読込 / DOP準備</button>
         </div>
         <div class="small" id="archiveIndexInfo">TEC履歴indexを読み込み中…</div>
         <div class="small" id="v4ArchiveStatus"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h2>8b. GNSS / DOP設定</h2><span>multi-GNSS / satellite select</span></div>
+        <div class="small">
+          ・GPS / Galileo / GLONASS / BeiDou / QZSS のTLEを読み込み、選択衛星だけでDOPを計算します。<br>
+          ・各衛星は <b>使用ON/OFF</b> と <b>Active/Inactive</b> を手動切替できます。Inactive衛星はDOP計算から除外します。<br>
+          ・DOPモードでは、GDOP / PDOP / HDOP / VDOP / TDOP と DOP×TEC誤差を表示できます。
+        </div>
+        <div class="row small" id="gnssConstellationBox" style="margin-top:6px;">
+          <label class="small"><input id="gnssConst_gps" type="checkbox" checked> GPS</label>
+          <label class="small"><input id="gnssConst_galileo" type="checkbox"> Galileo</label>
+          <label class="small"><input id="gnssConst_glonass" type="checkbox"> GLONASS</label>
+          <label class="small"><input id="gnssConst_beidou" type="checkbox"> BeiDou</label>
+          <label class="small"><input id="gnssConst_qzss" type="checkbox" checked> QZSS</label>
+        </div>
+        <div class="row small">
+          <div>
+            <label>仰角マスク [deg]</label><br>
+            <input id="dopElevationMaskDeg" type="number" value="10" min="0" max="45" step="1" style="width:80px;" onchange="markGnssSelectionChanged()">
+          </div>
+          <div>
+            <label>描画品質</label><br>
+            <select id="heatmapQualitySelect" onchange="requestDraw()">
+              <option value="0.45">軽量</option>
+              <option value="0.65" selected>標準</option>
+              <option value="1.0">高精細</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <button onclick="loadGnssDopData()">GNSS TLE読込 / DOP準備</button>
+          <button class="secondary" onclick="setAllSatSelected(true)">全衛星使用</button>
+          <button class="secondary" onclick="setAllSatSelected(false)">全衛星解除</button>
+        </div>
+        <div class="row">
+          <button class="secondary" onclick="setAllSatActive(true)">全Active</button>
+          <button class="secondary" onclick="setAllSatActive(false)">全Inactive</button>
+        </div>
+        <div class="small" id="gnssQuickStatus">GNSS未読込</div>
+        <div id="satelliteSelectionList">
+          <div class="small">未読込。まず「GNSS TLE読込 / DOP準備」を押してください。</div>
+        </div>
       </div>
 
       <div class="card">
@@ -608,6 +657,16 @@ Mar 11       Mar 12       Mar 13
             <select id="mapModeSelect" onchange="changeMapMode()">
               <option value="tec">TEC [TECU]</option>
               <option value="gps">GPS L1誤差 [m]</option>
+              <option value="satcount">可視GNSS衛星数</option>
+              <option value="gdop">GDOP</option>
+              <option value="pdop">PDOP</option>
+              <option value="hdop">HDOP</option>
+              <option value="vdop">VDOP</option>
+              <option value="tdop">TDOP</option>
+              <option value="gdoptec">GDOP × TEC 測位誤差 [m]</option>
+              <option value="pdoptec">PDOP × TEC 測位誤差 [m]</option>
+              <option value="hdoptec">HDOP × TEC 水平誤差 [m]</option>
+              <option value="vdoptec">VDOP × TEC 垂直誤差 [m]</option>
             </select>
           </div>
           <div style="flex:2;"><span class="small">※地図をズーム／ドラッグして任意地域の分布を確認できます。</span></div>
