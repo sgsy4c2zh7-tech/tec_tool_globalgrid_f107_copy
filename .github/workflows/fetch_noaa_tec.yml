@@ -2,8 +2,8 @@ name: Fetch NOAA TEC archive
 
 on:
   schedule:
-    # 1日2回。UTC 00:12 / 12:12 = JST 09:12 / 21:12。
-    - cron: '12 0,12 * * *'
+    # 毎日09:00 / 14:00 JSTに更新。GitHub ActionsのcronはUTCなので 00:00 / 05:00 UTC。
+    - cron: '0 0,5 * * *'
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,9 @@ jobs:
           python-version: '3.12'
 
       - name: Fetch NOAA GloTEC archive
+        env:
+          # UI側で計算・補間するため、保存するTECはNOAAの2時間値だけにする。
+          SWIFTTEC_TARGET_INTERVAL_MIN: '120'
         run: python scripts/fetch_noaa_tec_archive.py
 
       - name: Show generated files
