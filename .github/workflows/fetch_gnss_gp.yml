@@ -2,7 +2,6 @@ name: Fetch GNSS GP data
 
 on:
   schedule:
-    # CelesTrak GPはおおむね2時間更新。最初は1日2回で十分。
     - cron: '32 0,12 * * *'
   workflow_dispatch:
 
@@ -17,24 +16,18 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Fetch GNSS GP data
+      - name: Fetch multi-GNSS TLE data
         run: python scripts/fetch_gnss_gp.py
-
       - name: Show generated files
         run: |
           echo "--- docs/data/gnss ---"
-          find docs/data/gnss -maxdepth 2 -type f -print | sort | sed -n '1,120p'
+          find docs/data/gnss -maxdepth 1 -type f -print -exec wc -l {} \; | sort
           echo "--- git status ---"
           git status --short
-
       - name: Commit GNSS updates
         run: |
           git config user.name "github-actions[bot]"
