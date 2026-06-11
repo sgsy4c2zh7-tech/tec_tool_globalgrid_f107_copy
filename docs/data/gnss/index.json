@@ -1,0 +1,42 @@
+{
+  "version": "swifttec-gnss-gp-v1",
+  "updated_utc": "2026-06-11T13:48:55Z",
+  "sources": {
+    "gps": {
+      "label": "GPS",
+      "file": "gps_latest.tle",
+      "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle",
+      "count": 32,
+      "ok": true
+    },
+    "galileo": {
+      "label": "Galileo",
+      "file": "galileo_latest.tle",
+      "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=galileo&FORMAT=tle",
+      "count": 33,
+      "ok": true
+    },
+    "glonass": {
+      "label": "GLONASS",
+      "file": "glonass_latest.tle",
+      "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=glo-ops&FORMAT=tle",
+      "count": 28,
+      "ok": true
+    },
+    "beidou": {
+      "label": "BeiDou",
+      "file": "beidou_latest.tle",
+      "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=beidou&FORMAT=tle",
+      "count": 54,
+      "ok": true
+    },
+    "qzss": {
+      "label": "QZSS",
+      "file": "qzss_latest.tle",
+      "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=qzss&FORMAT=tle",
+      "count": 0,
+      "ok": false,
+      "error": "no TLE pairs parsed"
+    }
+  }
+}
