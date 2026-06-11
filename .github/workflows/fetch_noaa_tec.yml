@@ -2,50 +2,41 @@ name: Fetch NOAA TEC archive
 
 on:
   schedule:
-    # 毎日09:00 / 14:00 JSTに更新。GitHub ActionsのcronはUTCなので 00:00 / 05:00 UTC。
-    - cron: '0 0,5 * * *'
+    # NOAA GloTECを30分ごとにアーカイブ（GitHub Actions側の遅延はあり得ます）
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: fetch-noaa-tec-archive
+  group: fetch-noaa-tec
   cancel-in-progress: false
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Fetch NOAA GloTEC archive
-        env:
-          # UI側で計算・補間するため、保存するTECはNOAAの2時間値だけにする。
-          SWIFTTEC_TARGET_INTERVAL_MIN: '120'
+      - name: Fetch NOAA GloTEC 30-min archive
         run: python scripts/fetch_noaa_tec_archive.py
-
       - name: Show generated files
         run: |
           echo "--- docs/data/tec ---"
-          find docs/data/tec -maxdepth 3 -type f -print | sort | sed -n '1,120p'
+          find docs/data/tec -maxdepth 2 -type f -print | sort | tail -120
           echo "--- git status ---"
           git status --short
-
-      - name: Commit archive updates
+      - name: Commit TEC updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A docs/data/tec
           if git diff --cached --quiet; then
-            echo "No TEC archive changes to commit"
+            echo "No TEC changes to commit"
           else
-            git commit -m "data: update NOAA GloTEC archive"
+            git commit -m "data: update NOAA TEC 30min archive"
             git push
           fi
