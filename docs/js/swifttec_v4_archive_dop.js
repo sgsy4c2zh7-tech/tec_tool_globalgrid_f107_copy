@@ -13,6 +13,14 @@
   let originalDrawTecOverlay = null;
   let originalUpdateLegend = null;
   let originalSampleAtLatLon = null;
+  let originalChangeMapMode = null;
+
+  // NOAAから保存するTECは2時間値。DOP / DOP×TECモードだけ、UI上で10分刻みへ展開する。
+  const TEC_ARCHIVE_STEP_MIN = 120;
+  const DOP_REPLAY_STEP_MIN = 10;
+  let rawDisplayFrames = [];
+  let activeTimelineStepMin = TEC_ARCHIVE_STEP_MIN;
+  let tecInterpCache = new Map();
 
   const dopColorScale = [
     { limit: 2, color: "#00ff00" },
@@ -128,32 +136,146 @@
     });
   }
 
-  function setDisplayedFrames(frames, sourceLabel) {
-    if (!frames.length) throw new Error("表示できるTECフレームがありません。期間を変えてください。");
-    const meta = frames[0].gridMeta;
-    gGrid = { latArr: meta.latArr, lonArr: meta.lonArr, nLat: meta.nLat, nLon: meta.nLon };
-    gForecastFrames = frames.map(f => f.grid);
-    gForecastTimes = frames.map(f => f.time);
-    gForecastStart = gForecastTimes[0];
-    currentStepIndex = 0;
+  function isDopLikeMode() {
+    return mapMode === "dop" || mapMode === "doptec";
+  }
 
+  function buildUniformTimeline(frames, stepMinutes) {
+    if (!frames.length) return [];
+    const start = frames[0].time.getTime();
+    const end = frames[frames.length - 1].time.getTime();
+    const stepMs = Math.max(1, stepMinutes) * 60000;
+    const out = [];
+    for (let t = start; t <= end + 1000; t += stepMs) out.push(new Date(t));
+    if (out.length && out[out.length - 1].getTime() < end) out.push(new Date(end));
+    return out;
+  }
+
+  function setSliderForTimeline() {
     const slider = document.getElementById("timeSlider");
     if (slider) {
       slider.min = "0";
       slider.max = String(Math.max(0, gForecastTimes.length - 1));
-      slider.value = "0";
+      slider.value = String(clamp(currentStepIndex, 0, Math.max(0, gForecastTimes.length - 1)));
     }
-    const t = gForecastTimes[0];
-    const label = document.getElementById("timeLabel");
-    const utc = document.getElementById("utcLabel");
-    if (label) label.textContent = `frame 1 / ${gForecastTimes.length}`;
-    if (utc) utc.textContent = `UTC: ${isoNoMs(t)}`;
-    if (typeof setOverlayTime === "function") setOverlayTime(t);
+  }
+
+  function getTimelineLabel() {
+    if (isDopLikeMode()) return `DOP系: ${DOP_REPLAY_STEP_MIN}分刻み`;
+    return `TEC系: NOAA 2時間値`;
+  }
+
+  function adoptCurrentForecastAsRawFramesIfNeeded() {
+    if (rawDisplayFrames.length) return;
+    if (!gGrid || !Array.isArray(gForecastFrames) || !Array.isArray(gForecastTimes)) return;
+    if (!gForecastFrames.length || !Array.isArray(gForecastFrames[0])) return;
+    rawDisplayFrames = gForecastFrames.map((grid, i) => ({
+      time: gForecastTimes[i],
+      grid,
+      gridMeta: gGrid,
+      sourceFile: "forecast",
+    })).filter(f => f.time instanceof Date && !isNaN(f.time.getTime()) && Array.isArray(f.grid));
+  }
+
+  function applyTimelineForCurrentMode(resetIndex = true) {
+    adoptCurrentForecastAsRawFramesIfNeeded();
+    if (!rawDisplayFrames.length) return;
+    tecInterpCache.clear();
+
+    if (isDopLikeMode() && rawDisplayFrames.length >= 2) {
+      activeTimelineStepMin = DOP_REPLAY_STEP_MIN;
+      gForecastTimes = buildUniformTimeline(rawDisplayFrames, DOP_REPLAY_STEP_MIN);
+      // 既存処理がlengthを見るため、実グリッドはlazy補間し、ここはダミー配列にする。
+      gForecastFrames = new Array(gForecastTimes.length).fill(null);
+    } else {
+      activeTimelineStepMin = TEC_ARCHIVE_STEP_MIN;
+      gForecastTimes = rawDisplayFrames.map(f => f.time);
+      gForecastFrames = rawDisplayFrames.map(f => f.grid);
+    }
+
+    if (resetIndex) currentStepIndex = 0;
+    currentStepIndex = clamp(currentStepIndex, 0, Math.max(0, gForecastTimes.length - 1));
+    gForecastStart = gForecastTimes[0] || null;
+    setSliderForTimeline();
+    dynamicOnSliderChange();
+  }
+
+  function interpolateGridAtTime(t) {
+    if (!rawDisplayFrames.length) return null;
+    if (!isDopLikeMode()) {
+      return rawDisplayFrames[currentStepIndex]?.grid || rawDisplayFrames[0].grid;
+    }
+    const key = t.toISOString();
+    if (tecInterpCache.has(key)) return tecInterpCache.get(key);
+
+    const targetMs = t.getTime();
+    if (targetMs <= rawDisplayFrames[0].time.getTime()) return rawDisplayFrames[0].grid;
+    const last = rawDisplayFrames[rawDisplayFrames.length - 1];
+    if (targetMs >= last.time.getTime()) return last.grid;
+
+    let lo = rawDisplayFrames[0];
+    let hi = rawDisplayFrames[rawDisplayFrames.length - 1];
+    for (let k = 0; k < rawDisplayFrames.length - 1; k++) {
+      const a = rawDisplayFrames[k];
+      const b = rawDisplayFrames[k + 1];
+      if (a.time.getTime() <= targetMs && targetMs <= b.time.getTime()) {
+        lo = a; hi = b; break;
+      }
+    }
+    const span = Math.max(1, hi.time.getTime() - lo.time.getTime());
+    const w = clamp((targetMs - lo.time.getTime()) / span, 0, 1);
+    if (w <= 1e-9) return lo.grid;
+    if (w >= 1 - 1e-9) return hi.grid;
+
+    const nLat = gGrid.nLat, nLon = gGrid.nLon;
+    const out = Array.from({ length: nLat }, () => Array(nLon).fill(0));
+    for (let i = 0; i < nLat; i++) {
+      const rowA = lo.grid[i] || [];
+      const rowB = hi.grid[i] || [];
+      const rowO = out[i];
+      for (let j = 0; j < nLon; j++) {
+        const a = Number(rowA[j]);
+        const b = Number(rowB[j]);
+        if (isFinite(a) && isFinite(b)) rowO[j] = a * (1 - w) + b * w;
+        else if (isFinite(a)) rowO[j] = a;
+        else if (isFinite(b)) rowO[j] = b;
+        else rowO[j] = NaN;
+      }
+    }
+    tecInterpCache.set(key, out);
+    // 長時間再生でメモリが増えすぎないように簡易上限。
+    if (tecInterpCache.size > 24) {
+      const firstKey = tecInterpCache.keys().next().value;
+      tecInterpCache.delete(firstKey);
+    }
+    return out;
+  }
+
+  function currentTecGrid() {
+    const t = gForecastTimes[currentStepIndex];
+    if (!(t instanceof Date) || isNaN(t.getTime())) return null;
+    return interpolateGridAtTime(t);
+  }
+
+  function maybeAutoPlayAfterLoad() {
+    const chk = document.getElementById("movieAutoPlayAfterLoad");
+    if (chk && chk.checked) playArchiveMovie();
+  }
+
+  function setDisplayedFrames(frames, sourceLabel) {
+    if (!frames.length) throw new Error("表示できるTECフレームがありません。期間を変えてください。");
+    const meta = frames[0].gridMeta;
+    gGrid = { latArr: meta.latArr, lonArr: meta.lonArr, nLat: meta.nLat, nLon: meta.nLon };
+    rawDisplayFrames = frames.slice().sort((a, b) => a.time - b.time);
+    dopFrameCache.clear();
+    currentStepIndex = 0;
+
     if (typeof initMapIfNeeded === "function") initMapIfNeeded();
     if (typeof updateLegend === "function") updateLegend();
-    if (typeof requestDraw === "function") requestDraw();
+    applyTimelineForCurrentMode(true);
     if (typeof updateKpLabels === "function") updateKpLabels();
-    setV4Status(`${sourceLabel}: ${gForecastTimes.length}枚を表示しました。${isoNoMs(gForecastTimes[0])} 〜 ${isoNoMs(gForecastTimes[gForecastTimes.length - 1])}`);
+    setV4Status(`${sourceLabel}: NOAA 2時間TEC ${rawDisplayFrames.length}枚を読み込み。表示=${getTimelineLabel()} / ${isoNoMs(rawDisplayFrames[0].time)} 〜 ${isoNoMs(rawDisplayFrames[rawDisplayFrames.length - 1].time)}`);
+    maybeAutoPlayAfterLoad();
   }
 
   async function loadTecArchiveRange() {
@@ -174,7 +296,7 @@
 
   async function loadTecArchivePlusCurrentForecast() {
     try {
-      const existingFrames = Array.isArray(gForecastFrames) ? gForecastFrames.slice() : [];
+      const existingFrames = (Array.isArray(gForecastFrames) && Array.isArray(gForecastFrames[0])) ? gForecastFrames.slice() : [];
       const existingTimes = Array.isArray(gForecastTimes) ? gForecastTimes.slice() : [];
       await loadTecArchiveIndex();
       const entries = selectedArchiveEntries();
@@ -201,13 +323,15 @@
   function dynamicOnSliderChange() {
     const slider = document.getElementById("timeSlider");
     const maxStep = Math.max(0, (gForecastTimes && gForecastTimes.length ? gForecastTimes.length - 1 : N_STEPS));
-    const v = parseInt(slider.value, 10) || 0;
+    const v = parseInt(slider?.value || "0", 10) || 0;
     currentStepIndex = clamp(v, 0, maxStep);
     const t = gForecastTimes[currentStepIndex] || gForecastStart;
     const hours = gForecastStart && t ? (t.getTime() - gForecastStart.getTime()) / 3600000 : (currentStepIndex * DT_MINUTES) / 60;
     const label = document.getElementById("timeLabel");
     const utc = document.getElementById("utcLabel");
-    if (label) label.textContent = gForecastTimes.length ? `frame ${currentStepIndex + 1} / ${gForecastTimes.length}  (t=${hours.toFixed(1)}h)` : `t = ${hours.toFixed(1)} h`;
+    if (label) label.textContent = gForecastTimes.length
+      ? `frame ${currentStepIndex + 1} / ${gForecastTimes.length}  (t=${hours.toFixed(1)}h / ${getTimelineLabel()})`
+      : `t = ${hours.toFixed(1)} h`;
     if (utc) utc.textContent = `UTC: ${(t ? isoNoMs(t) : "--")}`;
     if (typeof setOverlayTime === "function") setOverlayTime(t);
     if (typeof updateKpLabels === "function") updateKpLabels();
@@ -220,6 +344,7 @@
     const slider = document.getElementById("timeSlider");
     if (!slider) return;
     stopArchiveMovie();
+    setV4Status(`自動再生中: ${getTimelineLabel()} / speed x${speed}`);
     window._swiftTecV4Timer = setInterval(() => {
       const max = parseInt(slider.max || "0", 10) || 0;
       let v = parseInt(slider.value || "0", 10) || 0;
@@ -408,14 +533,22 @@
 
   function installOverrides() {
     if (typeof onSliderChange === "function") onSliderChange = dynamicOnSliderChange;
+    if (typeof changeMapMode === "function" && !originalChangeMapMode) originalChangeMapMode = changeMapMode;
+    changeMapMode = function () {
+      mapMode = document.getElementById("mapModeSelect")?.value || "tec";
+      applyTimelineForCurrentMode(false);
+      if (typeof updateLegend === "function") updateLegend();
+      if (typeof requestDraw === "function") requestDraw();
+      setV4Status(`表示モード変更: ${titleForMode()} / ${getTimelineLabel()}`);
+    };
 
     if (typeof drawTecOverlay === "function" && !originalDrawTecOverlay) originalDrawTecOverlay = drawTecOverlay;
     drawTecOverlay = function () {
       if (!map || !tecCanvas || !tecCtx) return;
-      if (!gGrid || !gForecastFrames.length) return;
+      if (!gGrid || !gForecastTimes.length) return;
       const w = tecCanvas.width, h = tecCanvas.height;
       tecCtx.clearRect(0, 0, w, h);
-      const frame = gForecastFrames[currentStepIndex];
+      const frame = currentTecGrid();
       if (!frame) return;
       const cfg = getConfigFromUI();
       const scale = scaleForMode();
@@ -476,7 +609,7 @@
 
     if (typeof sampleAtLatLon === "function" && !originalSampleAtLatLon) originalSampleAtLatLon = sampleAtLatLon;
     sampleAtLatLon = function (lat, lon) {
-      if (!gGrid || !gForecastFrames.length) return "未計算です。";
+      if (!gGrid || !gForecastTimes.length) return "未計算です。";
       let bestI = 0, bestJ = 0, bestD = 1e99;
       for (let i = 0; i < gGrid.nLat; i++) {
         const dLat = Math.abs(gGrid.latArr[i] - lat);
@@ -488,7 +621,8 @@
           if (d < bestD) { bestD = d; bestI = i; bestJ = j; }
         }
       }
-      const tec = gForecastFrames[currentStepIndex]?.[bestI]?.[bestJ];
+      const frame = currentTecGrid();
+      const tec = frame?.[bestI]?.[bestJ];
       const cfg = getConfigFromUI();
       const gps = (isFinite(tec) ? tec : 0) * cfg.kL1;
       const df = getDopFrame(currentStepIndex);
