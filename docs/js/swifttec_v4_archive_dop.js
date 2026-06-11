@@ -283,20 +283,16 @@
       }
     }
 
-    const smoothed = strength > 0 ? fourierSmoothGrid(grid, strength) : inpaintGrid(grid, 1);
-    tecSmoothCache.set(smoothKey, smoothed);
-    if (tecSmoothCache.size > 36) {
-      const firstKey = tecSmoothCache.keys().next().value;
-      tecSmoothCache.delete(firstKey);
-    }
-    return smoothed;
+    // v4.5: 旧版(v3)の見え方を踏襲するため、TEC値の空間平滑化・再スケールは行わない。
+    // data/tecの2時間値を時間方向だけ線形補間し、格子値はそのまま描画/計算に使う。
+    return grid;
   }
 
 
   function getFourierSmoothStrength() {
     const el = document.getElementById("fourierSmoothSelect");
-    const v = parseFloat(el?.value ?? "0.35");
-    return isFinite(v) ? c(v, 0, 0.95) : 0.35;
+    const v = parseFloat(el?.value ?? "0.20");
+    return isFinite(v) ? c(v, 0, 0.95) : 0.20;
   }
 
   function medianFinite(vals) {
@@ -402,15 +398,64 @@
     return out;
   }
 
-  function fourierSmoothGrid(grid, strength = 0.35) {
+  function finiteGridValues(grid) {
+    const vals = [];
+    for (const row of (grid || [])) {
+      for (const v0 of (row || [])) {
+        const v = Number(v0);
+        if (isFinite(v)) vals.push(Math.max(0, v));
+      }
+    }
+    vals.sort((a, b) => a - b);
+    return vals;
+  }
+
+  function percentileFiniteGrid(grid, p) {
+    const vals = finiteGridValues(grid);
+    return percentileSorted(vals, p);
+  }
+
+  function matchTecDistribution(smoothed, reference) {
+    // 旧版の見え方に寄せるため、フーリエで山が潰れてもTECの物理的なレンジを戻す。
+    // 中央値を基準に、P05/P95の幅をreferenceと一致させる。
+    const refVals = finiteGridValues(reference);
+    const smVals = finiteGridValues(smoothed);
+    if (refVals.length < 8 || smVals.length < 8) return smoothed;
+
+    const refP05 = percentileSorted(refVals, 0.05);
+    const refP50 = percentileSorted(refVals, 0.50);
+    const refP95 = percentileSorted(refVals, 0.95);
+    const smP05  = percentileSorted(smVals, 0.05);
+    const smP50  = percentileSorted(smVals, 0.50);
+    const smP95  = percentileSorted(smVals, 0.95);
+
+    const refAmp = Math.max(1e-6, refP95 - refP05);
+    const smAmp  = Math.max(1e-6, smP95 - smP05);
+    let gain = c(refAmp / smAmp, 0.45, 3.50);
+
+    const refMax = percentileSorted(refVals, 0.995);
+    const hardMax = Math.max(120, refMax * 1.25);
+
+    return smoothed.map(row => row.map(v0 => {
+      const v = Number(v0);
+      if (!isFinite(v)) return NaN;
+      const restored = refP50 + (v - smP50) * gain;
+      return c(restored, 0, hardMax);
+    }));
+  }
+
+  function fourierSmoothGrid(grid, strength = 0.20) {
     const nLat = gGrid?.nLat || grid.length;
     const nLon = gGrid?.nLon || (grid[0] ? grid[0].length : 0);
-    const filled = inpaintGrid(grid, 8);
 
-    // 低域だけ残すが、強くしすぎると全球が同じ色になる。
-    // strength=0.35なら細部をかなり残し、0.85で大きな波だけに寄せる。
-    const keepLon = Math.max(8, Math.round(nLon * (0.42 - 0.22 * strength)));
-    const keepLat = Math.max(8, Math.round(nLat * (0.42 - 0.22 * strength)));
+    // 旧版は格子値をそのまま矩形で塗っていたため、TEC振幅はそのまま残っていた。
+    // ここでは欠損だけ埋め、観測済みセルのTEC値は基準値として保持する。
+    const filled = inpaintGrid(grid, 3);
+
+    // 歯抜けを消すために低域は使うが、以前より高周波を多めに残す。
+    // nLon=72, nLat=91程度なら keepLon/keepLat が十分大きく、局所的なTEC山を潰しにくい。
+    const keepLon = Math.max(14, Math.round(nLon * (0.72 - 0.22 * strength)));
+    const keepLat = Math.max(14, Math.round(nLat * (0.72 - 0.22 * strength)));
 
     const rowSmooth = Array.from({ length: nLat }, () => Array(nLon).fill(0));
     for (let i = 0; i < nLat; i++) rowSmooth[i] = lowPassFourier1D(filled[i], keepLon);
@@ -423,7 +468,8 @@
       for (let i = 0; i < nLat; i++) colSmooth[i][j] = sm[i];
     }
 
-    const blend = c(0.10 + 0.55 * strength, 0, 0.65);
+    // 値を小さくしすぎないよう、平滑値の混合率は控えめ。
+    const blend = c(0.06 + 0.28 * strength, 0, 0.32);
     const out = Array.from({ length: nLat }, () => Array(nLon).fill(0));
     for (let i = 0; i < nLat; i++) {
       for (let j = 0; j < nLon; j++) {
@@ -432,7 +478,8 @@
         out[i][j] = Math.max(0, raw * (1 - blend) + sm * blend);
       }
     }
-    return out;
+
+    return matchTecDistribution(out, filled);
   }
 
   function currentTecGrid() {
@@ -1176,22 +1223,165 @@
     return [r, g, b, alpha];
   }
 
+  function isValidTecValue(v) {
+    const x = Number(v);
+    // NOAA GloTECで出る0はほぼ欠損/未割当として扱う。実データは0に落とさずNaNで処理。
+    return Number.isFinite(x) && x > 0;
+  }
+
+  function cloneTecGridAsNan(grid) {
+    return (grid || []).map(row => (row || []).map(v => isValidTecValue(v) ? Number(v) : NaN));
+  }
+
+  function gaussianKernel1D(sigma = 1.05, radius = 2) {
+    const k = [];
+    let sum = 0;
+    for (let i = -radius; i <= radius; i++) {
+      const v = Math.exp(-(i * i) / (2 * sigma * sigma));
+      k.push(v);
+      sum += v;
+    }
+    return k.map(v => v / Math.max(1e-12, sum));
+  }
+
+  function fillMissingByLocalIDW(grid, maxRadius = 5) {
+    const nLat = grid.length;
+    const nLon = grid[0]?.length || 0;
+    const out = grid.map(row => row.slice());
+
+    for (let i = 0; i < nLat; i++) {
+      for (let j = 0; j < nLon; j++) {
+        if (Number.isFinite(out[i][j])) continue;
+
+        let wsum = 0;
+        let vsum = 0;
+        for (let di = -maxRadius; di <= maxRadius; di++) {
+          for (let dj = -maxRadius; dj <= maxRadius; dj++) {
+            if (di === 0 && dj === 0) continue;
+            const ii = i + di;
+            if (ii < 0 || ii >= nLat) continue;
+            let jj = j + dj;
+            // 経度方向は全球なので周期境界として扱う。
+            if (jj < 0) jj += nLon;
+            if (jj >= nLon) jj -= nLon;
+            const v = grid[ii]?.[jj];
+            if (!Number.isFinite(v)) continue;
+            const d2 = di * di + dj * dj;
+            if (d2 <= 0 || d2 > maxRadius * maxRadius) continue;
+            const w = 1 / d2;
+            wsum += w;
+            vsum += w * v;
+          }
+        }
+        if (wsum > 0) out[i][j] = vsum / wsum;
+      }
+    }
+    return out;
+  }
+
+  function gaussianBlur2D(grid, sigma = 0.90, radius = 2) {
+    const nLat = grid.length;
+    const nLon = grid[0]?.length || 0;
+    const kernel = gaussianKernel1D(sigma, radius);
+    const tmp = Array.from({ length: nLat }, () => Array(nLon).fill(NaN));
+    const out = Array.from({ length: nLat }, () => Array(nLon).fill(NaN));
+
+    // 横方向。経度方向は周期境界。
+    for (let i = 0; i < nLat; i++) {
+      for (let j = 0; j < nLon; j++) {
+        let vsum = 0;
+        let wsum = 0;
+        for (let k = -radius; k <= radius; k++) {
+          let jj = j + k;
+          if (jj < 0) jj += nLon;
+          if (jj >= nLon) jj -= nLon;
+          const v = grid[i]?.[jj];
+          if (!Number.isFinite(v)) continue;
+          const w = kernel[k + radius];
+          vsum += v * w;
+          wsum += w;
+        }
+        tmp[i][j] = wsum > 0 ? vsum / wsum : NaN;
+      }
+    }
+
+    // 縦方向。緯度方向は端で止める。
+    for (let i = 0; i < nLat; i++) {
+      for (let j = 0; j < nLon; j++) {
+        let vsum = 0;
+        let wsum = 0;
+        for (let k = -radius; k <= radius; k++) {
+          const ii = i + k;
+          if (ii < 0 || ii >= nLat) continue;
+          const v = tmp[ii]?.[j];
+          if (!Number.isFinite(v)) continue;
+          const w = kernel[k + radius];
+          vsum += v * w;
+          wsum += w;
+        }
+        out[i][j] = wsum > 0 ? vsum / wsum : NaN;
+      }
+    }
+    return out;
+  }
+
+  function makeBeautifulTecGrid(rawGrid) {
+    const key = `beautiful|${gForecastTimes[currentStepIndex]?.toISOString?.() || currentStepIndex}|v=${selectionVersion}`;
+    if (tecSmoothCache.has(key)) return tecSmoothCache.get(key);
+
+    // 0 TECを欠損扱いにして、欠損だけ局所補間する。
+    const raw = cloneTecGridAsNan(rawGrid);
+    const filled = fillMissingByLocalIDW(raw, 5);
+    const blurred = gaussianBlur2D(filled, 0.85, 2);
+
+    // 観測セルは値を潰さない。見た目だけ少しなじませる。
+    const nLat = raw.length;
+    const nLon = raw[0]?.length || 0;
+    const out = Array.from({ length: nLat }, () => Array(nLon).fill(NaN));
+    for (let i = 0; i < nLat; i++) {
+      for (let j = 0; j < nLon; j++) {
+        const rv = raw[i]?.[j];
+        const bv = blurred[i]?.[j];
+        if (Number.isFinite(rv) && Number.isFinite(bv)) out[i][j] = rv * 0.82 + bv * 0.18;
+        else if (Number.isFinite(bv)) out[i][j] = bv;
+        else if (Number.isFinite(rv)) out[i][j] = rv;
+        else out[i][j] = NaN;
+      }
+    }
+
+    tecSmoothCache.set(key, out);
+    if (tecSmoothCache.size > 16) {
+      const firstKey = tecSmoothCache.keys().next().value;
+      tecSmoothCache.delete(firstKey);
+    }
+    return out;
+  }
+
   function sampleArrayBilinear(arr, iFloat, jFloat) {
     if (!arr) return NaN;
-    const i0 = Math.floor(iFloat), j0 = Math.floor(jFloat);
-    const i1 = Math.min(gGrid.nLat - 1, i0 + 1), j1 = Math.min(gGrid.nLon - 1, j0 + 1);
-    const fi = c(iFloat - i0, 0, 1), fj = c(jFloat - j0, 0, 1);
+    const nLat = arr.length;
+    const nLon = arr[0]?.length || 0;
+    if (!nLat || !nLon) return NaN;
+
+    const i0 = c(Math.floor(iFloat), 0, nLat - 1);
+    let j0 = Math.floor(jFloat);
+    j0 = ((j0 % nLon) + nLon) % nLon;
+    const i1 = Math.min(nLat - 1, i0 + 1);
+    const j1 = (j0 + 1) % nLon;
+    const fi = c(iFloat - Math.floor(iFloat), 0, 1);
+    const fj = c(jFloat - Math.floor(jFloat), 0, 1);
+
     const v00 = Number(arr?.[i0]?.[j0]);
     const v10 = Number(arr?.[i1]?.[j0]);
     const v01 = Number(arr?.[i0]?.[j1]);
     const v11 = Number(arr?.[i1]?.[j1]);
-    const vals = [v00, v10, v01, v11].filter(v => isFinite(v));
+    const vals = [v00, v10, v01, v11].filter(v => Number.isFinite(v));
     if (!vals.length) return NaN;
     const fallback = vals.reduce((a, b) => a + b, 0) / vals.length;
-    const a00 = isFinite(v00) ? v00 : fallback;
-    const a10 = isFinite(v10) ? v10 : fallback;
-    const a01 = isFinite(v01) ? v01 : fallback;
-    const a11 = isFinite(v11) ? v11 : fallback;
+    const a00 = Number.isFinite(v00) ? v00 : fallback;
+    const a10 = Number.isFinite(v10) ? v10 : fallback;
+    const a01 = Number.isFinite(v01) ? v01 : fallback;
+    const a11 = Number.isFinite(v11) ? v11 : fallback;
     const top = a00 * (1 - fj) + a01 * fj;
     const bottom = a10 * (1 - fj) + a11 * fj;
     return top * (1 - fi) + bottom * fi;
@@ -1200,7 +1390,7 @@
   function sampleModeValueBilinear(tecFrame, dopFrame, iFloat, jFloat, cfg) {
     const m = normalizeDopMode(mapMode);
     const tec = sampleArrayBilinear(tecFrame, iFloat, jFloat);
-    if (m === "gps") return isFinite(tec) ? tec * cfg.kL1 : NaN;
+    if (m === "gps") return Number.isFinite(tec) ? tec * cfg.kL1 : NaN;
     if (m === "satcount") return sampleArrayBilinear(dopFrame?.count, iFloat, jFloat);
     if (["gdop", "pdop", "hdop", "vdop", "tdop"].includes(m)) {
       return sampleArrayBilinear(dopFrame?.[m], iFloat, jFloat);
@@ -1208,89 +1398,24 @@
     if (["gdoptec", "pdoptec", "hdoptec", "vdoptec"].includes(m)) {
       const metric = m.replace("tec", "");
       const dop = sampleArrayBilinear(dopFrame?.[metric], iFloat, jFloat);
-      return (isFinite(dop) && isFinite(tec)) ? dop * tec * cfg.kL1 : NaN;
+      return (Number.isFinite(dop) && Number.isFinite(tec)) ? dop * tec * cfg.kL1 : NaN;
     }
     return tec;
   }
 
-  function getAdaptiveColorEnabled() {
-    const el = document.getElementById("adaptiveColorScaleSelect");
-    if (!el) return true;
-    return el.value !== "fixed";
-  }
-
-  function percentileSorted(sorted, p) {
-    if (!sorted.length) return NaN;
-    const x = c(p, 0, 1) * (sorted.length - 1);
-    const i = Math.floor(x);
-    const f = x - i;
-    const a = sorted[i];
-    const b = sorted[Math.min(sorted.length - 1, i + 1)];
-    return a * (1 - f) + b * f;
-  }
-
-  function adaptiveScaleForFrame(frame, cfg, baseScale) {
-    if (!getAdaptiveColorEnabled()) return baseScale;
-    const m = normalizeDopMode(mapMode);
-    // DOP単独と衛星数は物理的な固定レンジの方が見やすい。
-    if (["satcount", "gdop", "pdop", "hdop", "vdop", "tdop"].includes(m)) return baseScale;
-
-    const dopFrame = isDopLikeMode() ? getDopAllFrame(currentStepIndex) : null;
-    const vals = [];
-    const nLat = gGrid?.nLat || 0;
-    const nLon = gGrid?.nLon || 0;
-    const stepI = Math.max(1, Math.floor(nLat / 80));
-    const stepJ = Math.max(1, Math.floor(nLon / 120));
-    for (let i = 0; i < nLat; i += stepI) {
-      for (let j = 0; j < nLon; j += stepJ) {
-        let v;
-        if (["gdoptec", "pdoptec", "hdoptec", "vdoptec"].includes(m)) {
-          const metric = m.replace("tec", "");
-          const dop = Number(dopFrame?.[metric]?.[i]?.[j]);
-          const tec = Number(frame?.[i]?.[j]);
-          v = (isFinite(dop) && isFinite(tec)) ? dop * tec * cfg.kL1 : NaN;
-        } else {
-          v = modeValue(Number(frame?.[i]?.[j]), i, j, cfg);
-        }
-        if (isFinite(v)) vals.push(v);
-      }
-    }
-    if (vals.length < 8) return baseScale;
-    vals.sort((a, b) => a - b);
-    let p05 = percentileSorted(vals, 0.05);
-    let p45 = percentileSorted(vals, 0.45);
-    let p75 = percentileSorted(vals, 0.75);
-    let p97 = percentileSorted(vals, 0.97);
-
-    const med = percentileSorted(vals, 0.50);
-    let range = p97 - p05;
-    const minRange = m === "tec" ? Math.max(4, med * 0.35) : Math.max(1, Math.abs(med) * 0.35);
-    if (!isFinite(range) || range < minRange) {
-      p05 = Math.max(0, med - minRange / 2);
-      p97 = med + minRange / 2;
-      p45 = p05 + (p97 - p05) * 0.42;
-      p75 = p05 + (p97 - p05) * 0.72;
-    }
-
-    const colors = baseScale.map(s => s.color);
-    return [
-      { limit: +p05.toFixed(2), color: colors[0] || "#0000ff" },
-      { limit: +p45.toFixed(2), color: colors[1] || "#ffffff" },
-      { limit: +p75.toFixed(2), color: colors[2] || "#ffff00" },
-      { limit: +p97.toFixed(2), color: colors[3] || "#ff0000" },
-    ];
-  }
-
-  function drawSmoothHeatmap(frame, cfg, scale) {
+  function drawBeautifulHeatmap(rawFrame, cfg, scale) {
     const w = tecCanvas.width, h = tecCanvas.height;
     if (w <= 0 || h <= 0) return;
 
-    // 高解像度でも重くなり過ぎないよう、内部解像度を少し落として描画し、canvasで拡大する。
+    const m = normalizeDopMode(mapMode);
+    const tecFrame = makeBeautifulTecGrid(rawFrame);
+    const dopFrame = isDopLikeMode() ? getDopAllFrame(currentStepIndex) : null;
+
     const qualityEl = document.getElementById("heatmapQualitySelect");
-    const q = qualityEl ? parseFloat(qualityEl.value || "0.65") : 0.65;
-    const renderScale = c(q || 0.65, 0.3, 1.0);
-    const rw = Math.max(240, Math.round(w * renderScale));
-    const rh = Math.max(160, Math.round(h * renderScale));
+    const q = qualityEl ? parseFloat(qualityEl.value || "0.72") : 0.72;
+    const renderScale = c(q || 0.72, 0.35, 1.0);
+    const rw = Math.max(280, Math.round(w * renderScale));
+    const rh = Math.max(180, Math.round(h * renderScale));
 
     const off = document.createElement("canvas");
     off.width = rw;
@@ -1300,15 +1425,12 @@
     const data = img.data;
     const alphaByte = Math.round(c(tecAlpha, 0, 1) * 255);
 
-    const latMax = gGrid.latArr[gGrid.nLat - 1];
     const latMin = gGrid.latArr[0];
+    const latMax = gGrid.latArr[gGrid.nLat - 1];
     const lonMin = gGrid.lonArr[0];
     const lonMax = gGrid.lonArr[gGrid.nLon - 1];
-
     const latSpan = Math.max(1e-6, latMax - latMin);
     const lonSpan = Math.max(1e-6, lonMax - lonMin);
-
-    const dopFrame = isDopLikeMode() ? getDopAllFrame(currentStepIndex) : null;
 
     const latByY = new Array(rh);
     for (let y = 0; y < rh; y++) {
@@ -1333,8 +1455,8 @@
       for (let x = 0; x < rw; x++) {
         const lon = lonByX[x];
         const jFloat = ((lon - lonMin) / lonSpan) * (gGrid.nLon - 1);
-        const val = sampleModeValueBilinear(frame, dopFrame, iFloat, jFloat, cfg);
-        if (!isFinite(val)) continue;
+        const val = sampleModeValueBilinear(tecFrame, dopFrame, iFloat, jFloat, cfg);
+        if (!Number.isFinite(val)) continue;
         const rgba = colorToRgbaArray(valueToColor(val, scale), alphaByte);
         const k = (y * rw + x) * 4;
         data[k] = rgba[0];
@@ -1365,13 +1487,16 @@
     drawTecOverlay = function () {
       if (!map || !tecCanvas || !tecCtx) return;
       if (!gGrid || !gForecastTimes.length) return;
-      const w = tecCanvas.width, h = tecCanvas.height;
-      tecCtx.clearRect(0, 0, w, h);
+
       const frame = currentTecGrid();
       if (!frame) return;
+
       const cfg = getConfigFromUI();
-      const scale = adaptiveScaleForFrame(frame, cfg, scaleForMode());
-      drawSmoothHeatmap(frame, cfg, scale);
+      const scale = scaleForMode();
+
+      // v4.6: 0 TECを欠損扱いにして、表示時だけIDW補間+軽いGaussianで滑らかなヒートマップにする。
+      // 元データや予報計算用データは変更しない。
+      drawBeautifulHeatmap(frame, cfg, scale);
       tecCtx.globalAlpha = 1.0;
     };
 
@@ -1382,27 +1507,28 @@
         tecLegendControl.remove();
         tecLegendControl = null;
       }
-      const frame = currentTecGrid();
-      const cfg = typeof getConfigFromUI === "function" ? getConfigFromUI() : { kL1: 0.16 };
-      const scale = frame ? adaptiveScaleForFrame(frame, cfg, scaleForMode()) : scaleForMode();
+      const scale = scaleForMode();
       const title = titleForMode();
       tecLegendControl = L.control({ position: "bottomright" });
       tecLegendControl.onAdd = function () {
         const div = L.DomUtil.create("div", "leaflet-control tec-legend");
-        const maxLabel = scale[scale.length - 1].limit;
+        const minLabel = scale[0]?.limit ?? 0;
+        const maxLabel = scale[scale.length - 1]?.limit ?? "--";
         div.innerHTML = `
           <div class="tec-legend-title">${title}</div>
           <canvas id="legendBar" width="18" height="130" style="display:block;margin:0 auto 4px auto;border:1px solid #444;border-radius:4px;"></canvas>
-          <div class="tec-legend-labels"><span>0</span><span>${maxLabel}</span></div>
+          <div class="tec-legend-labels"><span>${minLabel}</span><span>${maxLabel}</span></div>
         `;
         setTimeout(() => {
-          const canvas = document.getElementById("legendBar");
-          if (!canvas) return;
-          const ctx = canvas.getContext("2d");
-          for (let y = 0; y < canvas.height; y++) {
-            const v = scale[scale.length - 1].limit * (1 - y / canvas.height);
+          const c0 = document.getElementById("legendBar");
+          if (!c0) return;
+          const ctx = c0.getContext("2d");
+          const minV = Number(minLabel) || 0;
+          const maxV = Number(maxLabel) || 1;
+          for (let y = 0; y < c0.height; y++) {
+            const v = maxV - (maxV - minV) * (y / Math.max(1, c0.height - 1));
             ctx.fillStyle = valueToColor(v, scale);
-            ctx.fillRect(0, y, canvas.width, 1);
+            ctx.fillRect(0, y, c0.width, 1);
           }
         }, 0);
         return div;
