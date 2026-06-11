@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v4 – TEC Archive + GNSS DOP Forecast Tool (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
+  <title>SWIFT-TEC v4.2 – Fourier TEC Forecast + GNSS DOP Tool (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -548,8 +548,9 @@ Mar 11       Mar 12       Mar 13
         <div class="card-header"><h2>8a. NOAA TEC履歴アーカイブ</h2><span>30日保存 / 任意期間再生</span></div>
         <div class="small">
           ・GitHub Actionsで <b>毎日09:00 / 14:00 JST</b> にNOAA GloTECを取得し、<b>docs/data/tec</b> に30日分保存<br>
-          ・保存するTECは <b>NOAA 2時間値</b> のみ。UI側で必要に応じて補間して計算します<br>
-          ・DOP / DOP×TECモードでは、衛星配置を反映するため <b>10分刻み</b> で再生します
+          ・保存するTECは <b>NOAA 2時間値</b> のみ。UI側で <b>30分刻み</b> に補間して再生します<br>
+          ・DOP / DOP×TECモードでは、衛星配置を反映するため <b>10分刻み</b> で再生します<br>
+          ・data/tecの履歴から <b>フーリエ日周期モデル</b> で3日TEC予報を作成できます
         </div>
         <div class="row small" style="margin-top:6px;">
           <div style="flex:1;">
@@ -566,8 +567,21 @@ Mar 11       Mar 12       Mar 13
           <button class="secondary" onclick="loadTecArchivePlusCurrentForecast()">過去 + 現在の予報を接続</button>
         </div>
         <div class="row" style="margin-top:4px;">
+          <button onclick="loadTecDataDriven3DayForecast()">data基準 3日TEC予報を作成</button>
           <button class="secondary" onclick="loadTecArchiveIndex(true)">履歴index再読込</button>
-          <button class="secondary" onclick="loadGpsDopData()">GNSS TLE読込 / DOP準備</button>
+        </div>
+        <div class="row small" style="margin-top:4px;">
+          <div>
+            <label>予報基準日数</label><br>
+            <input id="tecForecastBaseDays" type="number" value="7" min="1" max="30" step="1" style="width:80px;">
+          </div>
+          <div>
+            <label>予報期間</label><br>
+            <span class="pill">72時間 / 3日</span>
+          </div>
+          <div>
+            <button class="secondary" onclick="loadGpsDopData()">GNSS TLE読込 / DOP準備</button>
+          </div>
         </div>
         <div class="small" id="archiveIndexInfo">TEC履歴indexを読み込み中…</div>
         <div class="small" id="v4ArchiveStatus"></div>
@@ -598,6 +612,15 @@ Mar 11       Mar 12       Mar 13
               <option value="0.45">軽量</option>
               <option value="0.65" selected>標準</option>
               <option value="1.0">高精細</option>
+            </select>
+          </div>
+          <div>
+            <label>フーリエ平滑化</label><br>
+            <select id="fourierSmoothSelect" onchange="requestDraw()">
+              <option value="0">OFF</option>
+              <option value="0.45">弱</option>
+              <option value="0.70" selected>標準</option>
+              <option value="0.88">強</option>
             </select>
           </div>
         </div>
@@ -641,7 +664,7 @@ Mar 11       Mar 12       Mar 13
     <div class="main">
       <div class="card slider-card">
         <div class="slider-row">
-          <span>時間スライダー（TEC:2時間値 / DOP系:10分刻み）</span>
+          <span>時間スライダー（TEC:30分刻み / DOP系:10分刻み）</span>
           <input type="range" id="timeSlider" min="0" max="192" value="0" oninput="onSliderChange()">
           <span id="timeLabel">t = 0.0 h</span>
           <span id="utcLabel">UTC: --</span>
@@ -681,7 +704,7 @@ Mar 11       Mar 12       Mar 13
             <option value="4">x4</option>
           </select>
           <label class="small"><input type="checkbox" id="movieAutoPlayAfterLoad"> 読込後に自動再生</label>
-          <span class="small">※TEC系はNOAA 2時間値、DOP/DOP×TEC系は10分刻みで再生します。</span>
+          <span class="small">※TEC系は30分刻み、DOP/DOP×TEC系は10分刻みで再生します。</span>
         </div>
       </div>
 
