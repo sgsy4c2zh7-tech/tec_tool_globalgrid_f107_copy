@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v4.7 – Raw NOAA 30min + Initial Forecast + GNSS DOP Tool (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
+  <title>SWIFT-TEC v4.8 – Raw NOAA 30min + Selectable Forecast TEC API + GNSS DOP Tool (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -550,7 +550,8 @@ Mar 11       Mar 12       Mar 13
           ・GitHub Actionsで <b>30分ごと</b> にNOAA GloTECを取得し、<b>docs/data/tec</b> に30日分保存<br>
           ・保存するTECは <b>NOAA 30分値</b>。TEC表示は30分刻みで、そのまま表示します<br>
           ・DOP / DOP×TECモードでは、衛星配置を反映するため <b>10分刻み</b> で再生します<br>
-          ・予報は初期版と同じSWIFT-TEC方式（Base抽出＋Kp/Flare加算）を使用します
+          ・予報は初期版と同じSWIFT-TEC方式（Base抽出＋Kp/Flare加算）を使用します<br>
+          ・予報用TECは「8c. 予報用TEC API入力」で NOAA API直取得 / data取りためAPI を切替できます
         </div>
         <div class="row small" style="margin-top:6px;">
           <div style="flex:1;">
