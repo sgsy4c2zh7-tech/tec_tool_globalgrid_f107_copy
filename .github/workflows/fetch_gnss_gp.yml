@@ -28,8 +28,21 @@ jobs:
       - name: Fetch GNSS GP data
         run: python scripts/fetch_gnss_gp.py
 
+      - name: Show generated files
+        run: |
+          echo "--- docs/data/gnss ---"
+          find docs/data/gnss -maxdepth 2 -type f -print | sort | sed -n '1,120p'
+          echo "--- git status ---"
+          git status --short
+
       - name: Commit GNSS updates
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: 'data: update GNSS GP data'
-          file_pattern: 'docs/data/gnss/**'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/data/gnss
+          if git diff --cached --quiet; then
+            echo "No GNSS changes to commit"
+          else
+            git commit -m "data: update GNSS GP data"
+            git push
+          fi
