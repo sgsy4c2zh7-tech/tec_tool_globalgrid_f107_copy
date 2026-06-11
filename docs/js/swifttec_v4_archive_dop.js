@@ -23,6 +23,12 @@
   let originalUpdateLegend = null;
   let originalSampleAtLatLon = null;
   let originalChangeMapMode = null;
+  let originalReadTecInputsForForecastApi = null;
+  let originalFillForecastStartCandidatesForForecastApi = null;
+  let originalBuildNoaaTecTodForForecastApi = null;
+  let originalRunForecastForForecastApi = null;
+  let forecastTecApiReady = false;
+  let forecastTecApiSourceLabel = "未取得";
 
   // data/tecに保存されるTECはNOAA 30分値。UIではTEC系30分、DOP系10分へ展開する。
   const TEC_REPLAY_STEP_MIN = 30;
@@ -285,9 +291,9 @@
       }
     }
 
-    // v4.5: 旧版(v3)の見え方を踏襲するため、TEC値の空間平滑化・再スケールは行わない。
-    // data/tecの30分値を時間方向だけ線形補間し、格子値はそのまま描画/計算に使う。
-    return grid;
+    // 0 TECの孤立穴だけを表示用に補正する。
+    // NOAAの実データ表示方針は維持し、時間補間以外の平滑化・再スケールは行わない。
+    return patchIsolatedZeroHoles(grid);
   }
 
 
@@ -482,6 +488,39 @@
     }
 
     return matchTecDistribution(out, filled);
+  }
+
+  function patchIsolatedZeroHoles(grid, zeroThreshold = 0.05, minNeighborCount = 4, neighborPositiveThreshold = 0.2) {
+    if (!Array.isArray(grid) || !grid.length || !Array.isArray(grid[0])) return grid;
+    const nLat = grid.length;
+    const nLon = grid[0].length;
+    const out = grid.map(row => row.slice());
+
+    for (let i = 0; i < nLat; i++) {
+      for (let j = 0; j < nLon; j++) {
+        const v = Number(grid[i]?.[j]);
+        if (isFinite(v) && v > zeroThreshold) continue;
+
+        const vals = [];
+        for (let di = -1; di <= 1; di++) {
+          for (let dj = -1; dj <= 1; dj++) {
+            if (di === 0 && dj === 0) continue;
+            const ii = i + di;
+            let jj = j + dj;
+            if (ii < 0 || ii >= nLat) continue;
+            if (jj < 0) jj += nLon;
+            if (jj >= nLon) jj -= nLon;
+            const nv = Number(grid[ii]?.[jj]);
+            if (isFinite(nv) && nv > neighborPositiveThreshold) vals.push(nv);
+          }
+        }
+        if (vals.length < minNeighborCount) continue;
+        vals.sort((a, b) => a - b);
+        const med = vals[Math.floor(vals.length / 2)];
+        out[i][j] = med;
+      }
+    }
+    return out;
   }
 
   function currentTecGrid() {
@@ -1618,13 +1657,389 @@
     renderSatelliteSelection();
   }
 
+
+
+  /* =========================================================
+   * Forecast TEC API source selector
+   * - NOAA direct API: SWPC geojson_2d_urt latest 24h / 30min slots
+   * - Archive data API: docs/data/tec/index.json + json.gz latest/selected 24h
+   * The original SWIFT-TEC forecast model is kept. Only the input TEC source is switched.
+   * ========================================================= */
+  const NOAA_GLOTEC_INDEX_DIRECT_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt.json";
+  const NOAA_GLOTEC_BASE_DIRECT_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt/";
+  const FORECAST_TEC_SOURCE_STORAGE_KEY = "swifttec_forecast_tec_api_source_v1";
+  const FORECAST_TEC_SLOT_MIN = 30;
+  const FORECAST_TEC_WINDOW_HOURS = 24;
+  const FORECAST_TEC_MAX_DIFF_MIN = 24;
+
+  function parseUtcFromGloTecFilenameV48(name) {
+    const m = String(name || "").match(/(\d{8})T(\d{6})Z/i);
+    if (!m) return null;
+    const y = Number(m[1].slice(0, 4));
+    const mo = Number(m[1].slice(4, 6));
+    const d = Number(m[1].slice(6, 8));
+    const hh = Number(m[2].slice(0, 2));
+    const mm = Number(m[2].slice(2, 4));
+    const ss = Number(m[2].slice(4, 6));
+    const t = new Date(Date.UTC(y, mo - 1, d, hh, mm, ss));
+    return isNaN(t.getTime()) ? null : t;
+  }
+
+  function basenameV48(path) {
+    return String(path || "").replace(/\/$/, "").split("/").pop() || "";
+  }
+
+  function asNoaaGloTecUrlV48(path) {
+    const p = String(path || "");
+    if (p.startsWith("http://") || p.startsWith("https://")) return p;
+    if (p.includes("/")) return "https://services.swpc.noaa.gov/" + p.replace(/^\/+/, "");
+    return NOAA_GLOTEC_BASE_DIRECT_URL + p;
+  }
+
+  function normalizeNoaaGloTecIndexV48(obj) {
+    let items = [];
+    if (Array.isArray(obj)) items = obj;
+    else if (obj && typeof obj === "object") {
+      for (const key of ["files", "data", "items"]) {
+        if (Array.isArray(obj[key])) { items = obj[key]; break; }
+      }
+      if (!items.length) {
+        for (const v of Object.values(obj)) {
+          if (Array.isArray(v)) { items = v; break; }
+        }
+      }
+    }
+    return items.map(x => {
+      if (typeof x === "string") return x;
+      if (x && typeof x === "object") return x.url || x.href || x.path || x.name || x.file || x.filename || "";
+      return String(x || "");
+    }).filter(x => x.toLowerCase().includes(".geojson"));
+  }
+
+  function floorUtcToSlotV48(t, stepMin = FORECAST_TEC_SLOT_MIN) {
+    const d = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate(), t.getUTCHours(), t.getUTCMinutes(), 0));
+    const total = d.getUTCHours() * 60 + d.getUTCMinutes();
+    const floored = Math.floor(total / stepMin) * stepMin;
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, floored, 0));
+  }
+
+  function buildForecastTecTargetSlotsV48(endTime, hours = FORECAST_TEC_WINDOW_HOURS, stepMin = FORECAST_TEC_SLOT_MIN) {
+    const end = floorUtcToSlotV48(endTime, stepMin);
+    const n = Math.round((hours * 60) / stepMin);
+    const start = new Date(end.getTime() - (n - 1) * stepMin * 60000);
+    const out = [];
+    for (let k = 0; k < n; k++) out.push(new Date(start.getTime() + k * stepMin * 60000));
+    return out;
+  }
+
+  function nearestEntryForSlotV48(entries, slot, maxDiffMin = FORECAST_TEC_MAX_DIFF_MIN) {
+    let best = null;
+    let bestDiff = Infinity;
+    for (const e of entries) {
+      const diff = Math.abs(e.time.getTime() - slot.getTime());
+      if (diff < bestDiff) { bestDiff = diff; best = e; }
+    }
+    if (!best || bestDiff > maxDiffMin * 60000) return null;
+    return best;
+  }
+
+  function setForecastTecApiStatus(msg) {
+    const el = document.getElementById("forecastTecApiStatus");
+    if (el) el.textContent = msg || "";
+    if (msg && typeof logInfo === "function") logInfo(msg);
+  }
+
+  function getForecastTecApiMode() {
+    return document.getElementById("forecastTecApiSourceSelect")?.value || "noaa_direct_30m";
+  }
+
+  function setForecastTecApiMode(mode) {
+    const sel = document.getElementById("forecastTecApiSourceSelect");
+    if (sel) sel.value = mode;
+    localStorage.setItem(FORECAST_TEC_SOURCE_STORAGE_KEY, mode);
+  }
+
+  function populateForecastTecArchiveEndSelect() {
+    const sel = document.getElementById("forecastTecArchiveEndSelect");
+    if (!sel || !archiveIndex || !Array.isArray(archiveIndex.frames)) return;
+    const old = sel.value;
+    sel.innerHTML = "";
+    const frames = archiveIndex.frames.slice().sort((a, b) => String(a.time_utc).localeCompare(String(b.time_utc)));
+    for (const f of frames) {
+      const opt = document.createElement("option");
+      opt.value = f.time_utc;
+      opt.textContent = String(f.time_utc).replace(".000Z", "Z");
+      sel.appendChild(opt);
+    }
+    if (old && [...sel.options].some(o => o.value === old)) sel.value = old;
+    else if (frames.length) sel.value = frames[frames.length - 1].time_utc;
+  }
+
+  function ensureForecastTecApiUi() {
+    if (document.getElementById("forecastTecApiCard")) return;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.id = "forecastTecApiCard";
+    card.innerHTML = `
+      <div class="card-header"><h2>8c. 予報用TEC API入力</h2><span>NOAA直取得 / data蓄積</span></div>
+      <div class="small">
+        ・TEC予報計算に使う入力TECを、<b>NOAA API直取得</b> または <b>docs/data/tecの取りため済みAPI</b> から選べます。<br>
+        ・どちらも <b>過去24時間・30分間隔</b> を取得し、初期版SWIFT-TEC方式のBase抽出＋Kp/Flare加算モデルに渡します。
+      </div>
+      <div class="row small" style="margin-top:6px;">
+        <div style="flex:1.4;">
+          予報用TECソース:<br>
+          <select id="forecastTecApiSourceSelect" style="width:100%;" onchange="setForecastTecApiMode(this.value)">
+            <option value="noaa_direct_30m">NOAA APIから直取得（最新24h / 30分）</option>
+            <option value="archive_data_30m">取りため済みdata API（選択時刻まで24h / 30分）</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          data API終了UTC:<br>
+          <select id="forecastTecArchiveEndSelect" style="width:100%;"></select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:4px;">
+        <button onclick="loadForecastTecFromSelectedApi(false)">予報用TECをAPI取得</button>
+        <button class="secondary" onclick="loadForecastTecFromSelectedApi(true)">再取得して予報計算</button>
+      </div>
+      <div class="row small" style="margin-top:4px;">
+        <label><input type="checkbox" id="forecastTecAutoFetch" checked> TEC予報計算前に、このソースから自動取得</label>
+        <span class="pill" id="forecastTecReadyPill">TEC入力: 未取得</span>
+      </div>
+      <div class="small" id="forecastTecApiStatus">予報用TEC API未取得</div>
+    `;
+    const sidebar = document.querySelector(".sidebar");
+    const target = document.getElementById("v4ArchiveStatus")?.closest(".card");
+    if (sidebar && target) target.insertAdjacentElement("afterend", card);
+    else if (sidebar) sidebar.appendChild(card);
+
+    const saved = localStorage.getItem(FORECAST_TEC_SOURCE_STORAGE_KEY);
+    if (saved) setForecastTecApiMode(saved);
+    populateForecastTecArchiveEndSelect();
+  }
+
+  async function loadForecastTecFromNoaaDirectApi30m() {
+    setForecastTecApiStatus("NOAA APIから予報用TEC 30分値を取得中…");
+    const idx = await fetch(NOAA_GLOTEC_INDEX_DIRECT_URL, { cache: "no-store" });
+    if (!idx.ok) throw new Error(`NOAA index HTTP ${idx.status}`);
+    const obj = await idx.json();
+    const paths = normalizeNoaaGloTecIndexV48(obj);
+    if (!paths.length) throw new Error("NOAA GloTEC indexからgeojsonが見つかりません。");
+
+    const entries = paths.map(p => {
+      const fn = basenameV48(p);
+      const time = parseUtcFromGloTecFilenameV48(fn) || parseUtcFromGloTecFilenameV48(p);
+      return time ? { fn, time, url: asNoaaGloTecUrlV48(p) } : null;
+    }).filter(Boolean).sort((a, b) => a.time - b.time);
+    if (!entries.length) throw new Error("NOAA GeoJSONファイル名からUTCを抽出できません。");
+
+    const latest = entries[entries.length - 1].time;
+    const targets = buildForecastTecTargetSlotsV48(latest, FORECAST_TEC_WINDOW_HOURS, FORECAST_TEC_SLOT_MIN);
+    const picks = targets.map(slot => nearestEntryForSlotV48(entries, slot, FORECAST_TEC_MAX_DIFF_MIN));
+    const miss = picks.filter(x => !x).length;
+    if (miss) throw new Error(`NOAA APIで30分枠が不足しています: ${miss}/${targets.length}枠`);
+
+    const frames = [];
+    for (let k = 0; k < picks.length; k++) {
+      const p = picks[k];
+      setForecastTecApiStatus(`NOAA API取得中 ${k + 1}/${picks.length}: ${p.fn}`);
+      const res = await fetch(p.url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`NOAA GeoJSON HTTP ${res.status}: ${p.fn}`);
+      const txt = await res.text();
+      const f = parseNoaaGloTecGeoJson(txt, targets[k], 2.0, 5.0);
+      frames.push({ frame: f, time: targets[k], file: p.fn });
+    }
+    installForecastTecFramesV48(frames, "NOAA API直取得 30分値");
+  }
+
+  async function loadForecastTecFromArchiveDataApi30m() {
+    setForecastTecApiStatus("data/tec APIから予報用TEC 30分値を取得中…");
+    await loadTecArchiveIndex(true);
+    populateForecastTecArchiveEndSelect();
+    const frames = archiveIndex?.frames || [];
+    if (!frames.length) throw new Error("data/tec/index.jsonに履歴がありません。Fetch NOAA TEC archiveを先に実行してください。");
+
+    const endSel = document.getElementById("forecastTecArchiveEndSelect");
+    const endTime = endSel?.value ? new Date(endSel.value) : new Date(frames[frames.length - 1].time_utc);
+    if (isNaN(endTime.getTime())) throw new Error("data API終了UTCが不正です。");
+    const targets = buildForecastTecTargetSlotsV48(endTime, FORECAST_TEC_WINDOW_HOURS, FORECAST_TEC_SLOT_MIN);
+
+    const entries = frames.map(f => ({
+      time: new Date(f.time_utc),
+      file: f.file,
+      raw: f,
+    })).filter(e => !isNaN(e.time.getTime())).sort((a, b) => a.time - b.time);
+
+    const picks = targets.map(slot => nearestEntryForSlotV48(entries, slot, 16));
+    const miss = picks.filter(x => !x).length;
+    if (miss) throw new Error(`data/tec APIで30分枠が不足しています: ${miss}/${targets.length}枠。archive workflowを回してください。`);
+
+    const loaded = [];
+    for (let k = 0; k < picks.length; k++) {
+      const p = picks[k];
+      setForecastTecApiStatus(`data API取得中 ${k + 1}/${picks.length}: ${p.file}`);
+      const fr = await loadArchiveFrame(p.raw);
+      loaded.push({
+        frame: {
+          latArr: fr.gridMeta.latArr,
+          lonArr: fr.gridMeta.lonArr,
+          nLat: fr.gridMeta.nLat,
+          nLon: fr.gridMeta.nLon,
+          grid: fr.grid,
+          validTime: targets[k],
+        },
+        time: targets[k],
+        file: p.file,
+      });
+    }
+    installForecastTecFramesV48(loaded, "data/tec取りためAPI 30分値");
+  }
+
+  function installForecastTecFramesV48(items, label) {
+    if (!items.length) throw new Error("予報用TECフレームが空です。");
+    gNoaaDayFrames = items.map(x => x.frame);
+    gNoaaDayTimes = items.map(x => x.time);
+    gNoaaDayFiles = items.map(x => x.file || "");
+    const first = gNoaaDayTimes[0];
+    gNoaaDayKey = first instanceof Date && !isNaN(first.getTime()) ? first.toISOString().slice(0, 10) : null;
+    forecastTecApiReady = true;
+    forecastTecApiSourceLabel = label;
+
+    const tecSel = document.getElementById("tecSourceSelect");
+    if (tecSel) tecSel.value = "noaa";
+    const pill = document.getElementById("forecastTecReadyPill");
+    if (pill) pill.textContent = `TEC入力: ${label} / ${items.length}枚`;
+
+    if (typeof renderNoaa12Table === "function") renderNoaa12Table();
+    if (typeof fillForecastStartCandidates === "function") fillForecastStartCandidates();
+    setForecastTecApiStatus(`${label}: ${items.length}枚取得OK / ${isoNoMs(gNoaaDayTimes[0])} 〜 ${isoNoMs(gNoaaDayTimes[gNoaaDayTimes.length - 1])}`);
+  }
+
+  async function loadForecastTecFromSelectedApi(runAfter = false) {
+    const mode = getForecastTecApiMode();
+    setForecastTecApiMode(mode);
+    if (mode === "archive_data_30m") await loadForecastTecFromArchiveDataApi30m();
+    else await loadForecastTecFromNoaaDirectApi30m();
+    if (runAfter && typeof runForecast === "function") runForecast();
+  }
+
+  function buildGenericNoaaTecTodFromFramesV48(frames, times, stepMinutes = 30) {
+    if (!frames || frames.length < 2 || !times || times.length < 2) return null;
+    const good = frames.map((frame, i) => ({ frame, time: times[i] }))
+      .filter(x => x.time instanceof Date && !isNaN(x.time.getTime()) && x.frame && Array.isArray(x.frame.grid))
+      .sort((a, b) => a.time - b.time);
+    if (good.length < 2) return null;
+
+    const first = good[0].time;
+    const dayStart = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), first.getUTCDate(), 0, 0, 0));
+    const n = Math.round(24 * 60 / stepMinutes);
+    const out = [];
+
+    function todMinutes(t) { return t.getUTCHours() * 60 + t.getUTCMinutes() + t.getUTCSeconds() / 60; }
+    const source = good.map(x => ({ ...x, mins: todMinutes(x.time) })).sort((a, b) => a.mins - b.mins);
+
+    function bracket(mins) {
+      let lo = source[0], hi = source[source.length - 1];
+      for (let i = 0; i < source.length - 1; i++) {
+        if (source[i].mins <= mins && mins <= source[i + 1].mins) return [source[i], source[i + 1], false];
+      }
+      // wrap around midnight
+      if (mins < source[0].mins) return [source[source.length - 1], source[0], true];
+      return [source[source.length - 1], source[0], true];
+    }
+
+    for (let k = 0; k < n; k++) {
+      const mins = k * stepMinutes;
+      const [lo, hi, wrap] = bracket(mins);
+      let loM = lo.mins;
+      let hiM = hi.mins;
+      let m = mins;
+      if (wrap) {
+        if (hiM < loM) hiM += 1440;
+        if (m < loM) m += 1440;
+      }
+      const span = Math.max(1, hiM - loM);
+      const f = c((m - loM) / span, 0, 1);
+      const A = lo.frame;
+      const B = hi.frame;
+      const nLat = A.nLat, nLon = A.nLon;
+      const grid = Array.from({ length: nLat }, () => Array(nLon).fill(0));
+      for (let i = 0; i < nLat; i++) {
+        for (let j = 0; j < nLon; j++) {
+          const v0 = Number(A.grid?.[i]?.[j]);
+          const v1 = Number(B.grid?.[i]?.[j]);
+          const a = isFinite(v0) ? v0 : (isFinite(v1) ? v1 : 0);
+          const b = isFinite(v1) ? v1 : a;
+          grid[i][j] = a + (b - a) * f;
+        }
+      }
+      out.push({ latArr: A.latArr, lonArr: A.lonArr, nLat, nLon, grid });
+    }
+
+    return { stepMinutes, frames: out, dayKey: toDayKeyUtc(dayStart), gridMeta: good[0].frame, sourceCount: good.length };
+  }
+
+  function installForecastTecApiOverrides() {
+    if (typeof readTecInputs === "function" && !originalReadTecInputsForForecastApi) {
+      originalReadTecInputsForForecastApi = readTecInputs;
+      readTecInputs = function () {
+        const src = document.getElementById("tecSourceSelect")?.value || "noaa";
+        if (src === "noaa") {
+          if (!gNoaaDayFrames || gNoaaDayFrames.length < 2) {
+            throw new Error("NOAA入力が未取得です。8cの『予報用TECをAPI取得』を押すか、自動取得をONにしてください。");
+          }
+          return { source: "noaa", frames: gNoaaDayFrames, times: gNoaaDayTimes || [], gridMeta: gNoaaDayFrames[0] };
+        }
+        return originalReadTecInputsForForecastApi();
+      };
+    }
+
+    if (typeof buildNoaaTecTodFrom12Frames === "function" && !originalBuildNoaaTecTodForForecastApi) {
+      originalBuildNoaaTecTodForForecastApi = buildNoaaTecTodFrom12Frames;
+      buildNoaaTecTodFrom12Frames = function (frames, times, stepMinutes = 30) {
+        return buildGenericNoaaTecTodFromFramesV48(frames, times, stepMinutes);
+      };
+    }
+
+    if (typeof fillForecastStartCandidates === "function" && !originalFillForecastStartCandidatesForForecastApi) {
+      originalFillForecastStartCandidatesForForecastApi = fillForecastStartCandidates;
+      fillForecastStartCandidates = function () {
+        return originalFillForecastStartCandidatesForForecastApi();
+      };
+    }
+
+    if (typeof runForecast === "function" && !originalRunForecastForForecastApi) {
+      originalRunForecastForForecastApi = runForecast;
+      runForecast = async function () {
+        try {
+          const auto = !!document.getElementById("forecastTecAutoFetch")?.checked;
+          const src = document.getElementById("tecSourceSelect")?.value || "noaa";
+          if (src === "noaa" && auto) {
+            await loadForecastTecFromSelectedApi(false);
+          }
+          return originalRunForecastForForecastApi();
+        } catch (e) {
+          console.error(e);
+          setForecastTecApiStatus("予報用TEC API取得/予報計算失敗: " + e.message);
+          if (typeof logInfo === "function") logInfo("予報計算失敗: " + e.message);
+        }
+      };
+    }
+  }
+
   function bootAddon() {
     installOverrides();
+    installForecastTecApiOverrides();
     addModeOptions();
     ensureGnssUi();
-    loadTecArchiveIndex(false).catch(() => {
+    ensureForecastTecApiUi();
+    loadTecArchiveIndex(false).then(() => {
+      populateForecastTecArchiveEndSelect();
+    }).catch(() => {
       const info = document.getElementById("archiveIndexInfo");
       if (info) info.textContent = "TEC履歴index未作成。GitHub Actionsを実行すると表示されます。";
+      populateForecastTecArchiveEndSelect();
     });
   }
 
@@ -1632,6 +2047,10 @@
   window.loadTecArchiveRange = loadTecArchiveRange;
   window.loadTecArchivePlusCurrentForecast = loadTecArchivePlusCurrentForecast;
   window.loadTecDataDriven3DayForecast = loadTecDataDriven3DayForecast;
+  window.loadForecastTecFromSelectedApi = loadForecastTecFromSelectedApi;
+  window.loadForecastTecFromNoaaDirectApi30m = loadForecastTecFromNoaaDirectApi30m;
+  window.loadForecastTecFromArchiveDataApi30m = loadForecastTecFromArchiveDataApi30m;
+  window.setForecastTecApiMode = setForecastTecApiMode;
   window.playArchiveMovie = playArchiveMovie;
   window.stopArchiveMovie = stopArchiveMovie;
 
