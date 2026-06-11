@@ -295,8 +295,8 @@
 
   function getFourierSmoothStrength() {
     const el = document.getElementById("fourierSmoothSelect");
-    const v = parseFloat(el?.value ?? "0.75");
-    return isFinite(v) ? c(v, 0, 0.95) : 0.75;
+    const v = parseFloat(el?.value ?? "0.35");
+    return isFinite(v) ? c(v, 0, 0.95) : 0.35;
   }
 
   function medianFinite(vals) {
@@ -312,36 +312,63 @@
     }));
   }
 
-  function inpaintGrid(grid, iterations = 4) {
+  function inpaintGrid(grid, iterations = 6) {
     const nLat = gGrid?.nLat || grid.length;
     const nLon = gGrid?.nLon || (grid[0] ? grid[0].length : 0);
     let out = cloneGrid(grid);
+    const observed = Array.from({ length: nLat }, () => Array(nLon).fill(false));
     const all = [];
-    for (let i = 0; i < nLat; i++) for (let j = 0; j < nLon; j++) if (isFinite(out[i]?.[j])) all.push(out[i][j]);
+    for (let i = 0; i < nLat; i++) {
+      for (let j = 0; j < nLon; j++) {
+        if (isFinite(out[i]?.[j])) {
+          observed[i][j] = true;
+          all.push(out[i][j]);
+        }
+      }
+    }
     const fallback = medianFinite(all);
+    for (let i = 0; i < nLat; i++) {
+      if (!out[i]) out[i] = Array(nLon).fill(NaN);
+      for (let j = 0; j < nLon; j++) {
+        if (!isFinite(out[i][j])) out[i][j] = NaN;
+      }
+    }
 
-    for (let i = 0; i < nLat; i++) for (let j = 0; j < nLon; j++) if (!isFinite(out[i][j])) out[i][j] = fallback;
-
+    // 欠損点だけを近傍平均で埋める。観測点は一切平均化しない。
     for (let iter = 0; iter < iterations; iter++) {
       const next = out.map(r => r.slice());
+      let changed = 0;
       for (let i = 0; i < nLat; i++) {
         for (let j = 0; j < nLon; j++) {
+          if (observed[i][j] && isFinite(out[i][j])) continue;
           const vals = [];
           for (let di = -1; di <= 1; di++) {
             for (let dj = -1; dj <= 1; dj++) {
+              if (di === 0 && dj === 0) continue;
               const ii = i + di;
               let jj = j + dj;
               if (ii < 0 || ii >= nLat) continue;
               if (jj < 0) jj += nLon;
               if (jj >= nLon) jj -= nLon;
-              const v = out[ii][jj];
+              const v = out[ii]?.[jj];
               if (isFinite(v)) vals.push(v);
             }
           }
-          if (vals.length) next[i][j] = vals.reduce((a, b) => a + b, 0) / vals.length;
+          if (vals.length) {
+            next[i][j] = vals.reduce((a, b) => a + b, 0) / vals.length;
+            changed++;
+          }
         }
       }
       out = next;
+      if (!changed) break;
+    }
+
+    for (let i = 0; i < nLat; i++) {
+      for (let j = 0; j < nLon; j++) {
+        if (!isFinite(out[i][j])) out[i][j] = fallback;
+        out[i][j] = Math.max(0, out[i][j]);
+      }
     }
     return out;
   }
@@ -375,12 +402,15 @@
     return out;
   }
 
-  function fourierSmoothGrid(grid, strength = 0.75) {
+  function fourierSmoothGrid(grid, strength = 0.35) {
     const nLat = gGrid?.nLat || grid.length;
     const nLon = gGrid?.nLon || (grid[0] ? grid[0].length : 0);
-    const filled = inpaintGrid(grid, 3);
-    const keepLon = Math.max(3, Math.round(2 + (nLon / 2 - 2) * (1 - strength)));
-    const keepLat = Math.max(3, Math.round(2 + (nLat / 2 - 2) * (1 - strength)));
+    const filled = inpaintGrid(grid, 8);
+
+    // 低域だけ残すが、強くしすぎると全球が同じ色になる。
+    // strength=0.35なら細部をかなり残し、0.85で大きな波だけに寄せる。
+    const keepLon = Math.max(8, Math.round(nLon * (0.42 - 0.22 * strength)));
+    const keepLat = Math.max(8, Math.round(nLat * (0.42 - 0.22 * strength)));
 
     const rowSmooth = Array.from({ length: nLat }, () => Array(nLon).fill(0));
     for (let i = 0; i < nLat; i++) rowSmooth[i] = lowPassFourier1D(filled[i], keepLon);
@@ -393,13 +423,13 @@
       for (let i = 0; i < nLat; i++) colSmooth[i][j] = sm[i];
     }
 
-    // 高周波ノイズは落とすが、低周波のピークは残す。strengthが強いほどFourier結果に寄せる。
-    const blend = c(0.25 + 0.75 * strength, 0, 1);
+    const blend = c(0.10 + 0.55 * strength, 0, 0.65);
     const out = Array.from({ length: nLat }, () => Array(nLon).fill(0));
     for (let i = 0; i < nLat; i++) {
       for (let j = 0; j < nLon; j++) {
         const raw = isFinite(filled[i][j]) ? filled[i][j] : colSmooth[i][j];
-        out[i][j] = Math.max(0, raw * (1 - blend) + colSmooth[i][j] * blend);
+        const sm = isFinite(colSmooth[i][j]) ? colSmooth[i][j] : raw;
+        out[i][j] = Math.max(0, raw * (1 - blend) + sm * blend);
       }
     }
     return out;
@@ -1183,6 +1213,74 @@
     return tec;
   }
 
+  function getAdaptiveColorEnabled() {
+    const el = document.getElementById("adaptiveColorScaleSelect");
+    if (!el) return true;
+    return el.value !== "fixed";
+  }
+
+  function percentileSorted(sorted, p) {
+    if (!sorted.length) return NaN;
+    const x = c(p, 0, 1) * (sorted.length - 1);
+    const i = Math.floor(x);
+    const f = x - i;
+    const a = sorted[i];
+    const b = sorted[Math.min(sorted.length - 1, i + 1)];
+    return a * (1 - f) + b * f;
+  }
+
+  function adaptiveScaleForFrame(frame, cfg, baseScale) {
+    if (!getAdaptiveColorEnabled()) return baseScale;
+    const m = normalizeDopMode(mapMode);
+    // DOP単独と衛星数は物理的な固定レンジの方が見やすい。
+    if (["satcount", "gdop", "pdop", "hdop", "vdop", "tdop"].includes(m)) return baseScale;
+
+    const dopFrame = isDopLikeMode() ? getDopAllFrame(currentStepIndex) : null;
+    const vals = [];
+    const nLat = gGrid?.nLat || 0;
+    const nLon = gGrid?.nLon || 0;
+    const stepI = Math.max(1, Math.floor(nLat / 80));
+    const stepJ = Math.max(1, Math.floor(nLon / 120));
+    for (let i = 0; i < nLat; i += stepI) {
+      for (let j = 0; j < nLon; j += stepJ) {
+        let v;
+        if (["gdoptec", "pdoptec", "hdoptec", "vdoptec"].includes(m)) {
+          const metric = m.replace("tec", "");
+          const dop = Number(dopFrame?.[metric]?.[i]?.[j]);
+          const tec = Number(frame?.[i]?.[j]);
+          v = (isFinite(dop) && isFinite(tec)) ? dop * tec * cfg.kL1 : NaN;
+        } else {
+          v = modeValue(Number(frame?.[i]?.[j]), i, j, cfg);
+        }
+        if (isFinite(v)) vals.push(v);
+      }
+    }
+    if (vals.length < 8) return baseScale;
+    vals.sort((a, b) => a - b);
+    let p05 = percentileSorted(vals, 0.05);
+    let p45 = percentileSorted(vals, 0.45);
+    let p75 = percentileSorted(vals, 0.75);
+    let p97 = percentileSorted(vals, 0.97);
+
+    const med = percentileSorted(vals, 0.50);
+    let range = p97 - p05;
+    const minRange = m === "tec" ? Math.max(4, med * 0.35) : Math.max(1, Math.abs(med) * 0.35);
+    if (!isFinite(range) || range < minRange) {
+      p05 = Math.max(0, med - minRange / 2);
+      p97 = med + minRange / 2;
+      p45 = p05 + (p97 - p05) * 0.42;
+      p75 = p05 + (p97 - p05) * 0.72;
+    }
+
+    const colors = baseScale.map(s => s.color);
+    return [
+      { limit: +p05.toFixed(2), color: colors[0] || "#0000ff" },
+      { limit: +p45.toFixed(2), color: colors[1] || "#ffffff" },
+      { limit: +p75.toFixed(2), color: colors[2] || "#ffff00" },
+      { limit: +p97.toFixed(2), color: colors[3] || "#ff0000" },
+    ];
+  }
+
   function drawSmoothHeatmap(frame, cfg, scale) {
     const w = tecCanvas.width, h = tecCanvas.height;
     if (w <= 0 || h <= 0) return;
@@ -1272,7 +1370,7 @@
       const frame = currentTecGrid();
       if (!frame) return;
       const cfg = getConfigFromUI();
-      const scale = scaleForMode();
+      const scale = adaptiveScaleForFrame(frame, cfg, scaleForMode());
       drawSmoothHeatmap(frame, cfg, scale);
       tecCtx.globalAlpha = 1.0;
     };
@@ -1284,7 +1382,9 @@
         tecLegendControl.remove();
         tecLegendControl = null;
       }
-      const scale = scaleForMode();
+      const frame = currentTecGrid();
+      const cfg = typeof getConfigFromUI === "function" ? getConfigFromUI() : { kL1: 0.16 };
+      const scale = frame ? adaptiveScaleForFrame(frame, cfg, scaleForMode()) : scaleForMode();
       const title = titleForMode();
       tecLegendControl = L.control({ position: "bottomright" });
       tecLegendControl.onAdd = function () {
