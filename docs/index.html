@@ -592,7 +592,7 @@ Mar 11       Mar 12       Mar 13
         <div class="small">
           ・GPS / Galileo / GLONASS / BeiDou / QZSS のTLEを読み込み、選択衛星だけでDOPを計算します。<br>
           ・各衛星は <b>使用ON/OFF</b> と <b>Active/Inactive</b> を手動切替できます。Inactive衛星はDOP計算から除外します。<br>
-          ・DOPモードでは、GDOP / PDOP / HDOP / VDOP / TDOP と DOP×TEC誤差を表示できます。
+          ・DOPモードでは、GDOP / PDOP / HDOP / VDOP / TDOP と DOP×TEC誤差を表示できます。<br>・TECは欠損補完＋フーリエ低域平滑化で表示し、色レンジは初期設定で自動調整します。
         </div>
         <div class="row small" id="gnssConstellationBox" style="margin-top:6px;">
           <label class="small"><input id="gnssConst_gps" type="checkbox" checked> GPS</label>
@@ -616,11 +616,18 @@ Mar 11       Mar 12       Mar 13
           </div>
           <div>
             <label>フーリエ平滑化</label><br>
-            <select id="fourierSmoothSelect" onchange="requestDraw()">
+            <select id="fourierSmoothSelect" onchange="requestDraw(); if (typeof updateLegend === 'function') updateLegend();">
               <option value="0">OFF</option>
-              <option value="0.45">弱</option>
-              <option value="0.70" selected>標準</option>
-              <option value="0.88">強</option>
+              <option value="0.35" selected>弱（推奨）</option>
+              <option value="0.55">標準</option>
+              <option value="0.78">強</option>
+            </select>
+          </div>
+          <div>
+            <label>TEC色レンジ</label><br>
+            <select id="adaptiveColorScaleSelect" onchange="requestDraw(); if (typeof updateLegend === 'function') updateLegend();">
+              <option value="adaptive" selected>自動</option>
+              <option value="fixed">固定</option>
             </select>
           </div>
         </div>
