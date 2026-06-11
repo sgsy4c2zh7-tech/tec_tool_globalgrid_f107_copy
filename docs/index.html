@@ -541,9 +541,9 @@ Mar 11       Mar 12       Mar 13
       <div class="card">
         <div class="card-header"><h2>8a. NOAA TEC履歴アーカイブ</h2><span>30日保存 / 任意期間再生</span></div>
         <div class="small">
-          ・GitHub Actionsで <b>1日2回</b> NOAA GloTECを取得し、<b>docs/data/tec</b> に30日分保存<br>
-          ・ここでは保存済みの過去TECを読み込み、開始UTC〜終了UTCを選んで動画再生できます<br>
-          ・「過去+予報」は、先にTEC予報を計算してから押すと、履歴の後ろに予報を接続します
+          ・GitHub Actionsで <b>毎日09:00 / 14:00 JST</b> にNOAA GloTECを取得し、<b>docs/data/tec</b> に30日分保存<br>
+          ・保存するTECは <b>NOAA 2時間値</b> のみ。UI側で必要に応じて補間して計算します<br>
+          ・DOP / DOP×TECモードでは、衛星配置を反映するため <b>10分刻み</b> で再生します
         </div>
         <div class="row small" style="margin-top:6px;">
           <div style="flex:1;">
@@ -592,7 +592,7 @@ Mar 11       Mar 12       Mar 13
     <div class="main">
       <div class="card slider-card">
         <div class="slider-row">
-          <span>時間スライダー（0〜4日 / 30分刻み）</span>
+          <span>時間スライダー（TEC:2時間値 / DOP系:10分刻み）</span>
           <input type="range" id="timeSlider" min="0" max="192" value="0" oninput="onSliderChange()">
           <span id="timeLabel">t = 0.0 h</span>
           <span id="utcLabel">UTC: --</span>
@@ -621,7 +621,8 @@ Mar 11       Mar 12       Mar 13
             <option value="2">x2</option>
             <option value="4">x4</option>
           </select>
-          <span class="small">※スライダー範囲は、予報4日または選択した履歴期間に自動変更されます。</span>
+          <label class="small"><input type="checkbox" id="movieAutoPlayAfterLoad"> 読込後に自動再生</label>
+          <span class="small">※TEC系はNOAA 2時間値、DOP/DOP×TEC系は10分刻みで再生します。</span>
         </div>
       </div>
 
