@@ -24,11 +24,14 @@
   let originalSampleAtLatLon = null;
   let originalChangeMapMode = null;
 
-  // NOAAから保存するTECは2時間値。DOP / DOP×TECモードだけ、UI上で10分刻みへ展開する。
-  const TEC_ARCHIVE_STEP_MIN = 120;
+  // data/tecに保存されるTECはNOAA 2時間値。UIではTEC系30分、DOP系10分へ展開する。
+  const TEC_REPLAY_STEP_MIN = 30;
   const DOP_REPLAY_STEP_MIN = 10;
+  const TEC_FORECAST_HOURS = 72;
+  const DEFAULT_TEC_FORECAST_BASE_DAYS = 7;
   let rawDisplayFrames = [];
-  let activeTimelineStepMin = TEC_ARCHIVE_STEP_MIN;
+  let activeTimelineStepMin = TEC_REPLAY_STEP_MIN;
+  let tecSmoothCache = new Map();
   let selectionVersion = 0;
 
   const dopColorScale = [
@@ -188,7 +191,7 @@
 
   function getTimelineLabel() {
     if (isDopLikeMode()) return `DOP系: ${DOP_REPLAY_STEP_MIN}分刻み`;
-    return `TEC系: NOAA 2時間値`;
+    return `TEC系: ${TEC_REPLAY_STEP_MIN}分刻み`;
   }
 
   function adoptCurrentForecastAsRawFramesIfNeeded() {
@@ -207,17 +210,12 @@
     adoptCurrentForecastAsRawFramesIfNeeded();
     if (!rawDisplayFrames.length) return;
     tecInterpCache.clear();
+    tecSmoothCache.clear();
 
-    if (isDopLikeMode() && rawDisplayFrames.length >= 2) {
-      activeTimelineStepMin = DOP_REPLAY_STEP_MIN;
-      gForecastTimes = buildUniformTimeline(rawDisplayFrames, DOP_REPLAY_STEP_MIN);
-      // 既存処理がlengthを見るため、実グリッドはlazy補間し、ここはダミー配列にする。
-      gForecastFrames = new Array(gForecastTimes.length).fill(null);
-    } else {
-      activeTimelineStepMin = TEC_ARCHIVE_STEP_MIN;
-      gForecastTimes = rawDisplayFrames.map(f => f.time);
-      gForecastFrames = rawDisplayFrames.map(f => f.grid);
-    }
+    activeTimelineStepMin = isDopLikeMode() ? DOP_REPLAY_STEP_MIN : TEC_REPLAY_STEP_MIN;
+    gForecastTimes = buildUniformTimeline(rawDisplayFrames, activeTimelineStepMin);
+    // 保存TECは2時間値だが、表示・計算は currentTecGrid() で時間補間する。
+    gForecastFrames = new Array(gForecastTimes.length).fill(null);
 
     if (resetIndex) currentStepIndex = 0;
     currentStepIndex = c(currentStepIndex, 0, Math.max(0, gForecastTimes.length - 1));
@@ -228,51 +226,181 @@
 
   function interpolateGridAtTime(t) {
     if (!rawDisplayFrames.length) return null;
-    if (!isDopLikeMode()) {
-      return rawDisplayFrames[currentStepIndex]?.grid || rawDisplayFrames[0].grid;
-    }
-    const key = t.toISOString();
-    if (tecInterpCache.has(key)) return tecInterpCache.get(key);
+    if (!(t instanceof Date) || isNaN(t.getTime())) return rawDisplayFrames[0].grid;
 
-    const targetMs = t.getTime();
-    if (targetMs <= rawDisplayFrames[0].time.getTime()) return rawDisplayFrames[0].grid;
-    const last = rawDisplayFrames[rawDisplayFrames.length - 1];
-    if (targetMs >= last.time.getTime()) return last.grid;
+    const strength = getFourierSmoothStrength();
+    const smoothKey = `${t.toISOString()}|s=${strength.toFixed(2)}|v=${selectionVersion}`;
+    if (tecSmoothCache.has(smoothKey)) return tecSmoothCache.get(smoothKey);
 
-    let lo = rawDisplayFrames[0];
-    let hi = rawDisplayFrames[rawDisplayFrames.length - 1];
-    for (let k = 0; k < rawDisplayFrames.length - 1; k++) {
-      const a = rawDisplayFrames[k];
-      const b = rawDisplayFrames[k + 1];
-      if (a.time.getTime() <= targetMs && targetMs <= b.time.getTime()) {
-        lo = a; hi = b; break;
+    const rawKey = t.toISOString();
+    let grid = tecInterpCache.get(rawKey);
+    if (!grid) {
+      const targetMs = t.getTime();
+      if (rawDisplayFrames.length === 1 || targetMs <= rawDisplayFrames[0].time.getTime()) {
+        grid = rawDisplayFrames[0].grid;
+      } else {
+        const last = rawDisplayFrames[rawDisplayFrames.length - 1];
+        if (targetMs >= last.time.getTime()) {
+          grid = last.grid;
+        } else {
+          let lo = rawDisplayFrames[0];
+          let hi = rawDisplayFrames[rawDisplayFrames.length - 1];
+          for (let k = 0; k < rawDisplayFrames.length - 1; k++) {
+            const a = rawDisplayFrames[k];
+            const b = rawDisplayFrames[k + 1];
+            if (a.time.getTime() <= targetMs && targetMs <= b.time.getTime()) {
+              lo = a; hi = b; break;
+            }
+          }
+          const span = Math.max(1, hi.time.getTime() - lo.time.getTime());
+          const w = c((targetMs - lo.time.getTime()) / span, 0, 1);
+          if (w <= 1e-9) grid = lo.grid;
+          else if (w >= 1 - 1e-9) grid = hi.grid;
+          else {
+            const nLat = gGrid.nLat, nLon = gGrid.nLon;
+            const out = Array.from({ length: nLat }, () => Array(nLon).fill(0));
+            for (let i = 0; i < nLat; i++) {
+              const rowA = lo.grid[i] || [];
+              const rowB = hi.grid[i] || [];
+              const rowO = out[i];
+              for (let j = 0; j < nLon; j++) {
+                const a = Number(rowA[j]);
+                const b = Number(rowB[j]);
+                if (isFinite(a) && isFinite(b)) rowO[j] = a * (1 - w) + b * w;
+                else if (isFinite(a)) rowO[j] = a;
+                else if (isFinite(b)) rowO[j] = b;
+                else rowO[j] = NaN;
+              }
+            }
+            grid = out;
+          }
+        }
+      }
+      tecInterpCache.set(rawKey, grid);
+      if (tecInterpCache.size > 60) {
+        const firstKey = tecInterpCache.keys().next().value;
+        tecInterpCache.delete(firstKey);
       }
     }
-    const span = Math.max(1, hi.time.getTime() - lo.time.getTime());
-    const w = c((targetMs - lo.time.getTime()) / span, 0, 1);
-    if (w <= 1e-9) return lo.grid;
-    if (w >= 1 - 1e-9) return hi.grid;
 
-    const nLat = gGrid.nLat, nLon = gGrid.nLon;
+    const smoothed = strength > 0 ? fourierSmoothGrid(grid, strength) : inpaintGrid(grid, 1);
+    tecSmoothCache.set(smoothKey, smoothed);
+    if (tecSmoothCache.size > 36) {
+      const firstKey = tecSmoothCache.keys().next().value;
+      tecSmoothCache.delete(firstKey);
+    }
+    return smoothed;
+  }
+
+
+  function getFourierSmoothStrength() {
+    const el = document.getElementById("fourierSmoothSelect");
+    const v = parseFloat(el?.value ?? "0.75");
+    return isFinite(v) ? c(v, 0, 0.95) : 0.75;
+  }
+
+  function medianFinite(vals) {
+    const a = vals.filter(v => isFinite(v)).sort((x, y) => x - y);
+    if (!a.length) return 0;
+    return a[Math.floor(a.length / 2)];
+  }
+
+  function cloneGrid(g) {
+    return (g || []).map(row => (row || []).map(v => {
+      const x = Number(v);
+      return isFinite(x) ? Math.max(0, x) : NaN;
+    }));
+  }
+
+  function inpaintGrid(grid, iterations = 4) {
+    const nLat = gGrid?.nLat || grid.length;
+    const nLon = gGrid?.nLon || (grid[0] ? grid[0].length : 0);
+    let out = cloneGrid(grid);
+    const all = [];
+    for (let i = 0; i < nLat; i++) for (let j = 0; j < nLon; j++) if (isFinite(out[i]?.[j])) all.push(out[i][j]);
+    const fallback = medianFinite(all);
+
+    for (let i = 0; i < nLat; i++) for (let j = 0; j < nLon; j++) if (!isFinite(out[i][j])) out[i][j] = fallback;
+
+    for (let iter = 0; iter < iterations; iter++) {
+      const next = out.map(r => r.slice());
+      for (let i = 0; i < nLat; i++) {
+        for (let j = 0; j < nLon; j++) {
+          const vals = [];
+          for (let di = -1; di <= 1; di++) {
+            for (let dj = -1; dj <= 1; dj++) {
+              const ii = i + di;
+              let jj = j + dj;
+              if (ii < 0 || ii >= nLat) continue;
+              if (jj < 0) jj += nLon;
+              if (jj >= nLon) jj -= nLon;
+              const v = out[ii][jj];
+              if (isFinite(v)) vals.push(v);
+            }
+          }
+          if (vals.length) next[i][j] = vals.reduce((a, b) => a + b, 0) / vals.length;
+        }
+      }
+      out = next;
+    }
+    return out;
+  }
+
+  function lowPassFourier1D(arr, keepHarmonics) {
+    const n = arr.length;
+    if (n <= 2) return arr.slice();
+    const K = Math.max(0, Math.min(Math.floor(n / 2), keepHarmonics));
+    const re = new Array(K + 1).fill(0);
+    const im = new Array(K + 1).fill(0);
+    for (let k = 0; k <= K; k++) {
+      let sr = 0, si = 0;
+      for (let x = 0; x < n; x++) {
+        const ang = -2 * Math.PI * k * x / n;
+        const v = Number(arr[x]) || 0;
+        sr += v * Math.cos(ang);
+        si += v * Math.sin(ang);
+      }
+      re[k] = sr;
+      im[k] = si;
+    }
+    const out = new Array(n).fill(0);
+    for (let x = 0; x < n; x++) {
+      let v = re[0] / n;
+      for (let k = 1; k <= K; k++) {
+        const ang = 2 * Math.PI * k * x / n;
+        v += (2 / n) * (re[k] * Math.cos(ang) - im[k] * Math.sin(ang));
+      }
+      out[x] = Math.max(0, v);
+    }
+    return out;
+  }
+
+  function fourierSmoothGrid(grid, strength = 0.75) {
+    const nLat = gGrid?.nLat || grid.length;
+    const nLon = gGrid?.nLon || (grid[0] ? grid[0].length : 0);
+    const filled = inpaintGrid(grid, 3);
+    const keepLon = Math.max(3, Math.round(2 + (nLon / 2 - 2) * (1 - strength)));
+    const keepLat = Math.max(3, Math.round(2 + (nLat / 2 - 2) * (1 - strength)));
+
+    const rowSmooth = Array.from({ length: nLat }, () => Array(nLon).fill(0));
+    for (let i = 0; i < nLat; i++) rowSmooth[i] = lowPassFourier1D(filled[i], keepLon);
+
+    const colSmooth = Array.from({ length: nLat }, () => Array(nLon).fill(0));
+    for (let j = 0; j < nLon; j++) {
+      const col = new Array(nLat);
+      for (let i = 0; i < nLat; i++) col[i] = rowSmooth[i][j];
+      const sm = lowPassFourier1D(col, keepLat);
+      for (let i = 0; i < nLat; i++) colSmooth[i][j] = sm[i];
+    }
+
+    // 高周波ノイズは落とすが、低周波のピークは残す。strengthが強いほどFourier結果に寄せる。
+    const blend = c(0.25 + 0.75 * strength, 0, 1);
     const out = Array.from({ length: nLat }, () => Array(nLon).fill(0));
     for (let i = 0; i < nLat; i++) {
-      const rowA = lo.grid[i] || [];
-      const rowB = hi.grid[i] || [];
-      const rowO = out[i];
       for (let j = 0; j < nLon; j++) {
-        const a = Number(rowA[j]);
-        const b = Number(rowB[j]);
-        if (isFinite(a) && isFinite(b)) rowO[j] = a * (1 - w) + b * w;
-        else if (isFinite(a)) rowO[j] = a;
-        else if (isFinite(b)) rowO[j] = b;
-        else rowO[j] = NaN;
+        const raw = isFinite(filled[i][j]) ? filled[i][j] : colSmooth[i][j];
+        out[i][j] = Math.max(0, raw * (1 - blend) + colSmooth[i][j] * blend);
       }
-    }
-    tecInterpCache.set(key, out);
-    // 長時間再生でメモリが増えすぎないように簡易上限。
-    if (tecInterpCache.size > 24) {
-      const firstKey = tecInterpCache.keys().next().value;
-      tecInterpCache.delete(firstKey);
     }
     return out;
   }
@@ -295,13 +423,14 @@
     rawDisplayFrames = frames.slice().sort((a, b) => a.time - b.time);
     dopFrameCache.clear();
     tecInterpCache.clear();
+    tecSmoothCache.clear();
     currentStepIndex = 0;
 
     if (typeof initMapIfNeeded === "function") initMapIfNeeded();
     if (typeof updateLegend === "function") updateLegend();
     applyTimelineForCurrentMode(true);
     if (typeof updateKpLabels === "function") updateKpLabels();
-    setV4Status(`${sourceLabel}: NOAA 2時間TEC ${rawDisplayFrames.length}枚を読み込み。表示=${getTimelineLabel()} / ${isoNoMs(rawDisplayFrames[0].time)} 〜 ${isoNoMs(rawDisplayFrames[rawDisplayFrames.length - 1].time)}`);
+    setV4Status(`${sourceLabel}: base ${rawDisplayFrames.length}枚を読み込み。表示=${getTimelineLabel()} / ${isoNoMs(rawDisplayFrames[0].time)} 〜 ${isoNoMs(rawDisplayFrames[rawDisplayFrames.length - 1].time)}`);
     maybeAutoPlayAfterLoad();
   }
 
@@ -344,6 +473,104 @@
     } catch (e) {
       console.error(e);
       setV4Status("過去+予報の読み込み失敗: " + e.message);
+    }
+  }
+
+
+  function getTecForecastBaseDays() {
+    const el = document.getElementById("tecForecastBaseDays");
+    const v = parseFloat(el?.value || String(DEFAULT_TEC_FORECAST_BASE_DAYS));
+    return isFinite(v) ? c(v, 1, 30) : DEFAULT_TEC_FORECAST_BASE_DAYS;
+  }
+
+  function timeOfDayHours(t) {
+    return t.getUTCHours() + t.getUTCMinutes() / 60 + t.getUTCSeconds() / 3600;
+  }
+
+  function buildTemporalFourierForecastFrames(historyFrames, forecastHours = TEC_FORECAST_HOURS, stepMinutes = 120) {
+    if (!historyFrames.length) throw new Error("予報に使えるTEC履歴がありません。");
+    const frames = historyFrames.slice().sort((a, b) => a.time - b.time);
+    const meta = frames[0].gridMeta;
+    const nLat = meta.nLat, nLon = meta.nLon;
+    const H = 3; // 24h周期の第3高調波まで。過学習を避けつつ日変化を残す。
+    const lastTime = frames[frames.length - 1].time;
+    const stepMs = Math.max(1, stepMinutes) * 60000;
+    const nFuture = Math.round(forecastHours * 60 / stepMinutes);
+    const targetTimes = [];
+    for (let k = 1; k <= nFuture; k++) targetTimes.push(new Date(lastTime.getTime() + k * stepMs));
+
+    // 各時刻の位相だけ先に計算。
+    const histPhase = frames.map(f => 2 * Math.PI * timeOfDayHours(f.time) / 24);
+    const targPhase = targetTimes.map(t => 2 * Math.PI * timeOfDayHours(t) / 24);
+
+    const outFrames = targetTimes.map(t => ({
+      time: t,
+      gridMeta: meta,
+      grid: Array.from({ length: nLat }, () => Array(nLon).fill(0)),
+      sourceFile: "data-driven temporal Fourier 3-day forecast",
+      forecast: true,
+    }));
+
+    for (let i = 0; i < nLat; i++) {
+      for (let j = 0; j < nLon; j++) {
+        const y = [];
+        const p = [];
+        for (let n = 0; n < frames.length; n++) {
+          const v = Number(frames[n].grid?.[i]?.[j]);
+          if (isFinite(v)) { y.push(Math.max(0, v)); p.push(histPhase[n]); }
+        }
+        if (!y.length) continue;
+        const mean = y.reduce((a, b) => a + b, 0) / y.length;
+        const a = new Array(H + 1).fill(0);
+        const b = new Array(H + 1).fill(0);
+        for (let h = 1; h <= H; h++) {
+          let ca = 0, sb = 0;
+          for (let n = 0; n < y.length; n++) {
+            ca += y[n] * Math.cos(h * p[n]);
+            sb += y[n] * Math.sin(h * p[n]);
+          }
+          a[h] = (2 / y.length) * ca;
+          b[h] = (2 / y.length) * sb;
+        }
+        for (let k = 0; k < targetTimes.length; k++) {
+          let pred = mean;
+          for (let h = 1; h <= H; h++) pred += a[h] * Math.cos(h * targPhase[k]) + b[h] * Math.sin(h * targPhase[k]);
+          // 外挿暴れを抑える。履歴平均から大きく外れた場合は少し丸める。
+          pred = Math.max(0, pred);
+          outFrames[k].grid[i][j] = pred;
+        }
+      }
+    }
+    return outFrames;
+  }
+
+  async function loadTecDataDriven3DayForecast() {
+    try {
+      setV4Status("data/tec履歴から3日TEC予報を作成中…");
+      await loadTecArchiveIndex();
+      const frames = archiveIndex.frames || [];
+      if (!frames.length) throw new Error("data/tec/index.jsonに履歴がありません。先にNOAA TEC取得workflowを回してください。");
+      const endVal = document.getElementById("archiveEndSelect")?.value || frames[frames.length - 1].time_utc;
+      const endMs = new Date(endVal).getTime();
+      const baseDays = getTecForecastBaseDays();
+      const startMs = endMs - baseDays * 24 * 3600000;
+      const entries = frames.filter(f => {
+        const t = new Date(f.time_utc).getTime();
+        return isFinite(t) && t >= startMs && t <= endMs;
+      });
+      if (entries.length < 6) throw new Error("予報に使う履歴が少なすぎます。基準日数を増やすか、data/tecを蓄積してください。");
+      setV4Status(`TEC履歴読み込み中… 基準${baseDays}日 / ${entries.length}枚`);
+      const history = [];
+      for (const e of entries) history.push(await loadArchiveFrame(e));
+      history.sort((a, b) => a.time - b.time);
+      const forecast = buildTemporalFourierForecastFrames(history, TEC_FORECAST_HOURS, 120);
+      // 表示は履歴末尾24h + 3日予報。計算用rawは2時間値、UIで30分/10分へ補間。
+      const histTailStart = history[history.length - 1].time.getTime() - 24 * 3600000;
+      const histTail = history.filter(f => f.time.getTime() >= histTailStart);
+      setDisplayedFrames(histTail.concat(forecast), `data基準3日TEC予報（Fourier日周期 / 基準${baseDays}日）`);
+    } catch (e) {
+      console.error(e);
+      setV4Status("data基準3日TEC予報の作成失敗: " + e.message);
     }
   }
 
@@ -454,6 +681,7 @@
   function markSelectionChanged() {
     selectionVersion++;
     dopFrameCache.clear();
+    tecSmoothCache.clear();
     updateGnssQuickStatus();
     if (typeof requestDraw === "function") requestDraw();
   }
@@ -1223,6 +1451,7 @@
   window.loadTecArchiveIndex = loadTecArchiveIndex;
   window.loadTecArchiveRange = loadTecArchiveRange;
   window.loadTecArchivePlusCurrentForecast = loadTecArchivePlusCurrentForecast;
+  window.loadTecDataDriven3DayForecast = loadTecDataDriven3DayForecast;
   window.playArchiveMovie = playArchiveMovie;
   window.stopArchiveMovie = stopArchiveMovie;
 
