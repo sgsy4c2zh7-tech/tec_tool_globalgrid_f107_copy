@@ -3,7 +3,7 @@
 (function () {
   const TEC_INDEX_URL = "data/tec/index.json";
   const TEC_BASE_URL = "data/tec/";
-  const SATELLITE_JS_URL = "https://unpkg.com/satellite.js/dist/satellite.min.js";
+  const SATELLITE_JS_URL = "vendor/satellite.min.js";
   const KP_AI_COEFF_URL = "data/ai/kp_coefficients.json";
   const KP_AI_PERF_URL = "data/ai/kp_performance.json";
   const KP_AI_GRID_COEFF_URL = "data/ai/kp_grid_coefficients.json";
@@ -1018,14 +1018,43 @@
   }
 
   function loadScriptOnce(url) {
+    const urls = [
+      url,
+      "vendor/satellite.min.js",
+      "https://unpkg.com/satellite.js/dist/satellite.min.js",
+      "https://cdn.jsdelivr.net/npm/satellite.js/dist/satellite.min.js",
+      "https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js",
+      "https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js",
+    ].filter((v, i, a) => v && a.indexOf(v) === i);
+
     return new Promise((resolve, reject) => {
       if (window.satellite) return resolve();
-      const s = document.createElement("script");
-      s.src = url;
-      s.async = true;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error("satellite.js の読み込みに失敗: " + url));
-      document.head.appendChild(s);
+
+      let idx = 0;
+      const errors = [];
+      const tryNext = () => {
+        if (window.satellite) return resolve();
+        if (idx >= urls.length) {
+          return reject(new Error("satellite.js の読み込みに失敗: " + errors.join(" / ")));
+        }
+        const src = urls[idx++];
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = true;
+        s.onload = () => {
+          if (window.satellite) resolve();
+          else {
+            errors.push(src + " loaded but window.satellite missing");
+            tryNext();
+          }
+        };
+        s.onerror = () => {
+          errors.push(src);
+          tryNext();
+        };
+        document.head.appendChild(s);
+      };
+      tryNext();
     });
   }
 
@@ -2454,6 +2483,53 @@
   }
 
 
+
+  async function debugGnssLoadTest() {
+    const selected = selectedConstellationsFromUi();
+    const out = {
+      selected,
+      satellite_js_loaded_before: !!window.satellite,
+      satellite_js_loaded_after: false,
+      sources: [],
+      current_loaded_count: gnssSatList.length,
+    };
+    try {
+      await loadScriptOnce(SATELLITE_JS_URL);
+      out.satellite_js_loaded_after = !!window.satellite;
+    } catch (e) {
+      out.satellite_js_error = e.message;
+    }
+
+    for (const key of selected) {
+      const src = GNSS_SOURCES[key];
+      const row = { key, label: src?.label || key, local: null, live: null, parsed_records: 0 };
+      for (const mode of ["local", "live"]) {
+        const url = mode === "local" ? src?.url : src?.liveUrl;
+        if (!url) continue;
+        try {
+          const res = await fetch(url, { cache: "no-store" });
+          const text = res.ok ? await res.text() : "";
+          const records = res.ok ? parseTleText(text) : [];
+          row[mode] = {
+            url,
+            ok: res.ok,
+            status: res.status,
+            bytes: text.length,
+            records: records.length,
+            first_line: text.split(/\r?\n/).find(Boolean) || "",
+          };
+          if (!row.parsed_records && records.length) row.parsed_records = records.length;
+        } catch (e) {
+          row[mode] = { url, ok: false, error: e.message };
+        }
+      }
+      out.sources.push(row);
+    }
+    out.current_loaded_count = gnssSatList.length;
+    return out;
+  }
+
+
   window.loadTecArchiveIndex = loadTecArchiveIndex;
   window.loadTecArchiveRange = loadTecArchiveRange;
   window.loadTecArchivePlusCurrentForecast = loadTecArchivePlusCurrentForecast;
@@ -2475,6 +2551,7 @@
   window.setAllSatActive = setAllSatActive;
   window.renderSatelliteSelection = renderSatelliteSelection;
   window.markGnssSelectionChanged = markSelectionChanged;
+  window.swiftDebugGnssLoadTest = debugGnssLoadTest;
   window.swiftBuildPointDopSeries = buildPointDopSeries;
   window.swiftApplyGnssPrnHealthMap = applyGnssPrnHealthMap;
 
@@ -6542,5 +6619,155 @@
   window.swiftExportPointDopExcelV66 = exportPointDopExcelV66;
   window.swiftApplySavedAlmanacHealthV66 = applySavedAlmanacHealthV66;
   readyV66(bootV66);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v6.7 robust GNSS loader diagnostics
+ * Adds read test and improves status when TLE exists but UI does not reflect it.
+ * ========================================================= */
+(function () {
+  function readyV67(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q67(id) { return document.getElementById(id); }
+
+  function injectStyleV67() {
+    if (q67("swiftGnssDebugStyleV67")) return;
+    const st = document.createElement("style");
+    st.id = "swiftGnssDebugStyleV67";
+    st.textContent = `
+      #swiftGnssDebugBoxV67 {
+        margin-top: 8px;
+        border: 1px solid #1f355a;
+        border-radius: 10px;
+        background: #020617;
+        padding: 6px;
+        max-height: 210px;
+        overflow: auto;
+        color: #c8d8f2;
+        font-size: 9px;
+        white-space: pre-wrap;
+        line-height: 1.35;
+      }
+      .swift-v67-ok { color: #86efac; font-weight: 800; }
+      .swift-v67-ng { color: #fecaca; font-weight: 800; }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function ensureDebugUiV67() {
+    const panel = q67("swiftGnssVisiblePanelV66");
+    if (!panel || q67("swiftGnssReadTestBtnV67")) return;
+
+    const row = document.createElement("div");
+    row.className = "swift-v66-row";
+    row.innerHTML = `
+      <button class="swift-v66-btn secondary" id="swiftGnssReadTestBtnV67">TLE読取テスト</button>
+      <button class="swift-v66-btn secondary" id="swiftGnssForceListBtnV67">衛星リスト再表示</button>
+    `;
+    const status = q67("swiftGnssVisibleStatusV66");
+    panel.insertBefore(row, status || panel.lastChild);
+
+    const box = document.createElement("div");
+    box.id = "swiftGnssDebugBoxV67";
+    box.textContent = "TLE読取テストを押すと、local/live/satellite.js/parse件数を表示します。";
+    panel.appendChild(box);
+
+    q67("swiftGnssReadTestBtnV67").onclick = runDebugV67;
+    q67("swiftGnssForceListBtnV67").onclick = () => {
+      try { window.renderSatelliteSelection?.(); } catch {}
+      relocateListV67();
+      setDebugV67("衛星リスト再表示を実行しました。");
+    };
+  }
+
+  function relocateListV67() {
+    const holder = q67("swiftGnssVisibleListV66");
+    const list = q67("satelliteSelectionList");
+    if (holder && list && list.parentElement !== holder) holder.appendChild(list);
+  }
+
+  function setDebugV67(text) {
+    const box = q67("swiftGnssDebugBoxV67");
+    if (box) box.textContent = text;
+  }
+
+  function formatDebugV67(d) {
+    const lines = [];
+    lines.push(`selected: ${Array.isArray(d.selected) ? d.selected.join(", ") : "--"}`);
+    lines.push(`satellite.js before: ${d.satellite_js_loaded_before ? "OK" : "NG"}`);
+    lines.push(`satellite.js after:  ${d.satellite_js_loaded_after ? "OK" : "NG"}`);
+    if (d.satellite_js_error) lines.push(`satellite.js error: ${d.satellite_js_error}`);
+    lines.push(`current loaded count: ${d.current_loaded_count}`);
+    for (const s of d.sources || []) {
+      lines.push("");
+      lines.push(`[${s.label}] parsed=${s.parsed_records}`);
+      for (const mode of ["local", "live"]) {
+        const r = s[mode];
+        if (!r) continue;
+        if (r.ok) {
+          lines.push(`  ${mode}: OK status=${r.status} bytes=${r.bytes} records=${r.records}`);
+          if (r.first_line) lines.push(`       first=${r.first_line.slice(0, 80)}`);
+        } else {
+          lines.push(`  ${mode}: NG ${r.status || ""} ${r.error || ""}`);
+        }
+      }
+    }
+    if (!d.sources?.length) lines.push("GNSSが1つも選択されていません。GPSなどをチェックしてください。");
+    return lines.join("\n");
+  }
+
+  async function runDebugV67() {
+    setDebugV67("TLE読取テスト中…");
+    try {
+      const d = await window.swiftDebugGnssLoadTest?.();
+      if (!d) {
+        setDebugV67("swiftDebugGnssLoadTestが見つかりません。JSが古い可能性があります。Ctrl+F5してください。");
+        return;
+      }
+      setDebugV67(formatDebugV67(d));
+    } catch (e) {
+      setDebugV67("TLE読取テスト失敗: " + e.message);
+    }
+  }
+
+  function patchLoadButtonV67() {
+    const btn = q67("swiftGnssLoadBtnV66");
+    if (!btn || btn.dataset.v67Patched) return;
+    btn.dataset.v67Patched = "1";
+    const old = btn.onclick;
+    btn.onclick = async () => {
+      setDebugV67("GNSS読込中… satellite.js → TLE local/live → parse → SGP4準備");
+      try {
+        if (typeof old === "function") await old();
+        else await window.loadGnssDopData?.();
+      } catch (e) {
+        setDebugV67("GNSS読込エラー: " + e.message);
+      }
+      setTimeout(async () => {
+        relocateListV67();
+        try {
+          const d = await window.swiftDebugGnssLoadTest?.();
+          if (d) setDebugV67(formatDebugV67(d));
+        } catch {}
+      }, 350);
+    };
+  }
+
+  function bootV67() {
+    injectStyleV67();
+    for (const delay of [600, 1200, 2200, 3600]) {
+      setTimeout(() => {
+        ensureDebugUiV67();
+        patchLoadButtonV67();
+        relocateListV67();
+      }, delay);
+    }
+  }
+
+  window.swiftRunGnssDebugV67 = runDebugV67;
+  readyV67(bootV67);
 })();
 
