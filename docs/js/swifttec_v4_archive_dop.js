@@ -1061,7 +1061,8 @@
   function selectedConstellationsFromUi() {
     const out = [];
     for (const [key, src] of Object.entries(GNSS_SOURCES)) {
-      const cb = document.getElementById(`gnssConst_${key}`);
+      const cbVisible = document.getElementById(`gnssConstV66_${key}`);
+      const cb = cbVisible || document.getElementById(`gnssConst_${key}`);
       if (!cb) {
         if (src.checked) out.push(key);
       } else if (cb.checked) {
@@ -6008,7 +6009,7 @@
           <option value="15">15分</option>
           <option value="30">30分</option>
         </select>
-        <button class="swift-v65-btn" onclick="window.swiftRenderPointDopGraphV65()">グラフ更新</button>
+        <button class="swift-v65-btn" onclick="window.swiftRenderPointDopGraphV65()">グラフ更新</button>\n        <button class="swift-v65-btn secondary" onclick="window.swiftExportPointDopExcelV66 && window.swiftExportPointDopExcelV66()">Excel出力</button>
       </div>
       <div class="swift-v65-sub" id="swiftPointDopSelectedV65">地点: 未選択。地図をクリックしてください。</div>
       <canvas id="swiftPointDopCanvasV65"></canvas>
@@ -6119,6 +6120,7 @@
       const stepMin = Number(q65("swiftPointDopStepV65")?.value || 5);
       const series = window.swiftBuildPointDopSeries?.(selectedPointV65.lat, selectedPointV65.lon, { metric, stepMin });
       lastSeriesV65 = series;
+      window.swiftPointDopLastSeriesV65 = series;
       if (status) {
         status.textContent = `地点: click lat=${selectedPointV65.lat.toFixed(3)}, lon=${selectedPointV65.lon.toFixed(3)} / grid lat=${num65(series.cell.lat)}, lon=${num65(series.cell.lon)} / GNSS使用=${series.gnss_active_selected}`;
       }
@@ -6207,5 +6209,338 @@
   window.swiftRenderPointDopGraphV65 = renderPointDopGraphV65;
   window.swiftLoadGpsYumaHealthV65 = loadGpsYumaHealthV65;
   readyV65(bootV65);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v6.6 GNSS visible panel + saved almanac + Excel export
+ * ========================================================= */
+(function () {
+  const GNSS_KEYS_V66 = [
+    ["gps", "GPS"],
+    ["qzss", "QZSS"],
+    ["galileo", "Galileo"],
+    ["glonass", "GLONASS"],
+    ["beidou", "BeiDou"],
+  ];
+
+  function readyV66(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q66(id) { return document.getElementById(id); }
+
+  function injectStyleV66() {
+    if (q66("swiftGnssVisibleStyleV66")) return;
+    const st = document.createElement("style");
+    st.id = "swiftGnssVisibleStyleV66";
+    st.textContent = `
+      .swift-v66-card {
+        margin-top: 10px;
+        border: 1px solid #1f355a;
+        border-radius: 14px;
+        background: rgba(7, 14, 28, .98);
+        padding: 10px;
+      }
+      .swift-v66-title {
+        color: #eaf2ff;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      .swift-v66-sub {
+        color: #9fb0cc;
+        font-size: 10px;
+        line-height: 1.38;
+        margin-top: 3px;
+      }
+      .swift-v66-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .swift-v66-btn {
+        border-radius: 9px;
+        border: 1px solid #3b82f6;
+        background: #1d4ed8;
+        color: white;
+        padding: 6px 9px;
+        font-size: 11px;
+        font-weight: 750;
+        cursor: pointer;
+      }
+      .swift-v66-btn.secondary {
+        border-color: #334155;
+        background: #0f172a;
+      }
+      .swift-v66-btn.warn {
+        border-color: #f59e0b;
+        background: #92400e;
+      }
+      .swift-v66-check {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        border: 1px solid #1f355a;
+        background: #061020;
+        color: #dbeafe;
+        border-radius: 999px;
+        padding: 4px 8px;
+        font-size: 10px;
+      }
+      #swiftGnssVisibleListV66 {
+        max-height: 210px;
+        overflow: auto;
+        margin-top: 8px;
+        border: 1px solid #1f355a;
+        border-radius: 10px;
+        padding: 5px;
+        background: #020617;
+      }
+      #swiftGnssVisibleListV66 table {
+        width: 100%;
+      }
+      #swiftGnssVisibleListV66 th,
+      #swiftGnssVisibleListV66 td {
+        font-size: 9px;
+        padding: 3px 4px;
+      }
+      #swiftGnssVisibleStatusV66 {
+        color: #c8d8f2;
+        font-size: 10px;
+        margin-top: 6px;
+        line-height: 1.35;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function ensureVisibleGnssPanelV66() {
+    const side = q66("swiftAccuracySide") || document.querySelector(".sidebar");
+    if (!side || q66("swiftGnssVisiblePanelV66")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "swiftGnssVisiblePanelV66";
+    panel.className = "swift-v66-card";
+    panel.innerHTML = `
+      <div class="swift-v66-title">GNSS / DOP 可視パネル</div>
+      <div class="swift-v66-sub">
+        TLEは <b>satellite.js の twoline2satrec + propagate</b> でSGP4伝搬しています。
+        表示されない原因は、旧GNSSカードが新UIで非表示になっていたためです。
+      </div>
+      <div class="swift-v66-row" id="swiftGnssConstBoxV66">
+        ${GNSS_KEYS_V66.map(([k, label]) => `
+          <label class="swift-v66-check"><input id="gnssConstV66_${k}" type="checkbox" ${k === "gps" || k === "qzss" ? "checked" : ""}>${label}</label>
+        `).join("")}
+      </div>
+      <div class="swift-v66-row">
+        <button class="swift-v66-btn" id="swiftGnssLoadBtnV66">GNSS TLE読込 / DOP準備</button>
+        <button class="swift-v66-btn secondary" onclick="window.setAllSatSelected && window.setAllSatSelected(true)">全衛星使用</button>
+        <button class="swift-v66-btn secondary" onclick="window.setAllSatSelected && window.setAllSatSelected(false)">全衛星解除</button>
+        <button class="swift-v66-btn secondary" onclick="window.setAllSatActive && window.setAllSatActive(true)">全Active</button>
+        <button class="swift-v66-btn secondary" onclick="window.setAllSatActive && window.setAllSatActive(false)">全Inactive</button>
+      </div>
+      <div class="swift-v66-row">
+        <button class="swift-v66-btn warn" id="swiftApplySavedAlmanacBtnV66">保存済Almanac Health反映</button>
+        <button class="swift-v66-btn secondary" onclick="window.swiftLoadGpsYumaHealthV65 && window.swiftLoadGpsYumaHealthV65()">Live Yuma Health取得</button>
+      </div>
+      <div id="swiftGnssVisibleStatusV66">GNSS未読込</div>
+      <div id="swiftGnssVisibleListV66"></div>
+    `;
+    side.appendChild(panel);
+
+    q66("swiftGnssLoadBtnV66").onclick = async () => {
+      const st = q66("swiftGnssVisibleStatusV66");
+      if (st) st.textContent = "GNSS TLE読込中…";
+      try {
+        await window.loadGnssDopData?.();
+        await applySavedAlmanacHealthV66(false);
+      } finally {
+        relocateSatelliteListV66();
+        updateVisibleGnssStatusV66();
+      }
+    };
+    q66("swiftApplySavedAlmanacBtnV66").onclick = () => applySavedAlmanacHealthV66(true);
+
+    for (const [k] of GNSS_KEYS_V66) {
+      q66(`gnssConstV66_${k}`)?.addEventListener("change", () => updateVisibleGnssStatusV66());
+    }
+  }
+
+  function relocateSatelliteListV66() {
+    const holder = q66("swiftGnssVisibleListV66");
+    if (!holder) return;
+    let list = q66("satelliteSelectionList");
+    if (!list) {
+      list = document.createElement("div");
+      list.id = "satelliteSelectionList";
+      list.innerHTML = '<div class="small">未読込。GNSS TLE読込を押してください。</div>';
+    }
+    if (list.parentElement !== holder) holder.appendChild(list);
+
+    let quick = q66("gnssQuickStatus");
+    if (!quick) {
+      quick = document.createElement("div");
+      quick.id = "gnssQuickStatus";
+      quick.className = "small";
+    }
+    const st = q66("swiftGnssVisibleStatusV66");
+    if (st && quick.parentElement !== st) st.appendChild(quick);
+  }
+
+  function updateVisibleGnssStatusV66(extra = "") {
+    const st = q66("swiftGnssVisibleStatusV66");
+    if (!st) return;
+    const quick = q66("gnssQuickStatus")?.textContent || "";
+    const chosen = GNSS_KEYS_V66
+      .filter(([k]) => q66(`gnssConstV66_${k}`)?.checked)
+      .map(([, label]) => label)
+      .join(", ");
+    st.textContent = `選択: ${chosen || "なし"} / ${quick || "未読込"}${extra ? " / " + extra : ""}`;
+  }
+
+  async function applySavedAlmanacHealthV66(showMissing) {
+    const st = q66("swiftGnssVisibleStatusV66");
+    try {
+      const res = await fetch("data/gnss/gps_almanac_health.json", { cache: "no-store" });
+      if (!res.ok) {
+        if (showMissing && st) st.textContent = "保存済Almanac Healthなし。先にDaily GNSS Almanac workflowを実行してください。";
+        return;
+      }
+      const doc = await res.json();
+      const map = doc.health_by_prn || doc.health || {};
+      const result = window.swiftApplyGnssPrnHealthMap?.(map) || { applied: 0, inactive: 0 };
+      relocateSatelliteListV66();
+      updateVisibleGnssStatusV66(`Almanac ${doc.updated_utc || ""} / applied=${result.applied}, inactive=${result.inactive}`);
+    } catch (e) {
+      if (st) st.textContent = "保存済Almanac Health反映失敗: " + e.message;
+    }
+  }
+
+  function loadSheetJsV66() {
+    return new Promise((resolve, reject) => {
+      if (window.XLSX) return resolve();
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("SheetJSの読み込みに失敗しました。"));
+      document.head.appendChild(s);
+    });
+  }
+
+  function finiteOrBlank(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : "";
+  }
+
+  async function exportPointDopExcelV66() {
+    // If graph was not updated yet, try to build it once.
+    if (!window.swiftPointDopLastSeriesV65 && window.swiftRenderPointDopGraphV65) {
+      window.swiftRenderPointDopGraphV65();
+      await new Promise(r => setTimeout(r, 150));
+    }
+    const series = window.swiftPointDopLastSeriesV65;
+    if (!series || !Array.isArray(series.rows) || !series.rows.length) {
+      alert("出力するグラフデータがありません。地図をクリックして「グラフ更新」を押してください。");
+      return;
+    }
+
+    await loadSheetJsV66();
+
+    const rows = series.rows.map(r => ({
+      time_utc: r.time,
+      selected_lat: finiteOrBlank(r.selected_lat),
+      selected_lon: finiteOrBlank(r.selected_lon),
+      grid_lat: finiteOrBlank(r.lat),
+      grid_lon: finiteOrBlank(r.lon),
+      tec_tecu: finiteOrBlank(r.tec),
+      l1_error_m: finiteOrBlank(r.l1),
+      visible_sat_count: finiteOrBlank(r.count),
+      gdop: finiteOrBlank(r.gdop),
+      pdop: finiteOrBlank(r.pdop),
+      hdop: finiteOrBlank(r.hdop),
+      vdop: finiteOrBlank(r.vdop),
+      tdop: finiteOrBlank(r.tdop),
+      gdop_x_l1_m: finiteOrBlank(r.gdoptec),
+      pdop_x_l1_m: finiteOrBlank(r.pdoptec),
+      hdop_x_l1_m: finiteOrBlank(r.hdoptec),
+      vdop_x_l1_m: finiteOrBlank(r.vdoptec),
+      tdop_x_l1_m: finiteOrBlank(r.tdoptec),
+    }));
+
+    const vals = series.rows.map(r => Number(r.value)).filter(Number.isFinite);
+    const summary = [
+      ["metric", series.metric],
+      ["step_min", series.step_min],
+      ["start_utc", series.start_utc],
+      ["end_utc", series.end_utc],
+      ["selected_lat", series.rows[0]?.selected_lat],
+      ["selected_lon", series.rows[0]?.selected_lon],
+      ["grid_lat", series.cell?.lat],
+      ["grid_lon", series.cell?.lon],
+      ["gnss_total", series.gnss_total],
+      ["gnss_active_selected", series.gnss_active_selected],
+      ["elevation_mask_deg", series.elevation_mask_deg],
+      ["min", vals.length ? Math.min(...vals) : ""],
+      ["avg", vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : ""],
+      ["max", vals.length ? Math.max(...vals) : ""],
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Point 5min Series");
+
+    const lat = Number(series.rows[0]?.selected_lat || 0).toFixed(2);
+    const lon = Number(series.rows[0]?.selected_lon || 0).toFixed(2);
+    const fname = `swifttec_point_dop_${series.metric || "metric"}_${lat}_${lon}.xlsx`;
+    XLSX.writeFile(wb, fname);
+  }
+
+  function patchV65PanelExportButton() {
+    const panel = q66("swiftPointDopPanelV65");
+    if (!panel || q66("swiftPointDopExcelBtnV66")) return;
+    const row = panel.querySelector(".swift-v65-row");
+    if (!row) return;
+    const btn = document.createElement("button");
+    btn.id = "swiftPointDopExcelBtnV66";
+    btn.className = "swift-v65-btn secondary";
+    btn.type = "button";
+    btn.textContent = "Excel出力";
+    btn.onclick = exportPointDopExcelV66;
+    row.appendChild(btn);
+  }
+
+  function patchGnssLoadWrapperV66() {
+    if (window.__swiftGnssLoadWrappedV66) return;
+    const old = window.loadGnssDopData;
+    if (typeof old !== "function") return;
+    window.__swiftGnssLoadWrappedV66 = true;
+    window.loadGnssDopData = async function () {
+      const out = await old.apply(this, arguments);
+      relocateSatelliteListV66();
+      await applySavedAlmanacHealthV66(false);
+      updateVisibleGnssStatusV66();
+      return out;
+    };
+  }
+
+  function bootV66() {
+    injectStyleV66();
+    for (const delay of [300, 900, 1600, 2600]) {
+      setTimeout(() => {
+        ensureVisibleGnssPanelV66();
+        relocateSatelliteListV66();
+        patchV65PanelExportButton();
+        patchGnssLoadWrapperV66();
+        updateVisibleGnssStatusV66();
+      }, delay);
+    }
+  }
+
+  window.swiftExportPointDopExcelV66 = exportPointDopExcelV66;
+  window.swiftApplySavedAlmanacHealthV66 = applySavedAlmanacHealthV66;
+  readyV66(bootV66);
 })();
 
