@@ -3,7 +3,6 @@ name: Train Kp AI Corrector
 on:
   schedule:
     # 前日UTCのNOAA TECがだいたい揃った後に1日1回学習（12:45 JST）
-    # NOAA TEC取得workflowが毎時00/30分に走るため、push競合を避けて45分にずらす
     - cron: '45 3 * * *'
   workflow_dispatch:
 
@@ -19,25 +18,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Train Kp cubic AI corrector
+      - name: Train Kp model-rule AI corrector
         run: python scripts/train_kp_ai_corrector.py
-
       - name: Show generated AI files
         run: |
           echo "--- docs/data/ai ---"
-          if [ -d docs/data/ai ]; then
-            find docs/data/ai -maxdepth 1 -type f -print | sort
-          else
-            echo "docs/data/ai not found"
-          fi
+          find docs/data/ai -maxdepth 1 -type f -print | sort || true
           echo "--- git status ---"
           git status --short
-
       - name: Commit AI updates
         run: |
           git config user.name "github-actions[bot]"
@@ -46,7 +37,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No AI changes to commit"
           else
-            git commit -m "data: update Kp AI corrector"
+            git commit -m "data: update Kp model-rule AI corrector"
             git pull --rebase
             git push
           fi
