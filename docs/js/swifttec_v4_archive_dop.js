@@ -7071,3 +7071,522 @@
   readyV68(bootV68);
 })();
 
+
+/* =========================================================
+ * SWIFT-TEC v6.9 heatmap value threshold editor
+ * Lets the user edit the numeric breakpoints corresponding to colors.
+ * ========================================================= */
+(function () {
+  const GROUPS_V69 = {
+    tec: {
+      label: "TEC [TECU]",
+      unit: "TECU",
+      defaults: [10, 30, 60, 120],
+      colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
+    },
+    gps: {
+      label: "L1電離圏誤差 [m]",
+      unit: "m",
+      defaults: [5, 10, 20, 40],
+      colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
+    },
+    dop: {
+      label: "DOP",
+      unit: "",
+      defaults: [2, 4, 8, 16],
+      colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
+    },
+    doptec: {
+      label: "DOP × L1誤差 [m]",
+      unit: "m",
+      defaults: [5, 10, 20, 40],
+      colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
+    },
+    satcount: {
+      label: "可視衛星数",
+      unit: "機",
+      defaults: [4, 6, 8, 16],
+      colors: ["#ff0000", "#ff9900", "#ffff00", "#00ff00"],
+    },
+  };
+
+  let originalValueToColorV69 = null;
+  let originalUpdateLegendV69 = null;
+
+  function readyV69(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q69(id) { return document.getElementById(id); }
+
+  function modeGroupV69() {
+    const mode = (q69("mapModeSelect")?.value || "tec").toLowerCase();
+    if (mode === "gps") return "gps";
+    if (mode === "satcount") return "satcount";
+    if (["gdop", "pdop", "hdop", "vdop", "tdop", "dop"].includes(mode)) return "dop";
+    if (["gdoptec", "pdoptec", "hdoptec", "vdoptec", "tdoptec", "doptec"].includes(mode)) return "doptec";
+    return "tec";
+  }
+
+  function loadAllLimitsV69() {
+    try {
+      const obj = JSON.parse(localStorage.getItem("swiftHeatmapThresholdsV69") || "{}");
+      return obj && typeof obj === "object" ? obj : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveAllLimitsV69(obj) {
+    localStorage.setItem("swiftHeatmapThresholdsV69", JSON.stringify(obj));
+  }
+
+  function limitsForGroupV69(group) {
+    const defs = GROUPS_V69[group]?.defaults || GROUPS_V69.tec.defaults;
+    const all = loadAllLimitsV69();
+    const arr = Array.isArray(all[group]) ? all[group].map(Number).filter(Number.isFinite) : [];
+    if (arr.length >= 4) return arr.slice(0, 4);
+    return defs.slice();
+  }
+
+  function setLimitsForGroupV69(group, arr) {
+    const nums = arr.map(Number).filter(Number.isFinite).slice(0, 4);
+    if (nums.length !== 4) throw new Error("しきい値は4つ必要です。");
+    for (let i = 1; i < nums.length; i++) {
+      if (nums[i] <= nums[i - 1]) throw new Error("しきい値は小さい順にしてください。");
+    }
+    const all = loadAllLimitsV69();
+    all[group] = nums;
+    saveAllLimitsV69(all);
+  }
+
+  function resetLimitsForGroupV69(group) {
+    const all = loadAllLimitsV69();
+    delete all[group];
+    saveAllLimitsV69(all);
+  }
+
+  function adjustedScaleV69(scale, group = modeGroupV69()) {
+    const sorted = (scale || []).slice().sort((a, b) => Number(a.limit) - Number(b.limit));
+    if (!sorted.length) return scale;
+    const limits = limitsForGroupV69(group);
+    const g = GROUPS_V69[group] || GROUPS_V69.tec;
+
+    return sorted.map((item, idx) => ({
+      limit: Number(limits[Math.min(idx, limits.length - 1)]),
+      color: item.color || g.colors[Math.min(idx, g.colors.length - 1)] || "#ffffff",
+    }));
+  }
+
+  function patchValueToColorV69() {
+    if (originalValueToColorV69) return;
+    if (typeof valueToColor !== "function") return;
+
+    originalValueToColorV69 = valueToColor;
+    valueToColor = function (v, scale) {
+      try {
+        return originalValueToColorV69(v, adjustedScaleV69(scale));
+      } catch (e) {
+        return originalValueToColorV69(v, scale);
+      }
+    };
+    window.valueToColor = valueToColor;
+  }
+
+  function patchLegendV69() {
+    if (originalUpdateLegendV69) return;
+    if (typeof updateLegend !== "function") return;
+
+    originalUpdateLegendV69 = updateLegend;
+    updateLegend = function () {
+      const ret = originalUpdateLegendV69.apply(this, arguments);
+      setTimeout(repaintLegendV69, 20);
+      return ret;
+    };
+    window.updateLegend = updateLegend;
+  }
+
+  function repaintLegendV69() {
+    const canvas = q69("legendBar");
+    if (!canvas || typeof valueToColor !== "function") return;
+    const group = modeGroupV69();
+    const g = GROUPS_V69[group] || GROUPS_V69.tec;
+    const limits = limitsForGroupV69(group);
+    const scale = limits.map((limit, idx) => ({
+      limit,
+      color: g.colors[idx] || g.colors[g.colors.length - 1] || "#ffffff",
+    }));
+
+    const labels = document.querySelector(".tec-legend-labels");
+    if (labels) labels.innerHTML = `<span>${limits[0]}</span><span>${limits[limits.length - 1]}</span>`;
+
+    const title = document.querySelector(".tec-legend-title");
+    if (title && !title.textContent.includes(g.unit)) {
+      // 既存の表示名はなるべく維持する。単位のないDOPは何もしない。
+    }
+
+    const ctx = canvas.getContext("2d");
+    const minV = Number(limits[0]) || 0;
+    const maxV = Number(limits[limits.length - 1]) || 1;
+    for (let y = 0; y < canvas.height; y++) {
+      const v = maxV - (maxV - minV) * (y / Math.max(1, canvas.height - 1));
+      ctx.fillStyle = valueToColor(v, scale);
+      ctx.fillRect(0, y, canvas.width, 1);
+    }
+  }
+
+  function injectStyleV69() {
+    if (q69("swiftHeatmapThresholdStyleV69")) return;
+    const st = document.createElement("style");
+    st.id = "swiftHeatmapThresholdStyleV69";
+    st.textContent = `
+      .swift-v69-card {
+        margin-top: 10px;
+        border: 1px solid #1f355a;
+        border-radius: 14px;
+        background: rgba(7, 14, 28, .98);
+        padding: 10px;
+      }
+      .swift-v69-title {
+        color: #eaf2ff;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      .swift-v69-sub {
+        color: #9fb0cc;
+        font-size: 10px;
+        line-height: 1.38;
+        margin-top: 3px;
+      }
+      .swift-v69-row {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .swift-v69-select,
+      .swift-v69-input {
+        background: #061020;
+        border: 1px solid #2a4774;
+        color: #eaf2ff;
+        border-radius: 9px;
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+      .swift-v69-input {
+        width: 68px;
+      }
+      .swift-v69-btn {
+        border-radius: 9px;
+        border: 1px solid #3b82f6;
+        background: #1d4ed8;
+        color: white;
+        padding: 6px 9px;
+        font-size: 11px;
+        font-weight: 750;
+        cursor: pointer;
+      }
+      .swift-v69-btn.secondary {
+        border-color: #334155;
+        background: #0f172a;
+      }
+      .swift-v69-chip {
+        font-size: 10px;
+        color: #dbeafe;
+        border: 1px solid #1f355a;
+        background: #061020;
+        padding: 4px 7px;
+        border-radius: 999px;
+      }
+      .swift-v69-mini-preview {
+        display: flex;
+        width: 100%;
+        height: 12px;
+        border: 1px solid #1f355a;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #020617;
+      }
+      .swift-v69-mini-preview span {
+        flex: 1 1 auto;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function updateInputsV69() {
+    const group = q69("swiftHeatmapThresholdGroupV69")?.value || modeGroupV69();
+    const limits = limitsForGroupV69(group);
+    for (let i = 0; i < 4; i++) {
+      const el = q69(`swiftHeatmapThreshold${i + 1}V69`);
+      if (el) el.value = limits[i];
+    }
+    const unit = q69("swiftHeatmapThresholdUnitV69");
+    if (unit) unit.textContent = GROUPS_V69[group]?.unit || "";
+
+    const prev = q69("swiftHeatmapThresholdPreviewV69");
+    if (prev) {
+      const colors = GROUPS_V69[group]?.colors || GROUPS_V69.tec.colors;
+      prev.innerHTML = colors.map(c => `<span style="background:${c}"></span>`).join("");
+    }
+  }
+
+  function applyThresholdsV69() {
+    try {
+      const group = q69("swiftHeatmapThresholdGroupV69")?.value || modeGroupV69();
+      const vals = [1, 2, 3, 4].map(i => Number(q69(`swiftHeatmapThreshold${i}V69`)?.value));
+      setLimitsForGroupV69(group, vals);
+      updateInputsV69();
+      refreshMapV69();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function resetThresholdsV69() {
+    const group = q69("swiftHeatmapThresholdGroupV69")?.value || modeGroupV69();
+    resetLimitsForGroupV69(group);
+    updateInputsV69();
+    refreshMapV69();
+  }
+
+  function syncGroupToCurrentModeV69() {
+    const sel = q69("swiftHeatmapThresholdGroupV69");
+    if (sel) sel.value = modeGroupV69();
+    updateInputsV69();
+  }
+
+  function refreshMapV69() {
+    patchValueToColorV69();
+    patchLegendV69();
+    try { if (typeof updateLegend === "function") updateLegend(); } catch {}
+    try { if (typeof requestDraw === "function") requestDraw(); } catch {}
+    setTimeout(() => {
+      try { repaintLegendV69(); } catch {}
+      try { if (typeof requestDraw === "function") requestDraw(); } catch {}
+    }, 120);
+  }
+
+  function ensureThresholdUiV69() {
+    const side = q69("swiftAccuracySide") || document.querySelector(".sidebar");
+    if (!side || q69("swiftHeatmapThresholdPanelV69")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "swiftHeatmapThresholdPanelV69";
+    panel.className = "swift-v69-card";
+    panel.innerHTML = `
+      <div class="swift-v69-title">ヒートマップ数値設定</div>
+      <div class="swift-v69-sub">
+        色に対応するしきい値を変更します。低→高の順に入力してください。計算値そのものは変えません。
+      </div>
+      <div class="swift-v69-row">
+        <select id="swiftHeatmapThresholdGroupV69" class="swift-v69-select">
+          ${Object.entries(GROUPS_V69).map(([k, g]) => `<option value="${k}">${g.label}</option>`).join("")}
+        </select>
+        <button class="swift-v69-btn secondary" id="swiftHeatmapThresholdCurrentV69">現在モード</button>
+      </div>
+      <div class="swift-v69-row">
+        <span class="swift-v69-chip">1</span><input id="swiftHeatmapThreshold1V69" class="swift-v69-input" type="number" step="0.1">
+        <span class="swift-v69-chip">2</span><input id="swiftHeatmapThreshold2V69" class="swift-v69-input" type="number" step="0.1">
+        <span class="swift-v69-chip">3</span><input id="swiftHeatmapThreshold3V69" class="swift-v69-input" type="number" step="0.1">
+        <span class="swift-v69-chip">4</span><input id="swiftHeatmapThreshold4V69" class="swift-v69-input" type="number" step="0.1">
+        <span class="swift-v69-chip" id="swiftHeatmapThresholdUnitV69"></span>
+      </div>
+      <div class="swift-v69-row">
+        <button class="swift-v69-btn" id="swiftHeatmapThresholdApplyV69">反映</button>
+        <button class="swift-v69-btn secondary" id="swiftHeatmapThresholdResetV69">初期値</button>
+      </div>
+      <div class="swift-v69-row">
+        <div id="swiftHeatmapThresholdPreviewV69" class="swift-v69-mini-preview"></div>
+      </div>
+    `;
+
+    const after = q69("swiftHeatmapPalettePanelV68") || q69("swiftGnssVisiblePanelV66") || q69("swiftPointDopPanelV65");
+    if (after && after.parentElement) after.insertAdjacentElement("afterend", panel);
+    else side.appendChild(panel);
+
+    q69("swiftHeatmapThresholdGroupV69")?.addEventListener("change", updateInputsV69);
+    q69("swiftHeatmapThresholdCurrentV69")?.addEventListener("click", syncGroupToCurrentModeV69);
+    q69("swiftHeatmapThresholdApplyV69")?.addEventListener("click", applyThresholdsV69);
+    q69("swiftHeatmapThresholdResetV69")?.addEventListener("click", resetThresholdsV69);
+
+    syncGroupToCurrentModeV69();
+  }
+
+  function patchMapModeChangeV69() {
+    const sel = q69("mapModeSelect");
+    if (!sel || sel.dataset.v69Patched) return;
+    sel.dataset.v69Patched = "1";
+    sel.addEventListener("change", () => {
+      syncGroupToCurrentModeV69();
+      setTimeout(refreshMapV69, 0);
+    });
+  }
+
+  function bootV69() {
+    patchValueToColorV69();
+    patchLegendV69();
+    injectStyleV69();
+    for (const delay of [300, 900, 1600, 2600]) {
+      setTimeout(() => {
+        patchValueToColorV69();
+        patchLegendV69();
+        ensureThresholdUiV69();
+        patchMapModeChangeV69();
+        repaintLegendV69();
+      }, delay);
+    }
+  }
+
+  window.swiftApplyHeatmapThresholdsV69 = applyThresholdsV69;
+  readyV69(bootV69);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v7.0 DOP graph fullscreen mode
+ * Adds fullscreen/focus mode to the selected-point DOP graph panel.
+ * ========================================================= */
+(function () {
+  function readyV70(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q70(id) { return document.getElementById(id); }
+
+  function injectStyleV70() {
+    if (q70("swiftDopGraphFullscreenStyleV70")) return;
+    const st = document.createElement("style");
+    st.id = "swiftDopGraphFullscreenStyleV70";
+    st.textContent = `
+      body.swift-dop-graph-fs-on {
+        overflow: hidden !important;
+      }
+
+      body.swift-dop-graph-fs-on #swiftPointDopPanelV65 {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 2147483600 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        padding: 14px !important;
+        border-radius: 0 !important;
+        background: #020617 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+      }
+
+      body.swift-dop-graph-fs-on #swiftPointDopCanvasV65 {
+        flex: 1 1 auto !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin-top: 10px !important;
+      }
+
+      body.swift-dop-graph-fs-on #swiftPointDopPanelV65 .swift-v65-kpi {
+        flex: 0 0 auto !important;
+      }
+
+      body.swift-dop-graph-fs-on #swiftPointDopPanelV65 .swift-v65-title {
+        font-size: 18px !important;
+      }
+
+      body.swift-dop-graph-fs-on #swiftPointDopFsBtnV70 {
+        background: #b91c1c !important;
+        border-color: #fecaca !important;
+        color: white !important;
+      }
+
+      #swiftPointDopFsBtnV70 {
+        border-radius: 9px;
+        border: 1px solid #60a5fa;
+        background: #1d4ed8;
+        color: white;
+        padding: 6px 9px;
+        font-size: 11px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      #swiftPointDopFsBtnV70:hover {
+        filter: brightness(1.12);
+      }
+
+      @media (max-width: 800px) {
+        body.swift-dop-graph-fs-on #swiftPointDopPanelV65 {
+          padding: 10px !important;
+        }
+        body.swift-dop-graph-fs-on #swiftPointDopPanelV65 .swift-v65-row {
+          gap: 5px !important;
+        }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function rerenderGraphV70() {
+    for (const delay of [0, 80, 180, 360, 800]) {
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch {}
+        try { window.swiftRenderPointDopGraphV65?.(); } catch {}
+      }, delay);
+    }
+  }
+
+  function updateButtonV70() {
+    const btn = q70("swiftPointDopFsBtnV70");
+    if (!btn) return;
+    const on = document.body.classList.contains("swift-dop-graph-fs-on");
+    btn.textContent = on ? "↙ 通常表示" : "⛶ グラフ全画面";
+  }
+
+  function toggleDopGraphFullscreenV70() {
+    const panel = q70("swiftPointDopPanelV65");
+    if (!panel) return;
+    document.body.classList.toggle("swift-dop-graph-fs-on");
+    updateButtonV70();
+    rerenderGraphV70();
+  }
+
+  function ensureButtonV70() {
+    const panel = q70("swiftPointDopPanelV65");
+    if (!panel || q70("swiftPointDopFsBtnV70")) return;
+
+    const rows = panel.querySelectorAll(".swift-v65-row");
+    const row = rows[0] || panel;
+    const btn = document.createElement("button");
+    btn.id = "swiftPointDopFsBtnV70";
+    btn.type = "button";
+    btn.textContent = "⛶ グラフ全画面";
+    btn.onclick = toggleDopGraphFullscreenV70;
+    row.appendChild(btn);
+  }
+
+  function bootV70() {
+    injectStyleV70();
+    for (const delay of [400, 1000, 1800, 3000]) {
+      setTimeout(() => {
+        ensureButtonV70();
+        updateButtonV70();
+      }, delay);
+    }
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && document.body.classList.contains("swift-dop-graph-fs-on")) {
+        document.body.classList.remove("swift-dop-graph-fs-on");
+        updateButtonV70();
+        rerenderGraphV70();
+      }
+    });
+  }
+
+  window.swiftTogglePointDopGraphFullscreenV70 = toggleDopGraphFullscreenV70;
+  readyV70(bootV70);
+})();
+
