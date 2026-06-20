@@ -324,16 +324,53 @@ def to_grid(flat, n_lat, n_lon, digits=6):
     return out
 
 
+
 def summarize_errors(raw: list[float], corr: list[float]) -> dict:
+    base = summarize_errors_at_threshold(raw, corr, HIT_THRESHOLD_TECU)
+    base["threshold_tecu"] = HIT_THRESHOLD_TECU
+    return base
+
+
+def summarize_errors_at_threshold(raw: list[float], corr: list[float], threshold: float) -> dict:
     return {
         "sample_count": len(raw),
         "raw_rmse": None if not raw else round(rmse(raw), 4),
         "corrected_rmse": None if not corr else round(rmse(corr), 4),
         "raw_bias": None if not raw else round(mean(raw), 4),
         "corrected_bias": None if not corr else round(mean(corr), 4),
-        "raw_hit_rate": 0 if not raw else round(sum(abs(e) <= HIT_THRESHOLD_TECU for e in raw) / len(raw), 4),
-        "corrected_hit_rate": 0 if not corr else round(sum(abs(e) <= HIT_THRESHOLD_TECU for e in corr) / len(corr), 4),
+        "raw_hit_rate": 0 if not raw else round(sum(abs(e) <= threshold for e in raw) / len(raw), 4),
+        "corrected_hit_rate": 0 if not corr else round(sum(abs(e) <= threshold for e in corr) / len(corr), 4),
     }
+
+
+def threshold_table(raw: list[float], corr: list[float]) -> dict:
+    return {
+        str(int(th)): summarize_errors_at_threshold(raw, corr, float(th))
+        for th in (5, 10, 15, 20)
+    }
+
+
+KP_BINS = [
+    ("0-2", 0.0, 2.0),
+    ("2-3", 2.0, 3.0),
+    ("3-4", 3.0, 4.0),
+    ("4-5", 4.0, 5.0),
+    ("5-6", 5.0, 6.0),
+    ("6-7", 6.0, 7.0),
+    ("7+", 7.0, 99.0),
+]
+
+
+def kp_bin_label(kp: float) -> str:
+    x = float(kp)
+    for label, lo, hi in KP_BINS:
+        if label == "7+":
+            if x >= lo:
+                return label
+        elif x >= lo and x < hi:
+            return label
+    return "unknown"
+
 
 
 def main() -> int:
@@ -469,6 +506,8 @@ def main() -> int:
     # corrected forecast = previous-day TEC - F(KpB) + F(KpF).
     perf_raw = defaultdict(list)
     perf_corr = defaultdict(list)
+    perf_raw_by_kp = defaultdict(list)
+    perf_corr_by_kp = defaultdict(list)
 
     for rec in pair_records:
         month = rec["month"]
@@ -487,6 +526,10 @@ def main() -> int:
             key = (cell_region[idx], month)
             perf_raw[key].append(raw_err)
             perf_corr[key].append(corr_err)
+
+            kp_label = kp_bin_label(kp_f)
+            perf_raw_by_kp[kp_label].append(raw_err)
+            perf_corr_by_kp[kp_label].append(corr_err)
 
     metrics_region = {r["id"]: {} for r in REGIONS}
     all_raw, all_corr = [], []
@@ -528,6 +571,18 @@ def main() -> int:
         "coefficients_grid": grid_out,
     }
 
+    thresholds_summary = threshold_table(all_raw, all_corr)
+
+    kp_bins_summary = {}
+    for label, _, _ in KP_BINS:
+        raw = perf_raw_by_kp.get(label, [])
+        corr = perf_corr_by_kp.get(label, [])
+        kp_bins_summary[label] = {
+            "kp_bin": label,
+            "thresholds": threshold_table(raw, corr),
+            **summarize_errors(raw, corr),
+        }
+
     perf_doc = {
         "version": "swifttec-kp-model-rule-ai-performance-v1",
         "updated_utc": iso(now),
@@ -536,7 +591,10 @@ def main() -> int:
         "summary": summarize_errors(all_raw, all_corr) | {
             "updated_cells": updated_cells_total,
             "training_pairs": len(pair_records),
+            "thresholds": thresholds_summary,
         },
+        "thresholds": thresholds_summary,
+        "kp_bins": kp_bins_summary,
         "metrics": metrics_region,
     }
 
