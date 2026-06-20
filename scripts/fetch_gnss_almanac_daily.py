@@ -24,6 +24,15 @@ from urllib.request import Request, urlopen
 
 OUT = Path("docs/data/gnss")
 OUT.mkdir(parents=True, exist_ok=True)
+VENDOR = Path("docs/vendor")
+VENDOR.mkdir(parents=True, exist_ok=True)
+
+SATELLITE_JS_URLS = [
+    "https://unpkg.com/satellite.js/dist/satellite.min.js",
+    "https://cdn.jsdelivr.net/npm/satellite.js/dist/satellite.min.js",
+    "https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js",
+    "https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js",
+]
 
 TLE_SOURCES = {
     "gps_latest.tle": "https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle",
@@ -114,6 +123,21 @@ def main() -> int:
         print(f"OK gps_yuma_current.alm health_count={len(h)}")
     else:
         status["almanac"] = {"ok": False, "error": "No Yuma almanac fetched"}
+
+    for url in SATELLITE_JS_URLS:
+        try:
+            lib = fetch_text(url)
+            if "twoline2satrec" not in lib or "propagate" not in lib:
+                raise RuntimeError("downloaded file does not look like satellite.js")
+            (VENDOR / "satellite.min.js").write_text(lib, encoding="utf-8")
+            status["satellite_js"] = {"ok": True, "url": url, "bytes": len(lib.encode("utf-8"))}
+            print(f"OK satellite.min.js from {url}")
+            break
+        except Exception as e:
+            status["satellite_js"] = {"ok": False, "url": url, "error": str(e)}
+            print(f"satellite.js try failed {url}: {e}")
+            time.sleep(0.8)
+
 
     (OUT / "gnss_fetch_status.json").write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0
