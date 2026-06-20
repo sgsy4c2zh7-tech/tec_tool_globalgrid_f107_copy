@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v5.8 – Accuracy First Grid AI Dashboard + Point Readout + Model Rule AI + Fullscreen Heatmap (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
+  <title>SWIFT-TEC v5.9 – Accuracy First Grid AI Dashboard + Point Readout + Model Rule AI + Visible Fullscreen Heatmap Button (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -699,6 +699,9 @@ Mar 11       Mar 12       Mar 13
 
       <div class="card map-card">
         <div id="tecMap">
+          <button id="swiftHeatmapFullscreenBtn" type="button" title="ヒートマップを全画面表示" onclick="window.swiftToggleHeatmapFullscreen && window.swiftToggleHeatmapFullscreen()">
+            <span class="swift-fs-icon">⛶</span> 全画面
+          </button>
           <div id="timeOverlay">UTC: --</div>
         </div>
       </div>
