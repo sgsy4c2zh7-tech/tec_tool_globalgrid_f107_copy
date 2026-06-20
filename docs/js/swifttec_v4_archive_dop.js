@@ -642,27 +642,51 @@
     };
   }
 
+  function kpAiBaseKpAtTime(t) {
+    try {
+      const v = todValueAt(gBaseKpTod, t);
+      if (isFinite(v)) return Number(v);
+    } catch {}
+    // If base Kp is not ready, neutral Kp=3 gives F(KpB)=k0 and keeps the correction bounded.
+    return 3.0;
+  }
+
+  function kpAiFValue(cf, kp) {
+    const x = (isFinite(kp) ? kp : 3.0) - 3.0;
+    return Number(cf.k0 || 0) + Number(cf.k1 || 0) * x + Number(cf.k2 || 0) * x * x + Number(cf.k3 || 0) * x * x * x;
+  }
+
   function applyKpAiCorrectionToGrid(grid, t) {
     if (!kpAiEnabled() || !grid || !gGrid) return grid;
-    const kp = kpAiKpAtTime(t);
+
+    // User model:
+    //   BaseTEC = PrevObservedTEC - F(KpB)
+    //   ForecastTEC = BaseTEC + F(KpF)
+    // Therefore the AI Kp term is not F(KpF) alone.
+    // It is the net Kp term:
+    //   AI_delta = F(KpF) - F(KpB)
+    const kpF = kpAiKpAtTime(t);
+    const kpB = kpAiBaseKpAtTime(t);
     const mk = kpAiMonthKey(t);
     const monthGrid = kpAiGridMonthFor(mk);
-    const x = (isFinite(kp) ? kp : 3.0) - 3.0;
     const lim = kpAiClipLimit();
+
     const out = Array.from({ length: gGrid.nLat }, () => Array(gGrid.nLon).fill(NaN));
     for (let i = 0; i < gGrid.nLat; i++) {
       const lat = gGrid.latArr[i];
       for (let j = 0; j < gGrid.nLon; j++) {
         const v = Number(grid?.[i]?.[j]);
         if (!isFinite(v)) { out[i][j] = NaN; continue; }
+
         let cf = kpAiGridCoeffAt(monthGrid, i, j, lat, gGrid.lonArr[j]);
         if (!cf) {
           const rid = kpAiRegionId(lat, gGrid.lonArr[j]);
           cf = kpAiCoeffFor(rid, mk);
         }
+
         let corr = 0;
         if (cf && Number(cf.sample_count || 0) >= 4) {
-          const y = Number(cf.k0 || 0) + Number(cf.k1 || 0) * x + Number(cf.k2 || 0) * x * x + Number(cf.k3 || 0) * x * x * x;
+          const y = kpAiFValue(cf, kpF) - kpAiFValue(cf, kpB);
           corr = isFinite(y) ? c(y, -lim, lim) : 0;
         }
         out[i][j] = Math.max(0, v + corr);
@@ -3636,5 +3660,725 @@
   };
 
   readyV52(bootV52);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v5.4 heatmap visibility fix
+ * Keep the accuracy dashboard as the main view, but reserve stable
+ * vertical space for the Leaflet heatmap and force a resize redraw.
+ * ========================================================= */
+(function () {
+  function readyV54(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function injectHeatmapFixStyleV54() {
+    if (document.getElementById("swiftHeatmapFixStyleV54")) return;
+    const style = document.createElement("style");
+    style.id = "swiftHeatmapFixStyleV54";
+    style.textContent = `
+      body.swift-accuracy-ui .page {
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      body.swift-accuracy-ui .main {
+        height: 100vh;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      body.swift-accuracy-ui #swiftAccuracyMain {
+        order: 1;
+        flex: 0 0 40vh;
+        max-height: 40vh;
+        min-height: 285px;
+        overflow: auto;
+      }
+
+      body.swift-accuracy-ui .slider-card {
+        order: 2;
+        flex: 0 0 auto;
+      }
+
+      body.swift-accuracy-ui .map-card {
+        order: 3;
+        flex: 1 1 auto !important;
+        min-height: 330px !important;
+        display: flex !important;
+        overflow: hidden;
+      }
+
+      body.swift-accuracy-ui #tecMap {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 330px !important;
+      }
+
+      body.swift-accuracy-ui .leaflet-container {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      body.swift-accuracy-ui .swift-v52-kpi-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 7px;
+        margin-bottom: 8px;
+      }
+
+      body.swift-accuracy-ui .swift-v52-kpi {
+        padding: 8px;
+      }
+
+      body.swift-accuracy-ui .swift-v52-kpi-value {
+        font-size: 18px;
+      }
+
+      body.swift-accuracy-ui .swift-v52-grid-main {
+        grid-template-columns: minmax(0, 1.35fr) minmax(260px, .85fr);
+        gap: 8px;
+      }
+
+      body.swift-accuracy-ui .swift-v52-canvas-big {
+        height: 205px;
+      }
+
+      body.swift-accuracy-ui .swift-v52-canvas-small {
+        height: 125px;
+      }
+
+      body.swift-accuracy-ui .swift-v52-region-list {
+        max-height: 145px;
+      }
+
+      body.swift-accuracy-ui #swiftV52RecentRuns {
+        display: none;
+      }
+
+      @media (max-height: 780px) {
+        body.swift-accuracy-ui #swiftAccuracyMain {
+          flex-basis: 34vh;
+          max-height: 34vh;
+          min-height: 245px;
+        }
+        body.swift-accuracy-ui .swift-v52-canvas-big {
+          height: 170px;
+        }
+        body.swift-accuracy-ui .swift-v52-canvas-small {
+          height: 105px;
+        }
+        body.swift-accuracy-ui .map-card {
+          min-height: 300px !important;
+        }
+        body.swift-accuracy-ui #tecMap {
+          min-height: 300px !important;
+        }
+      }
+
+      @media (max-width: 980px) {
+        body.swift-accuracy-ui .page {
+          height: auto;
+          overflow: auto;
+        }
+        body.swift-accuracy-ui .main {
+          height: auto;
+          overflow: visible;
+        }
+        body.swift-accuracy-ui #swiftAccuracyMain {
+          flex-basis: auto;
+          max-height: none;
+        }
+        body.swift-accuracy-ui .map-card {
+          min-height: 430px !important;
+        }
+        body.swift-accuracy-ui #tecMap {
+          min-height: 430px !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function forceLeafletResizeV54() {
+    // Leaflet is initialized before/while the new dashboard changes layout.
+    // Dispatching resize makes Leaflet recompute the map canvas size.
+    for (const delay of [80, 250, 700, 1300]) {
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch {}
+        try { window.requestDraw?.(); } catch {}
+      }, delay);
+    }
+  }
+
+  function bootHeatmapFixV54() {
+    injectHeatmapFixStyleV54();
+    forceLeafletResizeV54();
+
+    const mapCard = document.querySelector(".map-card");
+    if (mapCard && "ResizeObserver" in window) {
+      const ro = new ResizeObserver(() => forceLeafletResizeV54());
+      ro.observe(mapCard);
+    }
+
+    document.addEventListener("click", (ev) => {
+      const t = ev.target;
+      if (t && (t.id === "swiftV52Span" || t.id === "swiftV52Month" || String(t.className || "").includes("swift-v52"))) {
+        forceLeafletResizeV54();
+      }
+    }, true);
+  }
+
+  readyV54(bootHeatmapFixV54);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v5.5 point readout + NOAA 3-Day forecast automation
+ * - Shows TEC / ionospheric error / DOP values in the clean left UI when the map is clicked.
+ * - Forecast execution downloads NOAA 3-Day Geomagnetic Forecast API first, then runs TEC forecast.
+ * ========================================================= */
+(function () {
+  let oldSwiftV52RunForecast = null;
+
+  function readyV55(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function q55(id) { return document.getElementById(id); }
+
+  function injectStyleV55() {
+    if (q55("swiftPointForecastStyleV55")) return;
+    const st = document.createElement("style");
+    st.id = "swiftPointForecastStyleV55";
+    st.textContent = `
+      .swift-v55-point-card {
+        margin-top: 10px;
+        border: 1px solid #1f355a;
+        border-radius: 13px;
+        background: #061020;
+        padding: 9px;
+      }
+      .swift-v55-point-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        font-weight: 850;
+        color: #eaf2ff;
+      }
+      .swift-v55-point-hint {
+        font-size: 9px;
+        color: #8ba0c2;
+        margin-top: 2px;
+      }
+      .swift-v55-point-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .swift-v55-metric {
+        border: 1px solid #1b2f50;
+        border-radius: 10px;
+        background: #030712;
+        padding: 7px;
+        min-height: 50px;
+      }
+      .swift-v55-metric-label {
+        font-size: 9px;
+        color: #8ea3c4;
+      }
+      .swift-v55-metric-value {
+        margin-top: 3px;
+        font-size: 15px;
+        font-weight: 900;
+        color: #f8fafc;
+        line-height: 1.1;
+      }
+      .swift-v55-point-detail {
+        margin-top: 7px;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 9px;
+        color: #b8c7df;
+        max-height: 92px;
+        overflow: auto;
+        border-top: 1px solid #1f355a;
+        padding-top: 6px;
+      }
+      .swift-v55-switch {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #1f355a;
+        border-radius: 11px;
+        background: #08152a;
+        color: #dbeafe;
+        padding: 7px 8px;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      body.swift-accuracy-ui #swiftV55ForecastOption {
+        display: block;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function parsePointInfoV55(text) {
+    const s = String(text || "");
+    const out = {};
+    const mClicked = s.match(/Clicked:\s*lat=([-\d.]+),\s*lon=([-\d.]+)/i);
+    if (mClicked) {
+      out.lat = mClicked[1];
+      out.lon = mClicked[2];
+    }
+    const mGrid = s.match(/Nearest Grid:\s*lat=([-\d.]+),\s*lon=([-\d.]+)/i);
+    if (mGrid) {
+      out.gridLat = mGrid[1];
+      out.gridLon = mGrid[2];
+    }
+    const mTime = s.match(/Time:\s*([^\n]+)/i);
+    if (mTime) out.time = mTime[1].trim();
+    const mTec = s.match(/TEC:\s*([-\d.]+|NaN)\s*TECU/i);
+    if (mTec) out.tec = mTec[1];
+    const mL1 = s.match(/L1 iono error:\s*([-\d.]+)\s*m/i) || s.match(/GPS L1 error:\s*([-\d.]+)\s*m/i);
+    if (mL1) out.l1 = mL1[1];
+    const mSats = s.match(/Visible GNSS sats:\s*([-\d.]+|--)/i);
+    if (mSats) out.sats = mSats[1];
+    const mPdop = s.match(/PDOP:\s*([-\d.]+|--)/i);
+    if (mPdop) out.pdop = mPdop[1];
+    const mPdopL1 = s.match(/PDOP×L1:\s*([-\d.]+|--)\s*m/i);
+    if (mPdopL1) out.pdopL1 = mPdopL1[1];
+    return out;
+  }
+
+  function updatePointPanelV55(text) {
+    const rawEl = q55("swiftV55PointRaw");
+    if (rawEl) rawEl.textContent = text || "地図をクリックしてください。";
+    const p = parsePointInfoV55(text);
+    const set = (id, val) => { const el = q55(id); if (el) el.textContent = val || "--"; };
+    set("swiftV55PointTec", p.tec && p.tec !== "NaN" ? `${p.tec} TECU` : "--");
+    set("swiftV55PointL1", p.l1 ? `${p.l1} m` : "--");
+    set("swiftV55PointPdop", p.pdop || "--");
+    set("swiftV55PointPdopL1", p.pdopL1 ? `${p.pdopL1} m` : "--");
+    set("swiftV55PointPos", p.lat && p.lon ? `lat ${p.lat}, lon ${p.lon}` : "--");
+    set("swiftV55PointTime", p.time || "--");
+    set("swiftV55PointSats", p.sats || "--");
+  }
+
+  function ensurePointPanelV55() {
+    const side = q55("swiftAccuracySide");
+    if (!side || q55("swiftV55PointCard")) return;
+
+    const option = document.createElement("div");
+    option.id = "swiftV55ForecastOption";
+    option.style.marginTop = "8px";
+    option.innerHTML = `
+      <label class="swift-v55-switch">
+        <input id="swiftV55AutoNoaa3DayKp" type="checkbox" checked>
+        予報時にNOAA 3-Day Kpを自動取得
+      </label>
+      <div class="swift-v52-mini-note" style="margin-top:4px;">
+        TEC入力API取得 → NOAA 3-Day Forecast API取得 → 予報計算 の順で実行
+      </div>
+    `;
+
+    const runBtn = [...side.querySelectorAll("button")].find(b => String(b.textContent || "").includes("予報実行"));
+    if (runBtn && runBtn.parentElement) runBtn.insertAdjacentElement("beforebegin", option);
+    else side.appendChild(option);
+
+    const card = document.createElement("div");
+    card.id = "swiftV55PointCard";
+    card.className = "swift-v55-point-card";
+    card.innerHTML = `
+      <div class="swift-v55-point-title">
+        <span>クリック地点の値</span>
+        <span class="swift-v52-pill">TEC / 誤差</span>
+      </div>
+      <div class="swift-v55-point-hint">地図をクリックすると、その場所に一番近い格子の値を表示します。</div>
+      <div class="swift-v55-point-grid">
+        <div class="swift-v55-metric">
+          <div class="swift-v55-metric-label">TEC</div>
+          <div class="swift-v55-metric-value" id="swiftV55PointTec">--</div>
+        </div>
+        <div class="swift-v55-metric">
+          <div class="swift-v55-metric-label">L1電離圏誤差</div>
+          <div class="swift-v55-metric-value" id="swiftV55PointL1">--</div>
+        </div>
+        <div class="swift-v55-metric">
+          <div class="swift-v55-metric-label">PDOP</div>
+          <div class="swift-v55-metric-value" id="swiftV55PointPdop">--</div>
+        </div>
+        <div class="swift-v55-metric">
+          <div class="swift-v55-metric-label">PDOP×L1誤差</div>
+          <div class="swift-v55-metric-value" id="swiftV55PointPdopL1">--</div>
+        </div>
+      </div>
+      <div class="swift-v55-point-hint" style="margin-top:7px;">
+        <span id="swiftV55PointPos">--</span><br>
+        <span id="swiftV55PointTime">--</span><br>
+        可視衛星数: <span id="swiftV55PointSats">--</span>
+      </div>
+      <div class="swift-v55-point-detail" id="swiftV55PointRaw">地図をクリックしてください。</div>
+    `;
+    side.appendChild(card);
+
+    const pointInfo = q55("pointInfo");
+    if (pointInfo) {
+      updatePointPanelV55(pointInfo.textContent || "");
+      const mo = new MutationObserver(() => updatePointPanelV55(pointInfo.textContent || ""));
+      mo.observe(pointInfo, { childList: true, characterData: true, subtree: true });
+    }
+  }
+
+  async function fetchNoaa3DayKpIfEnabledV55() {
+    const enabled = q55("swiftV55AutoNoaa3DayKp")?.checked !== false;
+    if (!enabled) return;
+    const status = q55("swiftV52Status") || q55("swiftV55ForecastStatus");
+    if (status) status.textContent = "NOAA 3-Day Kp Forecast APIを取得中…";
+    if (typeof window.fetchNoaa3DayGeomagToTextarea === "function") {
+      await window.fetchNoaa3DayGeomagToTextarea();
+      if (status) status.textContent = "NOAA 3-Day Kp Forecast API取得OK。予報計算へ進みます…";
+      return;
+    }
+
+    // Fallback: direct text download into the existing textarea.
+    const url = "https://services.swpc.noaa.gov/text/3-day-forecast.txt";
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`NOAA 3-Day Forecast HTTP ${res.status}`);
+    const txt = await res.text();
+    const ta = q55("noaaKpText");
+    if (ta) ta.value = txt;
+    if (status) status.textContent = "NOAA 3-Day Kp Forecast API取得OK。予報計算へ進みます…";
+  }
+
+  function patchForecastButtonV55() {
+    if (!oldSwiftV52RunForecast && typeof window.swiftV52RunForecast === "function") {
+      oldSwiftV52RunForecast = window.swiftV52RunForecast;
+    }
+    window.swiftV52RunForecast = async function () {
+      try {
+        if (typeof window.swiftV52SyncForecastControls === "function") window.swiftV52SyncForecastControls();
+        await fetchNoaa3DayKpIfEnabledV55();
+        if (oldSwiftV52RunForecast) return await oldSwiftV52RunForecast();
+        const auto = q55("forecastTecAutoFetch");
+        if (auto) auto.checked = true;
+        return await window.runForecast?.();
+      } catch (e) {
+        console.error(e);
+        const status = q55("swiftV52Status") || q55("swiftV55ForecastStatus");
+        if (status) status.textContent = "予報失敗: " + e.message;
+        try { window.logInfo?.("予報失敗: " + e.message); } catch {}
+      }
+    };
+  }
+
+  function bootV55() {
+    injectStyleV55();
+    for (const delay of [700, 1200, 2000]) {
+      setTimeout(() => {
+        ensurePointPanelV55();
+        patchForecastButtonV55();
+      }, delay);
+    }
+  }
+
+  readyV55(bootV55);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v5.6 dynamic KpB/KpF label fix
+ * - KpF is computed from the forecast Kp series by time, not only by slider index.
+ * - KpB is fetched from NOAA Planetary K-index when forecasting, so it no longer
+ *   silently copies KpF when Base Kp is blank.
+ * - Adds a compact Kp status panel to the clean sidebar.
+ * ========================================================= */
+(function () {
+  let originalUpdateKpLabelsV56 = null;
+  let originalSwiftV52RunForecastV56 = null;
+
+  function readyV56(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function q56(id) { return document.getElementById(id); }
+  function finite56(v) { return Number.isFinite(Number(v)); }
+  function fmt56(v, d = 2) { return finite56(v) ? Number(v).toFixed(d) : "--"; }
+  function iso56(t) {
+    return (t instanceof Date && !isNaN(t.getTime())) ? t.toISOString().replace(".000Z", "Z") : "--";
+  }
+
+  function injectStyleV56() {
+    if (q56("swiftKpLabelStyleV56")) return;
+    const st = document.createElement("style");
+    st.id = "swiftKpLabelStyleV56";
+    st.textContent = `
+      .swift-v56-kp-card {
+        margin-top: 10px;
+        border: 1px solid #1f355a;
+        border-radius: 13px;
+        background: #061020;
+        padding: 9px;
+      }
+      .swift-v56-kp-title {
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        font-size:11px;
+        font-weight:850;
+        color:#eaf2ff;
+      }
+      .swift-v56-kp-grid {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:6px;
+        margin-top:8px;
+      }
+      .swift-v56-kp-metric {
+        border:1px solid #1b2f50;
+        border-radius:10px;
+        background:#030712;
+        padding:7px;
+      }
+      .swift-v56-kp-label {
+        font-size:9px;
+        color:#8ea3c4;
+      }
+      .swift-v56-kp-value {
+        margin-top:3px;
+        font-size:18px;
+        font-weight:900;
+        color:#f8fafc;
+      }
+      .swift-v56-kp-note {
+        color:#8ba0c2;
+        font-size:9px;
+        line-height:1.35;
+        margin-top:6px;
+      }
+      .swift-v56-kp-steps {
+        margin-top:7px;
+        white-space:pre-wrap;
+        font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size:9px;
+        color:#b8c7df;
+        max-height:70px;
+        overflow:auto;
+        border-top:1px solid #1f355a;
+        padding-top:6px;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function kpFromForecastSeriesAtV56(t) {
+    if (!(t instanceof Date) || isNaN(t.getTime()) || !Array.isArray(gKpSeries) || !gKpSeries.length) return NaN;
+    // Exact/nearest by time. Kp forecast is 3-hourly, but gKpSeries is expanded to each forecast step.
+    let best = null;
+    let bestDiff = Infinity;
+    for (const r of gKpSeries) {
+      if (!r || !(r.t instanceof Date) || isNaN(r.t.getTime())) continue;
+      const diff = Math.abs(r.t.getTime() - t.getTime());
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = r;
+      }
+    }
+    return finite56(best?.kp) ? Number(best.kp) : NaN;
+  }
+
+  function kpBaseAtV56(t) {
+    try {
+      const v = todValueAt(gBaseKpTod, t);
+      return finite56(v) ? Number(v) : NaN;
+    } catch {
+      return NaN;
+    }
+  }
+
+  function nextKpChangeV56(t) {
+    if (!(t instanceof Date) || isNaN(t.getTime()) || !Array.isArray(gKpSeries) || !gKpSeries.length) return null;
+    const nowKp = kpFromForecastSeriesAtV56(t);
+    const future = gKpSeries
+      .filter(r => r?.t instanceof Date && !isNaN(r.t.getTime()) && r.t.getTime() > t.getTime())
+      .sort((a, b) => a.t - b.t);
+    for (const r of future) {
+      if (Math.abs(Number(r.kp) - nowKp) > 0.001) return r;
+    }
+    return null;
+  }
+
+  function updateKpPanelV56(t, kpF, kpB) {
+    const set = (id, val) => { const el = q56(id); if (el) el.textContent = val; };
+    set("swiftV56KpF", fmt56(kpF));
+    set("swiftV56KpB", fmt56(kpB));
+    set("swiftV56KpTime", iso56(t));
+    const next = nextKpChangeV56(t);
+    set("swiftV56KpNext", next ? `${iso56(next.t)} / KpF=${fmt56(next.kp)}` : "--");
+    const diff = finite56(kpF) && finite56(kpB) ? Number(kpF) - Number(kpB) : NaN;
+    set("swiftV56KpDiff", finite56(diff) ? `${diff >= 0 ? "+" : ""}${diff.toFixed(2)}` : "--");
+
+    const steps = q56("swiftV56KpSteps");
+    if (steps && Array.isArray(gKpSeries) && gKpSeries.length) {
+      const rows = gKpSeries
+        .filter(r => r?.t instanceof Date && !isNaN(r.t.getTime()) && Math.abs(r.t.getTime() - t.getTime()) <= 9 * 3600000)
+        .filter((r, idx, a) => {
+          if (idx === 0) return true;
+          const prev = a[idx - 1];
+          return Math.floor(prev.t.getTime() / (3 * 3600000)) !== Math.floor(r.t.getTime() / (3 * 3600000));
+        })
+        .slice(0, 8)
+        .map(r => `${iso56(r.t).slice(11, 16)}  KpF=${fmt56(r.kp)}`);
+      steps.textContent = rows.length ? rows.join("\n") : "Kp forecast series not ready";
+    }
+  }
+
+  function patchedUpdateKpLabelsV56() {
+    const t = Array.isArray(gForecastTimes) ? gForecastTimes[currentStepIndex] : null;
+    if (!(t instanceof Date) || isNaN(t.getTime())) {
+      if (originalUpdateKpLabelsV56) return originalUpdateKpLabelsV56();
+      return;
+    }
+
+    const kpF = kpFromForecastSeriesAtV56(t);
+    const kpB = kpBaseAtV56(t);
+    const el = q56("kpNowLabel");
+    if (el) el.textContent = `KpF=${fmt56(kpF)} / KpB=${fmt56(kpB)}`;
+    updateKpPanelV56(t, kpF, kpB);
+  }
+
+  async function fetchBaseKpIfBlankV56() {
+    // The old behavior uses KpF as KpB when Base Kp is blank, so both labels become identical.
+    // Fetch actual NOAA 1-day K-index before forecasting to make KpB an independent base input.
+    const ta = q56("baseKpJson");
+    if (ta && String(ta.value || "").trim().length > 8) return;
+    if (typeof window.fetchNoaaPlanetaryKIndex1DayToBase === "function") {
+      const status = q56("swiftV52Status");
+      if (status) status.textContent = "Base用Kp（NOAA K-index 1日分）を取得中…";
+      await window.fetchNoaaPlanetaryKIndex1DayToBase();
+    }
+  }
+
+  function installKpPanelV56() {
+    const side = q56("swiftAccuracySide");
+    if (!side || q56("swiftV56KpCard")) return;
+    const card = document.createElement("div");
+    card.id = "swiftV56KpCard";
+    card.className = "swift-v56-kp-card";
+    card.innerHTML = `
+      <div class="swift-v56-kp-title">
+        <span>Kp 現在値</span>
+        <span class="swift-v52-pill">KpF / KpB</span>
+      </div>
+      <div class="swift-v56-kp-grid">
+        <div class="swift-v56-kp-metric">
+          <div class="swift-v56-kp-label">KpF 予報</div>
+          <div class="swift-v56-kp-value" id="swiftV56KpF">--</div>
+        </div>
+        <div class="swift-v56-kp-metric">
+          <div class="swift-v56-kp-label">KpB Base</div>
+          <div class="swift-v56-kp-value" id="swiftV56KpB">--</div>
+        </div>
+        <div class="swift-v56-kp-metric">
+          <div class="swift-v56-kp-label">差 KpF-KpB</div>
+          <div class="swift-v56-kp-value" id="swiftV56KpDiff">--</div>
+        </div>
+        <div class="swift-v56-kp-metric">
+          <div class="swift-v56-kp-label">次のKpF変化</div>
+          <div class="swift-v56-kp-value" style="font-size:12px;" id="swiftV56KpNext">--</div>
+        </div>
+      </div>
+      <div class="swift-v56-kp-note">
+        KpFはNOAA 3-Day Forecast、KpBはBase抽出用Kpです。KpFは3時間単位なので、30分スライダーでは6コマごとに変わります。
+      </div>
+      <div class="swift-v56-kp-note">時刻: <span id="swiftV56KpTime">--</span></div>
+      <div class="swift-v56-kp-steps" id="swiftV56KpSteps">予報実行後に表示</div>
+    `;
+    const point = q56("swiftV55PointCard");
+    if (point) point.insertAdjacentElement("beforebegin", card);
+    else side.appendChild(card);
+  }
+
+  function installKpLabelPatchV56() {
+    if (!originalUpdateKpLabelsV56 && typeof updateKpLabels === "function") {
+      originalUpdateKpLabelsV56 = updateKpLabels;
+      updateKpLabels = patchedUpdateKpLabelsV56;
+    }
+
+    if (!originalSwiftV52RunForecastV56 && typeof window.swiftV52RunForecast === "function") {
+      originalSwiftV52RunForecastV56 = window.swiftV52RunForecast;
+      window.swiftV52RunForecast = async function () {
+        try {
+          await fetchBaseKpIfBlankV56();
+        } catch (e) {
+          console.warn("Base Kp auto fetch failed:", e);
+        }
+        const result = await originalSwiftV52RunForecastV56();
+        setTimeout(patchedUpdateKpLabelsV56, 80);
+        return result;
+      };
+    }
+  }
+
+  function bootV56() {
+    injectStyleV56();
+    for (const delay of [500, 1000, 1800]) {
+      setTimeout(() => {
+        installKpPanelV56();
+        installKpLabelPatchV56();
+        try { patchedUpdateKpLabelsV56(); } catch {}
+      }, delay);
+    }
+  }
+
+  window.swiftV56UpdateKpLabels = patchedUpdateKpLabelsV56;
+  readyV56(bootV56);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v5.7 model-rule note
+ * ========================================================= */
+(function () {
+  function readyV57(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q57(id) { return document.getElementById(id); }
+
+  function bootV57() {
+    setTimeout(() => {
+      const side = q57("swiftAccuracySide");
+      if (!side || q57("swiftV57ModelRuleNote")) return;
+      const note = document.createElement("div");
+      note.id = "swiftV57ModelRuleNote";
+      note.className = "swift-v56-kp-card";
+      note.innerHTML = `
+        <div class="swift-v56-kp-title">
+          <span>AIモデルルール</span>
+          <span class="swift-v52-pill">v5.7</span>
+        </div>
+        <div class="swift-v56-kp-note">
+          BaseTEC = 前日TEC − F(KpB)<br>
+          ForecastTEC = BaseTEC + F(KpF)<br>
+          AI補正 = F(KpF) − F(KpB)
+        </div>
+      `;
+      const kpCard = q57("swiftV56KpCard");
+      if (kpCard) kpCard.insertAdjacentElement("afterend", note);
+      else side.appendChild(note);
+    }, 1400);
+  }
+  readyV57(bootV57);
 })();
 
