@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v6.0 – Accuracy First Grid AI Dashboard + Point Readout + Model Rule AI + Always Visible Fullscreen Heatmap Button (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
+  <title>SWIFT-TEC v6.1 – Accuracy First Grid AI Dashboard + Point Readout + Model Rule AI + Forced Fullscreen Heatmap (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -686,7 +686,7 @@ Mar 11       Mar 12       Mar 13
         <div class="row small" style="margin-top:4px;">
           <button onclick="playArchiveMovie()">▶ 再生</button>
           <button class="secondary" onclick="stopArchiveMovie()">⏸ 停止</button>
-          <button id="swiftHeatmapFullscreenTopBtn" type="button" style="font-weight:900; border-color:#60a5fa; background:#1d4ed8; color:white;" onclick="window.swiftToggleHeatmapFullscreen && window.swiftToggleHeatmapFullscreen()">⛶ ヒートマップ全画面</button>
+          <button id="swiftHeatmapFullscreenTopBtn" type="button" style="font-weight:900; border-color:#60a5fa; background:#1d4ed8; color:white;" onclick="window.swiftForceHeatmapFullscreen && window.swiftForceHeatmapFullscreen()">⛶ ヒートマップ全画面</button>
           <span>速度:</span>
           <select id="movieSpeedSelect">
             <option value="1">x1</option>
@@ -700,7 +700,7 @@ Mar 11       Mar 12       Mar 13
 
       <div class="card map-card">
         <div id="tecMap">
-          <button id="swiftHeatmapFullscreenBtn" type="button" title="ヒートマップを全画面表示" onclick="window.swiftToggleHeatmapFullscreen && window.swiftToggleHeatmapFullscreen()">
+          <button id="swiftHeatmapFullscreenBtn" type="button" title="ヒートマップを全画面表示" onclick="window.swiftForceHeatmapFullscreen && window.swiftForceHeatmapFullscreen()">
             <span class="swift-fs-icon">⛶</span> 全画面
           </button>
           <div id="timeOverlay">UTC: --</div>
