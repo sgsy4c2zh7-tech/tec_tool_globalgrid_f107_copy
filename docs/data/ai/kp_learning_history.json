@@ -1,5 +1,5 @@
 {
-  "version": "swifttec-kp-cubic-ai-history-v1",
+  "version": "swifttec-kp-model-rule-ai-history-v1",
   "runs": [
     {
       "time_utc": "2026-06-20T10:35:19Z",
@@ -9,6 +9,19 @@
       "corrected_rmse": 1.0044,
       "raw_hit_rate": 0.9976,
       "corrected_hit_rate": 0.9989
+    },
+    {
+      "time_utc": "2026-06-20T11:23:05Z",
+      "sample_count": 1841112,
+      "raw_rmse": 2.1693,
+      "corrected_rmse": 2.1352,
+      "raw_bias": -0.1341,
+      "corrected_bias": -0.1258,
+      "raw_hit_rate": 0.9568,
+      "corrected_hit_rate": 0.9584,
+      "updated_cells": 6552,
+      "training_pairs": 281
     }
-  ]
+  ],
+  "model_rule": "BaseTEC = PrevObservedTEC - F(KpB); ForecastTEC = BaseTEC + F(KpF)"
 }
