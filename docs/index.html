@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v6.1 – Accuracy First Grid AI Dashboard + Point Readout + Model Rule AI + Forced Fullscreen Heatmap (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
+  <title>SWIFT-TEC v6.2 – Accuracy First Grid AI Dashboard + Point Readout + Model Rule AI + Failure Analysis (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -195,6 +195,77 @@
     .sat-inactive { color:#fca5a5; border-color:#7f1d1d; }
     #satelliteSelectionList table td { vertical-align: middle; }
     #satelliteSelectionList select { font-size:10px; padding:1px 3px; }
+
+  
+    /* v6.2: reliable map focus mode. Does not use browser Fullscreen API. */
+    html.swift-map-focus,
+    html.swift-map-focus body {
+      overflow: hidden !important;
+      width: 100vw !important;
+      height: 100vh !important;
+    }
+    html.swift-map-focus .sidebar,
+    html.swift-map-focus #swiftAccuracyMain,
+    html.swift-map-focus .slider-card,
+    html.swift-map-focus .output-card {
+      display: none !important;
+    }
+    html.swift-map-focus .page,
+    html.swift-map-focus .main {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: block !important;
+      overflow: hidden !important;
+      z-index: 2147482000 !important;
+      background: #020617 !important;
+    }
+    html.swift-map-focus .map-card {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      min-height: 100vh !important;
+      display: flex !important;
+      padding: 8px !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      z-index: 2147482500 !important;
+      background: #020617 !important;
+    }
+    html.swift-map-focus #tecMap {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      flex: 1 1 auto !important;
+      border-radius: 10px !important;
+    }
+    #swiftMapFocusExit {
+      display: none;
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 2147483640;
+      background: rgba(185, 28, 28, .95);
+      border: 1px solid #fecaca;
+      color: white;
+      border-radius: 12px;
+      padding: 9px 13px;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0,0,0,.42);
+    }
+    html.swift-map-focus #swiftMapFocusExit {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 4px;
+    }
 
   </style>
 
@@ -686,7 +757,7 @@ Mar 11       Mar 12       Mar 13
         <div class="row small" style="margin-top:4px;">
           <button onclick="playArchiveMovie()">▶ 再生</button>
           <button class="secondary" onclick="stopArchiveMovie()">⏸ 停止</button>
-          <button id="swiftHeatmapFullscreenTopBtn" type="button" style="font-weight:900; border-color:#60a5fa; background:#1d4ed8; color:white;" onclick="window.swiftForceHeatmapFullscreen && window.swiftForceHeatmapFullscreen()">⛶ ヒートマップ全画面</button>
+          <button id="swiftMapFocusButton" type="button" style="font-weight:900; border-color:#60a5fa; background:#1d4ed8; color:white;" onclick="window.swiftEnterMapFocusMode && window.swiftEnterMapFocusMode()">⛶ 地図だけ拡大</button>
           <span>速度:</span>
           <select id="movieSpeedSelect">
             <option value="1">x1</option>
@@ -700,6 +771,7 @@ Mar 11       Mar 12       Mar 13
 
       <div class="card map-card">
         <div id="tecMap">
+          <button id="swiftMapFocusExit" type="button" onclick="window.swiftExitMapFocusMode && window.swiftExitMapFocusMode()">↙ 通常表示</button>
           <button id="swiftHeatmapFullscreenBtn" type="button" title="ヒートマップを全画面表示" onclick="window.swiftForceHeatmapFullscreen && window.swiftForceHeatmapFullscreen()">
             <span class="swift-fs-icon">⛶</span> 全画面
           </button>
@@ -2635,6 +2707,38 @@ SStorm倍率（rStorm）は Mukhtarov風（季節×緯度×Kp）＋tail：
 
     document.addEventListener("DOMContentLoaded", boot);
   </script>
+
+  <script>
+    // v6.2 reliable map focus mode. Works without browser Fullscreen API.
+    (function(){
+      function redraw(){
+        [0,80,180,360,800,1200].forEach(function(d){
+          setTimeout(function(){
+            try { window.dispatchEvent(new Event("resize")); } catch(e) {}
+            try { window.requestDraw && window.requestDraw(); } catch(e) {}
+          }, d);
+        });
+      }
+      window.swiftEnterMapFocusMode = function(){
+        document.documentElement.classList.add("swift-map-focus");
+        redraw();
+      };
+      window.swiftExitMapFocusMode = function(){
+        document.documentElement.classList.remove("swift-map-focus");
+        redraw();
+      };
+      window.swiftToggleMapFocusMode = function(){
+        document.documentElement.classList.toggle("swift-map-focus");
+        redraw();
+      };
+      document.addEventListener("keydown", function(ev){
+        if (ev.key === "Escape" && document.documentElement.classList.contains("swift-map-focus")) {
+          window.swiftExitMapFocusMode();
+        }
+      });
+    })();
+  </script>
+
   <script src="js/swifttec_v4_archive_dop.js"></script>
 </body>
 </html>
