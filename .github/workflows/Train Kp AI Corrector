@@ -1,0 +1,42 @@
+name: Train Kp AI Corrector
+
+on:
+  schedule:
+    # 前日UTCのNOAA TECがだいたい揃った後に1日1回学習（12:30 JST）
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: train-kp-ai-corrector
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Train Kp cubic AI corrector
+        run: python scripts/train_kp_ai_corrector.py
+      - name: Show generated AI files
+        run: |
+          echo "--- docs/data/ai ---"
+          find docs/data/ai -maxdepth 1 -type f -print | sort
+          echo "--- git status ---"
+          git status --short
+      - name: Commit AI updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/data/ai
+          if git diff --cached --quiet; then
+            echo "No AI changes to commit"
+          else
+            git commit -m "data: update Kp AI corrector"
+            git push
+          fi
