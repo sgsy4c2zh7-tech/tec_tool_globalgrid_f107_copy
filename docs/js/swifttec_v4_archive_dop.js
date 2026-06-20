@@ -4382,3 +4382,923 @@
   readyV57(bootV57);
 })();
 
+
+/* =========================================================
+ * SWIFT-TEC v5.8 heatmap fullscreen button
+ * UI-only patch.
+ * ========================================================= */
+(function () {
+  function readyV58(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function q58(id) { return document.getElementById(id); }
+
+  function injectFullscreenStyleV58() {
+    if (q58("swiftFullscreenStyleV58")) return;
+    const style = document.createElement("style");
+    style.id = "swiftFullscreenStyleV58";
+    style.textContent = `
+      .map-card {
+        position: relative;
+      }
+
+      #swiftHeatmapFullscreenBtn {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 1200;
+        border: 1px solid rgba(96,165,250,.85);
+        background: rgba(7, 14, 28, .92);
+        color: #eaf2ff;
+        border-radius: 12px;
+        padding: 8px 11px;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .02em;
+        cursor: pointer;
+        box-shadow: 0 10px 24px rgba(0,0,0,.35);
+        backdrop-filter: blur(6px);
+      }
+
+      #swiftHeatmapFullscreenBtn:hover {
+        background: rgba(29, 78, 216, .95);
+        border-color: #93c5fd;
+      }
+
+      #swiftHeatmapFullscreenBtn .swift-fs-icon {
+        font-size: 14px;
+        margin-right: 4px;
+      }
+
+      .map-card:fullscreen {
+        background: #020617;
+        padding: 10px;
+        display: flex !important;
+        flex-direction: column;
+      }
+
+      .map-card:fullscreen #tecMap {
+        min-height: 0 !important;
+        height: 100% !important;
+        flex: 1 1 auto !important;
+        border-radius: 12px;
+      }
+
+      .map-card:fullscreen #swiftHeatmapFullscreenBtn {
+        top: 18px;
+        right: 18px;
+      }
+
+      .map-card.swift-fs-fallback {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 99999 !important;
+        background: #020617 !important;
+        padding: 10px !important;
+        margin: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        display: flex !important;
+        min-height: 100vh !important;
+        border-radius: 0 !important;
+      }
+
+      .map-card.swift-fs-fallback #tecMap {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        flex: 1 1 auto !important;
+      }
+
+      body.swift-fs-lock {
+        overflow: hidden !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function forceMapResizeV58() {
+    for (const delay of [60, 180, 420, 900]) {
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch {}
+        try { window.requestDraw?.(); } catch {}
+      }, delay);
+    }
+  }
+
+  async function toggleHeatmapFullscreenV58() {
+    const mapCard = document.querySelector(".map-card");
+    if (!mapCard) return;
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      if (mapCard.requestFullscreen) {
+        await mapCard.requestFullscreen();
+        return;
+      }
+    } catch (e) {
+      console.warn("Fullscreen API failed; using fallback.", e);
+    }
+
+    // Fallback for browsers/settings where Fullscreen API is blocked.
+    mapCard.classList.toggle("swift-fs-fallback");
+    document.body.classList.toggle("swift-fs-lock", mapCard.classList.contains("swift-fs-fallback"));
+    updateButtonLabelV58();
+    forceMapResizeV58();
+  }
+
+  function updateButtonLabelV58() {
+    const btn = q58("swiftHeatmapFullscreenBtn");
+    if (!btn) return;
+    const fallback = document.querySelector(".map-card")?.classList.contains("swift-fs-fallback");
+    const on = !!document.fullscreenElement || fallback;
+    btn.innerHTML = on
+      ? '<span class="swift-fs-icon">↙</span> 通常表示'
+      : '<span class="swift-fs-icon">⛶</span> 全画面';
+  }
+
+  function ensureFullscreenButtonV58() {
+    const mapCard = document.querySelector(".map-card");
+    if (!mapCard || q58("swiftHeatmapFullscreenBtn")) return;
+
+    const btn = document.createElement("button");
+    btn.id = "swiftHeatmapFullscreenBtn";
+    btn.type = "button";
+    btn.innerHTML = '<span class="swift-fs-icon">⛶</span> 全画面';
+    btn.title = "ヒートマップを全画面表示";
+    btn.addEventListener("click", toggleHeatmapFullscreenV58);
+    mapCard.appendChild(btn);
+
+    document.addEventListener("fullscreenchange", () => {
+      updateButtonLabelV58();
+      forceMapResizeV58();
+    });
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") {
+        const mc = document.querySelector(".map-card");
+        if (mc?.classList.contains("swift-fs-fallback")) {
+          mc.classList.remove("swift-fs-fallback");
+          document.body.classList.remove("swift-fs-lock");
+          updateButtonLabelV58();
+          forceMapResizeV58();
+        }
+      }
+    });
+
+    forceMapResizeV58();
+  }
+
+  function bootV58() {
+    injectFullscreenStyleV58();
+    for (const delay of [300, 900, 1600]) {
+      setTimeout(ensureFullscreenButtonV58, delay);
+    }
+  }
+
+  window.swiftToggleHeatmapFullscreen = toggleHeatmapFullscreenV58;
+  readyV58(bootV58);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v5.9 fullscreen button visibility fix
+ * The v5.8 button could be hidden behind the huge UTC overlay because
+ * #timeOverlay uses z-index:9999. This patch pins the button inside
+ * #tecMap with a higher z-index and lower position.
+ * ========================================================= */
+(function () {
+  function readyV59(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function q59(id) { return document.getElementById(id); }
+
+  function injectStyleV59() {
+    if (q59("swiftFullscreenVisibleStyleV59")) return;
+    const style = document.createElement("style");
+    style.id = "swiftFullscreenVisibleStyleV59";
+    style.textContent = `
+      #tecMap {
+        position: relative !important;
+      }
+
+      #swiftHeatmapFullscreenBtn {
+        position: absolute !important;
+        top: 92px !important;
+        right: 18px !important;
+        z-index: 10080 !important;
+        display: inline-flex !important;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid rgba(96,165,250,.95) !important;
+        background: rgba(7, 14, 28, .94) !important;
+        color: #eaf2ff !important;
+        border-radius: 12px !important;
+        padding: 9px 12px !important;
+        font-size: 12px !important;
+        font-weight: 850 !important;
+        letter-spacing: .02em;
+        cursor: pointer !important;
+        box-shadow: 0 10px 24px rgba(0,0,0,.42);
+        backdrop-filter: blur(6px);
+        pointer-events: auto !important;
+      }
+
+      #swiftHeatmapFullscreenBtn:hover {
+        background: rgba(29, 78, 216, .97) !important;
+        border-color: #bfdbfe !important;
+      }
+
+      #swiftHeatmapFullscreenBtn .swift-fs-icon {
+        font-size: 15px;
+        line-height: 1;
+      }
+
+      #tecMap:fullscreen {
+        background: #020617;
+        padding: 10px;
+      }
+
+      #tecMap:fullscreen #swiftHeatmapFullscreenBtn {
+        top: 92px !important;
+        right: 22px !important;
+      }
+
+      #tecMap.swift-fs-fallback {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 99999 !important;
+        background: #020617 !important;
+        padding: 10px !important;
+        margin: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        border-radius: 0 !important;
+      }
+
+      body.swift-fs-lock {
+        overflow: hidden !important;
+      }
+
+      @media (max-width: 1100px) {
+        #swiftHeatmapFullscreenBtn {
+          top: 74px !important;
+          right: 14px !important;
+          padding: 8px 10px !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function forceResizeV59() {
+    for (const delay of [50, 160, 360, 800]) {
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch {}
+        try { window.requestDraw?.(); } catch {}
+      }, delay);
+    }
+  }
+
+  async function toggleV59() {
+    const map = q59("tecMap");
+    if (!map) return;
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      if (map.requestFullscreen) {
+        await map.requestFullscreen();
+        return;
+      }
+    } catch (e) {
+      console.warn("Fullscreen API failed; using fallback", e);
+    }
+
+    map.classList.toggle("swift-fs-fallback");
+    document.body.classList.toggle("swift-fs-lock", map.classList.contains("swift-fs-fallback"));
+    updateLabelV59();
+    forceResizeV59();
+  }
+
+  function updateLabelV59() {
+    const btn = q59("swiftHeatmapFullscreenBtn");
+    if (!btn) return;
+    const fallback = q59("tecMap")?.classList.contains("swift-fs-fallback");
+    const on = !!document.fullscreenElement || fallback;
+    btn.innerHTML = on
+      ? '<span class="swift-fs-icon">↙</span> 通常表示'
+      : '<span class="swift-fs-icon">⛶</span> 全画面';
+  }
+
+  function ensureButtonV59() {
+    const map = q59("tecMap");
+    if (!map) return;
+
+    let btn = q59("swiftHeatmapFullscreenBtn");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.id = "swiftHeatmapFullscreenBtn";
+      btn.type = "button";
+      btn.title = "ヒートマップを全画面表示";
+      btn.innerHTML = '<span class="swift-fs-icon">⛶</span> 全画面';
+      map.appendChild(btn);
+    }
+
+    btn.onclick = toggleV59;
+    document.addEventListener("fullscreenchange", () => {
+      updateLabelV59();
+      forceResizeV59();
+    });
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") {
+        const mapEl = q59("tecMap");
+        if (mapEl?.classList.contains("swift-fs-fallback")) {
+          mapEl.classList.remove("swift-fs-fallback");
+          document.body.classList.remove("swift-fs-lock");
+          updateLabelV59();
+          forceResizeV59();
+        }
+      }
+    });
+
+    updateLabelV59();
+    forceResizeV59();
+  }
+
+  function bootV59() {
+    injectStyleV59();
+    for (const delay of [200, 700, 1400]) {
+      setTimeout(ensureButtonV59, delay);
+    }
+  }
+
+  window.swiftToggleHeatmapFullscreen = toggleV59;
+  readyV59(bootV59);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v6.0 always-visible fullscreen button
+ * Adds a second button in the slider controls row, so the fullscreen
+ * control is visible even if the map overlay button is hidden by layout.
+ * ========================================================= */
+(function () {
+  function readyV60(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q60(id) { return document.getElementById(id); }
+
+  function injectStyleV60() {
+    if (q60("swiftAlwaysFullscreenStyleV60")) return;
+    const style = document.createElement("style");
+    style.id = "swiftAlwaysFullscreenStyleV60";
+    style.textContent = `
+      #swiftHeatmapFullscreenTopBtn {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 4px;
+        min-height: 24px;
+        border-radius: 8px !important;
+        padding: 4px 10px !important;
+        box-shadow: 0 0 0 1px rgba(96,165,250,.28), 0 6px 14px rgba(0,0,0,.25);
+        cursor: pointer !important;
+      }
+      #swiftHeatmapFullscreenTopBtn:hover {
+        background: #2563eb !important;
+      }
+      #swiftHeatmapFullscreenBtn {
+        top: 110px !important;
+        right: 20px !important;
+        z-index: 11000 !important;
+      }
+      #tecMap.swift-fs-fallback,
+      .map-card.swift-fs-fallback {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 99999 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        background: #020617 !important;
+        padding: 10px !important;
+        margin: 0 !important;
+      }
+      body.swift-fs-lock {
+        overflow: hidden !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function forceResizeV60() {
+    for (const delay of [60, 180, 420, 900]) {
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch {}
+        try { window.requestDraw?.(); } catch {}
+      }, delay);
+    }
+  }
+
+  async function toggleV60() {
+    const target = document.getElementById("tecMap") || document.querySelector(".map-card");
+    if (!target) return;
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      if (target.requestFullscreen) {
+        await target.requestFullscreen();
+        return;
+      }
+    } catch (e) {
+      console.warn("Fullscreen API failed; using fallback", e);
+    }
+
+    target.classList.toggle("swift-fs-fallback");
+    document.body.classList.toggle("swift-fs-lock", target.classList.contains("swift-fs-fallback"));
+    updateLabelsV60();
+    forceResizeV60();
+  }
+
+  function updateLabelsV60() {
+    const target = document.getElementById("tecMap") || document.querySelector(".map-card");
+    const on = !!document.fullscreenElement || !!target?.classList.contains("swift-fs-fallback");
+    const labels = on
+      ? { top: "↙ 通常表示", map: '<span class="swift-fs-icon">↙</span> 通常表示' }
+      : { top: "⛶ ヒートマップ全画面", map: '<span class="swift-fs-icon">⛶</span> 全画面' };
+    const topBtn = q60("swiftHeatmapFullscreenTopBtn");
+    if (topBtn) topBtn.textContent = labels.top;
+    const mapBtn = q60("swiftHeatmapFullscreenBtn");
+    if (mapBtn) mapBtn.innerHTML = labels.map;
+  }
+
+  function ensureTopButtonV60() {
+    let topBtn = q60("swiftHeatmapFullscreenTopBtn");
+    if (!topBtn) {
+      const sliderRows = document.querySelectorAll(".slider-card .row.small, .slider-card .slider-row");
+      const row = sliderRows[sliderRows.length - 1] || document.querySelector(".slider-card");
+      if (!row) return;
+      topBtn = document.createElement("button");
+      topBtn.id = "swiftHeatmapFullscreenTopBtn";
+      topBtn.type = "button";
+      topBtn.textContent = "⛶ ヒートマップ全画面";
+      topBtn.style.fontWeight = "900";
+      topBtn.style.borderColor = "#60a5fa";
+      topBtn.style.background = "#1d4ed8";
+      topBtn.style.color = "white";
+      row.insertBefore(topBtn, row.firstChild);
+    }
+    topBtn.onclick = toggleV60;
+
+    const mapBtn = q60("swiftHeatmapFullscreenBtn");
+    if (mapBtn) mapBtn.onclick = toggleV60;
+
+    document.addEventListener("fullscreenchange", () => {
+      updateLabelsV60();
+      forceResizeV60();
+    });
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") {
+        const target = document.getElementById("tecMap") || document.querySelector(".map-card");
+        if (target?.classList.contains("swift-fs-fallback")) {
+          target.classList.remove("swift-fs-fallback");
+          document.body.classList.remove("swift-fs-lock");
+          updateLabelsV60();
+          forceResizeV60();
+        }
+      }
+    });
+    updateLabelsV60();
+  }
+
+  function bootV60() {
+    injectStyleV60();
+    for (const delay of [100, 400, 1000, 1800]) {
+      setTimeout(ensureTopButtonV60, delay);
+    }
+  }
+
+  window.swiftToggleHeatmapFullscreen = toggleV60;
+  readyV60(bootV60);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v6.1 forced fullscreen heatmap
+ * Does not depend on browser Fullscreen API. It fixes .map-card to the viewport.
+ * This avoids cases where requestFullscreen is blocked or appears to do nothing.
+ * ========================================================= */
+(function () {
+  function readyV61(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function q61(id) { return document.getElementById(id); }
+
+  function injectStyleV61() {
+    if (q61("swiftForcedFullscreenStyleV61")) return;
+    const style = document.createElement("style");
+    style.id = "swiftForcedFullscreenStyleV61";
+    style.textContent = `
+      body.swift-map-fs-on {
+        overflow: hidden !important;
+      }
+
+      body.swift-map-fs-on .map-card {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        z-index: 2147483000 !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        border-radius: 0 !important;
+        background: #020617 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        box-shadow: none !important;
+      }
+
+      body.swift-map-fs-on #tecMap {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        flex: 1 1 auto !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+      }
+
+      body.swift-map-fs-on .leaflet-container {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      body.swift-map-fs-on #swiftHeatmapFullscreenBtn {
+        display: inline-flex !important;
+        position: absolute !important;
+        top: 18px !important;
+        right: 18px !important;
+        z-index: 2147483640 !important;
+        background: rgba(185, 28, 28, .95) !important;
+        border: 1px solid #fecaca !important;
+        color: white !important;
+      }
+
+      #swiftHeatmapFullscreenTopBtn {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        min-height: 24px !important;
+        border-radius: 8px !important;
+        padding: 4px 10px !important;
+        border-color: #60a5fa !important;
+        background: #1d4ed8 !important;
+        color: white !important;
+        font-weight: 900 !important;
+        cursor: pointer !important;
+      }
+
+      #swiftHeatmapFullscreenTopBtn:hover {
+        background: #2563eb !important;
+      }
+
+      #swiftHeatmapFullscreenBtn {
+        position: absolute !important;
+        top: 110px !important;
+        right: 20px !important;
+        z-index: 11000 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        border-radius: 10px !important;
+        padding: 8px 11px !important;
+        border: 1px solid #60a5fa !important;
+        background: rgba(7,14,28,.94) !important;
+        color: #eaf2ff !important;
+        font-weight: 850 !important;
+        cursor: pointer !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function forceMapResizeV61() {
+    for (const delay of [0, 80, 180, 360, 700, 1200]) {
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch {}
+        try { window.requestDraw?.(); } catch {}
+      }, delay);
+    }
+  }
+
+  function updateLabelsV61() {
+    const on = document.body.classList.contains("swift-map-fs-on");
+    const top = q61("swiftHeatmapFullscreenTopBtn");
+    if (top) top.textContent = on ? "↙ 通常表示に戻す" : "⛶ ヒートマップ全画面";
+    const map = q61("swiftHeatmapFullscreenBtn");
+    if (map) map.innerHTML = on
+      ? '<span class="swift-fs-icon">↙</span> 通常表示'
+      : '<span class="swift-fs-icon">⛶</span> 全画面';
+  }
+
+  function toggleForcedFullscreenV61() {
+    document.body.classList.toggle("swift-map-fs-on");
+    updateLabelsV61();
+    forceMapResizeV61();
+  }
+
+  function ensureButtonsV61() {
+    const sliderCard = document.querySelector(".slider-card");
+    let topBtn = q61("swiftHeatmapFullscreenTopBtn");
+    if (!topBtn && sliderCard) {
+      const row = sliderCard.querySelector(".row.small") || sliderCard.querySelector(".slider-row") || sliderCard;
+      topBtn = document.createElement("button");
+      topBtn.id = "swiftHeatmapFullscreenTopBtn";
+      topBtn.type = "button";
+      topBtn.textContent = "⛶ ヒートマップ全画面";
+      row.insertBefore(topBtn, row.firstChild);
+    }
+    if (topBtn) {
+      topBtn.onclick = toggleForcedFullscreenV61;
+      topBtn.disabled = false;
+    }
+
+    const tecMap = q61("tecMap");
+    let mapBtn = q61("swiftHeatmapFullscreenBtn");
+    if (!mapBtn && tecMap) {
+      mapBtn = document.createElement("button");
+      mapBtn.id = "swiftHeatmapFullscreenBtn";
+      mapBtn.type = "button";
+      mapBtn.innerHTML = '<span class="swift-fs-icon">⛶</span> 全画面';
+      tecMap.appendChild(mapBtn);
+    }
+    if (mapBtn) {
+      mapBtn.onclick = toggleForcedFullscreenV61;
+      mapBtn.disabled = false;
+    }
+
+    updateLabelsV61();
+  }
+
+  function bootV61() {
+    injectStyleV61();
+    for (const delay of [50, 250, 700, 1400, 2400]) {
+      setTimeout(ensureButtonsV61, delay);
+    }
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && document.body.classList.contains("swift-map-fs-on")) {
+        document.body.classList.remove("swift-map-fs-on");
+        updateLabelsV61();
+        forceMapResizeV61();
+      }
+    });
+  }
+
+  window.swiftForceHeatmapFullscreen = toggleForcedFullscreenV61;
+  window.swiftToggleHeatmapFullscreen = toggleForcedFullscreenV61;
+  readyV61(bootV61);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v6.2 failure analysis UI
+ * Shows hit-rate by TEC error threshold and by Kp bin.
+ * Purpose: find conditions where forecast misses.
+ * ========================================================= */
+(function () {
+  let failPerfV62 = null;
+
+  function readyV62(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q62(id) { return document.getElementById(id); }
+  function pct62(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : "--";
+  }
+  function num62(v, d = 2) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(d) : "--";
+  }
+
+  function injectStyleV62() {
+    if (q62("swiftFailAnalysisStyleV62")) return;
+    const st = document.createElement("style");
+    st.id = "swiftFailAnalysisStyleV62";
+    st.textContent = `
+      .swift-v62-card {
+        background: rgba(7, 14, 28, .98);
+        border: 1px solid #1f355a;
+        border-radius: 14px;
+        padding: 10px;
+        margin-top: 10px;
+      }
+      .swift-v62-title {
+        font-size: 13px;
+        font-weight: 900;
+        color: #eaf2ff;
+        margin-bottom: 2px;
+      }
+      .swift-v62-sub {
+        font-size: 10px;
+        color: #9fb0cc;
+        margin-bottom: 8px;
+      }
+      .swift-v62-grid {
+        display: grid;
+        grid-template-columns: minmax(280px, .85fr) minmax(360px, 1.15fr);
+        gap: 10px;
+      }
+      .swift-v62-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px;
+      }
+      .swift-v62-table th,
+      .swift-v62-table td {
+        border: 1px solid #1f355a;
+        padding: 5px 6px;
+        text-align: right;
+      }
+      .swift-v62-table th:first-child,
+      .swift-v62-table td:first-child {
+        text-align: left;
+      }
+      .swift-v62-table th {
+        background: #0b1730;
+        color: #bcd0ee;
+      }
+      .swift-v62-bad { color: #fecaca; font-weight: 850; }
+      .swift-v62-good { color: #bbf7d0; font-weight: 850; }
+      .swift-v62-barbox {
+        width: 100%;
+        height: 9px;
+        background: #020617;
+        border: 1px solid #1f355a;
+        border-radius: 99px;
+        overflow: hidden;
+      }
+      .swift-v62-bar {
+        height: 100%;
+        background: #60a5fa;
+        border-radius: 99px;
+      }
+      .swift-v62-kp-row {
+        display: grid;
+        grid-template-columns: 42px 1fr 58px 58px 70px;
+        gap: 6px;
+        align-items: center;
+        font-size: 10px;
+        color: #dbeafe;
+        margin: 5px 0;
+      }
+      @media (max-width: 980px) {
+        .swift-v62-grid { grid-template-columns: 1fr; }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  async function loadFailPerfV62() {
+    try {
+      const res = await fetch("data/ai/kp_performance.json", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      failPerfV62 = await res.json();
+    } catch (e) {
+      console.warn("failure analysis load failed", e);
+      failPerfV62 = null;
+    }
+    renderFailPanelV62();
+  }
+
+  function renderThresholdTableV62() {
+    const th = failPerfV62?.thresholds || failPerfV62?.summary?.thresholds || {};
+    const keys = ["5", "10", "15", "20"];
+    return `<table class="swift-v62-table">
+      <thead>
+        <tr><th>閾値</th><th>raw Hit</th><th>AI Hit</th><th>改善</th><th>AI RMSE</th><th>N</th></tr>
+      </thead>
+      <tbody>
+        ${keys.map(k => {
+          const r = th[k] || {};
+          const raw = Number(r.raw_hit_rate);
+          const corr = Number(r.corrected_hit_rate);
+          const imp = Number.isFinite(raw) && Number.isFinite(corr) ? corr - raw : NaN;
+          const cls = Number.isFinite(imp) && imp < 0 ? "swift-v62-bad" : "swift-v62-good";
+          return `<tr>
+            <td>±${k} TECU</td>
+            <td>${pct62(raw)}</td>
+            <td><b>${pct62(corr)}</b></td>
+            <td class="${cls}">${Number.isFinite(imp) ? (imp >= 0 ? "+" : "") + (imp * 100).toFixed(1) + "pt" : "--"}</td>
+            <td>${num62(r.corrected_rmse)}</td>
+            <td>${r.sample_count || 0}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>`;
+  }
+
+  function renderKpBinsV62() {
+    const bins = failPerfV62?.kp_bins || {};
+    const keys = ["0-2", "2-3", "3-4", "4-5", "5-6", "6-7", "7+"];
+    const rows = keys.map(k => {
+      const r = bins[k] || {};
+      const t = r.thresholds?.["5"] || r;
+      const corr = Number(t.corrected_hit_rate);
+      const n = Number(t.sample_count || 0);
+      return { k, corr, n, rmse: t.corrected_rmse };
+    });
+    return `<div>
+      <div class="swift-v62-sub">KpFごとの ±5 TECU 的中率。低いKp帯が外れやすい条件です。</div>
+      ${rows.map(r => `<div class="swift-v62-kp-row">
+        <div>Kp ${r.k}</div>
+        <div class="swift-v62-barbox"><div class="swift-v62-bar" style="width:${Math.max(0, Math.min(100, (r.corr || 0) * 100)).toFixed(1)}%"></div></div>
+        <div>${pct62(r.corr)}</div>
+        <div>N=${r.n}</div>
+        <div>RMSE ${num62(r.rmse)}</div>
+      </div>`).join("")}
+    </div>`;
+  }
+
+  function worstKpTextV62() {
+    const bins = failPerfV62?.kp_bins || {};
+    let worst = null;
+    for (const [k, r] of Object.entries(bins)) {
+      const t = r.thresholds?.["5"] || r;
+      const n = Number(t.sample_count || 0);
+      const hit = Number(t.corrected_hit_rate);
+      if (n < 100 || !Number.isFinite(hit)) continue;
+      if (!worst || hit < worst.hit) worst = { k, hit, n, rmse: t.corrected_rmse };
+    }
+    if (!worst) return "外れやすいKp帯はまだ判定できません。学習データが増えると表示が安定します。";
+    return `現時点で一番外れやすいKp帯: Kp ${worst.k} / Hit ${pct62(worst.hit)} / RMSE ${num62(worst.rmse)} / N=${worst.n}`;
+  }
+
+  function ensureFailPanelV62() {
+    const main = q62("swiftAccuracyMain");
+    if (!main || q62("swiftFailureAnalysisV62")) return null;
+    const panel = document.createElement("div");
+    panel.id = "swiftFailureAnalysisV62";
+    panel.className = "swift-v62-card";
+    panel.innerHTML = `<div class="swift-v62-title">外れやすさ分析</div>
+      <div class="swift-v62-sub">TEC誤差閾値別・Kp帯別に的中率を見ることで、どの条件で外れるかを確認します。</div>
+      <div id="swiftFailureAnalysisBodyV62">読み込み中…</div>`;
+    main.appendChild(panel);
+    return panel;
+  }
+
+  function renderFailPanelV62() {
+    ensureFailPanelV62();
+    const body = q62("swiftFailureAnalysisBodyV62");
+    if (!body) return;
+    if (!failPerfV62) {
+      body.innerHTML = `<div class="swift-v62-sub">まだ kp_performance.json を読めません。Train Kp AI Corrector を実行してください。</div>`;
+      return;
+    }
+    body.innerHTML = `<div class="swift-v62-grid">
+      <div>
+        <div class="swift-v62-title">閾値別 的中率</div>
+        ${renderThresholdTableV62()}
+      </div>
+      <div>
+        <div class="swift-v62-title">Kp別 的中率</div>
+        ${renderKpBinsV62()}
+        <div class="swift-v62-sub" style="margin-top:8px;">${worstKpTextV62()}</div>
+      </div>
+    </div>`;
+  }
+
+  function bootV62() {
+    injectStyleV62();
+    for (const delay of [800, 1500, 2600]) {
+      setTimeout(() => {
+        ensureFailPanelV62();
+        if (!failPerfV62) loadFailPerfV62();
+      }, delay);
+    }
+  }
+
+  window.swiftLoadFailureAnalysis = loadFailPerfV62;
+  readyV62(bootV62);
+})();
+
