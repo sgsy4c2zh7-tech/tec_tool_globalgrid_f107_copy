@@ -4,6 +4,8 @@
   const TEC_INDEX_URL = "data/tec/index.json";
   const TEC_BASE_URL = "data/tec/";
   const SATELLITE_JS_URL = "https://unpkg.com/satellite.js/dist/satellite.min.js";
+  const KP_AI_COEFF_URL = "data/ai/kp_coefficients.json";
+  const KP_AI_PERF_URL = "data/ai/kp_performance.json";
 
   const GNSS_SOURCES = {
     gps:     { label: "GPS",     url: "data/gnss/gps_latest.tle",     checked: true  },
@@ -39,6 +41,12 @@
   let activeTimelineStepMin = TEC_REPLAY_STEP_MIN;
   let tecSmoothCache = new Map();
   let selectionVersion = 0;
+
+  let kpAiCoefficients = null;
+  let kpAiPerformance = null;
+  let kpAiLoaded = false;
+  let kpAiLoadError = null;
+  let kpAiRenderMode = "hitrate";
 
   const dopColorScale = [
     { limit: 2,  color: "#00ff00" },
@@ -523,10 +531,204 @@
     return out;
   }
 
+  function normalizeLon180(lon) {
+    let x = Number(lon);
+    if (!isFinite(x)) return 0;
+    while (x < -180) x += 360;
+    while (x >= 180) x -= 360;
+    return x;
+  }
+
+  function kpAiRegionId(lat, lon) {
+    const la = Number(lat);
+    const lo = normalizeLon180(lon);
+    const latBand = la < -30 ? 0 : (la < 30 ? 1 : 2); // 0=S,1=EQ,2=N
+    let lonBand = Math.floor((lo + 180) / 60);
+    lonBand = c(lonBand, 0, 5);
+    return `R${String(latBand * 6 + lonBand + 1).padStart(2, "0")}`;
+  }
+
+  function kpAiMonthKey(t) {
+    return (t instanceof Date && !isNaN(t.getTime())) ? String(t.getUTCMonth() + 1) : String((new Date()).getUTCMonth() + 1);
+  }
+
+  function kpAiEnabled() {
+    const el = document.getElementById("kpAiCorrectionEnabled");
+    return !!(el && el.checked && kpAiCoefficients && kpAiLoaded);
+  }
+
+  function kpAiClipLimit() {
+    const el = document.getElementById("kpAiCorrectionClip");
+    const v = parseFloat(el?.value || kpAiCoefficients?.model?.correction_clip_tecu || "20");
+    return isFinite(v) ? c(v, 1, 60) : 20;
+  }
+
+  function kpAiKpAtTime(t) {
+    try {
+      if (Array.isArray(gKpSeries) && gKpSeries.length) {
+        let best = null, bestDiff = Infinity;
+        for (const r of gKpSeries) {
+          const rt = r.t instanceof Date ? r.t : new Date(r.t || r.time || r.time_utc || 0);
+          const kp = Number(r.kp ?? r.Kp ?? r.value);
+          if (!isFinite(kp) || isNaN(rt.getTime())) continue;
+          const d = Math.abs(rt.getTime() - t.getTime());
+          if (d < bestDiff) { bestDiff = d; best = kp; }
+        }
+        if (best !== null && bestDiff <= 4 * 3600000) return best;
+      }
+    } catch {}
+    const el = document.getElementById("kpAiFallbackKp");
+    const fallback = parseFloat(el?.value || "3");
+    return isFinite(fallback) ? fallback : 3.0;
+  }
+
+  function kpAiCoeffFor(regionId, monthKey) {
+    const cfs = kpAiCoefficients?.coefficients || {};
+    const r = cfs[regionId] || {};
+    return r[monthKey] || r[String(parseInt(monthKey, 10))] || null;
+  }
+
+  function kpAiCorrectionValue(lat, lon, t, kp) {
+    if (!kpAiEnabled()) return 0;
+    const rid = kpAiRegionId(lat, lon);
+    const mk = kpAiMonthKey(t);
+    const cf = kpAiCoeffFor(rid, mk);
+    if (!cf || Number(cf.sample_count || 0) < 8) return 0;
+    const x = (isFinite(kp) ? kp : 3.0) - 3.0;
+    const k0 = Number(cf.k0 || 0), k1 = Number(cf.k1 || 0), k2 = Number(cf.k2 || 0), k3 = Number(cf.k3 || 0);
+    const y = k0 + k1 * x + k2 * x * x + k3 * x * x * x;
+    const lim = kpAiClipLimit();
+    return isFinite(y) ? c(y, -lim, lim) : 0;
+  }
+
+  function applyKpAiCorrectionToGrid(grid, t) {
+    if (!kpAiEnabled() || !grid || !gGrid) return grid;
+    const kp = kpAiKpAtTime(t);
+    const out = Array.from({ length: gGrid.nLat }, () => Array(gGrid.nLon).fill(NaN));
+    for (let i = 0; i < gGrid.nLat; i++) {
+      const lat = gGrid.latArr[i];
+      for (let j = 0; j < gGrid.nLon; j++) {
+        const v = Number(grid?.[i]?.[j]);
+        if (!isFinite(v)) { out[i][j] = NaN; continue; }
+        const corr = kpAiCorrectionValue(lat, gGrid.lonArr[j], t, kp);
+        out[i][j] = Math.max(0, v + corr);
+      }
+    }
+    return out;
+  }
+
+  async function loadKpAiData(force = false) {
+    if (kpAiLoaded && !force) return;
+    kpAiLoadError = null;
+    try {
+      const [coeff, perf] = await Promise.all([
+        fetch(KP_AI_COEFF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null),
+        fetch(KP_AI_PERF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null),
+      ]);
+      kpAiCoefficients = coeff;
+      kpAiPerformance = perf;
+      kpAiLoaded = !!coeff;
+      renderKpAiPanel();
+    } catch (e) {
+      kpAiLoadError = e.message;
+      kpAiLoaded = false;
+      renderKpAiPanel();
+    }
+  }
+
+  function kpAiPerfRows() {
+    const rows = [];
+    const metrics = kpAiPerformance?.metrics || {};
+    for (const [rid, byMonth] of Object.entries(metrics)) {
+      for (const [month, m] of Object.entries(byMonth || {})) {
+        rows.push({ region_id: rid, month: Number(month), ...m });
+      }
+    }
+    return rows;
+  }
+
+  function kpAiLatestMonthRows() {
+    const rows = kpAiPerfRows();
+    if (!rows.length) return [];
+    const nowMonth = (new Date()).getUTCMonth() + 1;
+    const hasNow = rows.some(r => Number(r.month) === nowMonth);
+    const month = hasNow ? nowMonth : rows[rows.length - 1].month;
+    const selected = rows.filter(r => Number(r.month) === Number(month));
+    selected.sort((a, b) => String(a.region_id).localeCompare(String(b.region_id)));
+    return selected;
+  }
+
+  function renderKpAiPanel() {
+    const status = document.getElementById("kpAiStatus");
+    const table = document.getElementById("kpAiRegionTable");
+    const bars = document.getElementById("kpAiHitRateBars");
+    if (status) {
+      if (kpAiLoaded) {
+        const updated = kpAiCoefficients?.updated_utc || "--";
+        status.textContent = `AI係数読込OK: updated=${updated}`;
+      } else if (kpAiLoadError) {
+        status.textContent = `AI係数未読込: ${kpAiLoadError}`;
+      } else {
+        status.textContent = "AI係数未読込。Train Kp AI Corrector workflow実行後に表示されます。";
+      }
+    }
+    const rows = kpAiLatestMonthRows();
+    if (bars) {
+      if (!rows.length) bars.innerHTML = '<div class="small">性能データなし</div>';
+      else bars.innerHTML = rows.map(r => {
+        const hit = Number(r.corrected_hit_rate ?? r.hit_rate ?? 0) * 100;
+        const raw = Number(r.raw_hit_rate ?? 0) * 100;
+        const w = c(hit, 0, 100);
+        return `<div class="small" style="margin:2px 0;">${r.region_id} <span class="mono">${hit.toFixed(0)}%</span> <span style="opacity:.65;">raw ${raw.toFixed(0)}%</span><div style="height:6px;background:#111827;border:1px solid #334;border-radius:999px;overflow:hidden;"><div style="height:100%;width:${w}%;background:#3b82f6;"></div></div></div>`;
+      }).join("");
+    }
+    if (table) {
+      if (!rows.length) table.innerHTML = '<div class="small">係数・性能データなし</div>';
+      else table.innerHTML = `<table><thead><tr><th>地域</th><th>月</th><th>N</th><th>Hit</th><th>RMSE</th><th>k0/k1/k2/k3</th></tr></thead><tbody>${rows.map(r => {
+        const cf = kpAiCoeffFor(r.region_id, String(r.month)) || {};
+        const hit = Number(r.corrected_hit_rate ?? 0) * 100;
+        const rmse = Number(r.corrected_rmse ?? r.rmse ?? NaN);
+        return `<tr><td class="mono">${r.region_id}</td><td>${r.month}</td><td>${r.sample_count || 0}</td><td>${isFinite(hit)?hit.toFixed(0):"--"}%</td><td>${isFinite(rmse)?rmse.toFixed(2):"--"}</td><td class="mono">${Number(cf.k0||0).toFixed(2)} / ${Number(cf.k1||0).toFixed(2)} / ${Number(cf.k2||0).toFixed(2)} / ${Number(cf.k3||0).toFixed(2)}</td></tr>`;
+      }).join("")}</tbody></table>`;
+    }
+  }
+
+  function ensureKpAiUi() {
+    if (document.getElementById("kpAiCorrectorCard")) return;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.id = "kpAiCorrectorCard";
+    card.innerHTML = `
+      <div class="card-header"><h2>8d. Kp Cubic AI Corrector</h2><span>18地域×月別×3次式</span></div>
+      <div class="small">
+        ・Kpによる残差だけを <b>k0 + k1(Kp-3) + k2(Kp-3)^2 + k3(Kp-3)^3</b> で補正します。<br>
+        ・係数は <b>18地域×12か月</b> で毎日1回更新。補正前/補正後の的中率を見られます。
+      </div>
+      <div class="row small" style="margin-top:6px;">
+        <label><input id="kpAiCorrectionEnabled" type="checkbox" onchange="tecInterpCache.clear(); requestDraw();"> AI Kp補正ON</label>
+        <div>補正上限[TECU]:<br><input id="kpAiCorrectionClip" type="number" value="20" min="1" max="60" step="1" style="width:80px;" onchange="tecInterpCache.clear(); requestDraw();"></div>
+        <div>Fallback Kp:<br><input id="kpAiFallbackKp" type="number" value="3" min="0" max="9" step="0.33" style="width:80px;" onchange="tecInterpCache.clear(); requestDraw();"></div>
+      </div>
+      <div class="row">
+        <button onclick="loadKpAiData(true)">AI係数/的中率を読込</button>
+        <button class="secondary" onclick="renderKpAiPanel()">グラフ再表示</button>
+      </div>
+      <div class="small" id="kpAiStatus">AI係数未読込</div>
+      <div id="kpAiHitRateBars" style="max-height:210px;overflow:auto;border:1px solid #222b3f;border-radius:6px;padding:4px;margin-top:4px;"></div>
+      <div id="kpAiRegionTable" style="max-height:210px;overflow:auto;border:1px solid #222b3f;border-radius:6px;padding:4px;margin-top:4px;"></div>
+    `;
+    const sidebar = document.querySelector(".sidebar");
+    const after = document.getElementById("forecastTecApiCard") || document.getElementById("satelliteSelectionList")?.closest(".card") || document.getElementById("v4ArchiveStatus")?.closest(".card");
+    if (sidebar && after) after.insertAdjacentElement("afterend", card);
+    else if (sidebar) sidebar.appendChild(card);
+    renderKpAiPanel();
+  }
+
   function currentTecGrid() {
     const t = gForecastTimes[currentStepIndex];
     if (!(t instanceof Date) || isNaN(t.getTime())) return null;
-    return interpolateGridAtTime(t);
+    const grid = interpolateGridAtTime(t);
+    return applyKpAiCorrectionToGrid(grid, t);
   }
 
   function maybeAutoPlayAfterLoad() {
@@ -2034,6 +2236,8 @@
     addModeOptions();
     ensureGnssUi();
     ensureForecastTecApiUi();
+    ensureKpAiUi();
+    loadKpAiData(false);
     loadTecArchiveIndex(false).then(() => {
       populateForecastTecArchiveEndSelect();
     }).catch(() => {
@@ -2051,6 +2255,8 @@
   window.loadForecastTecFromNoaaDirectApi30m = loadForecastTecFromNoaaDirectApi30m;
   window.loadForecastTecFromArchiveDataApi30m = loadForecastTecFromArchiveDataApi30m;
   window.setForecastTecApiMode = setForecastTecApiMode;
+  window.loadKpAiData = loadKpAiData;
+  window.renderKpAiPanel = renderKpAiPanel;
   window.playArchiveMovie = playArchiveMovie;
   window.stopArchiveMovie = stopArchiveMovie;
 
