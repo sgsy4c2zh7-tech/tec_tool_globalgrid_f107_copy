@@ -2,7 +2,6 @@ name: Train Kp AI Corrector
 
 on:
   schedule:
-    # 前日UTCのNOAA TECがだいたい揃った後に1日1回学習（12:45 JST）
     - cron: '45 3 * * *'
   workflow_dispatch:
 
