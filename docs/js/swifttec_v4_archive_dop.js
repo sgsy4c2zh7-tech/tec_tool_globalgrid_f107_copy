@@ -7812,3 +7812,176 @@
   readyV71(bootV71);
 })();
 
+
+/* =========================================================
+ * SWIFT-TEC v7.2 accuracy monitor fullscreen mode
+ * Adds fullscreen/focus mode to the hit-rate / accuracy monitor.
+ * ========================================================= */
+(function () {
+  function readyV72(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q72(id) { return document.getElementById(id); }
+
+  function injectStyleV72() {
+    if (q72("swiftAccuracyFullscreenStyleV72")) return;
+    const st = document.createElement("style");
+    st.id = "swiftAccuracyFullscreenStyleV72";
+    st.textContent = `
+      body.swift-accuracy-fs-on {
+        overflow: hidden !important;
+      }
+
+      body.swift-accuracy-fs-on #swiftAccuracyMain {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 2147483600 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        padding: 14px !important;
+        border-radius: 0 !important;
+        background: #020617 !important;
+        overflow: auto !important;
+        display: block !important;
+      }
+
+      body.swift-accuracy-fs-on #swiftAccuracyMain .swift-v52-card,
+      body.swift-accuracy-fs-on #swiftAccuracyMain .swift-v62-card {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        max-width: 1800px !important;
+      }
+
+      body.swift-accuracy-fs-on #swiftAccuracyMain canvas {
+        max-height: none !important;
+      }
+
+      body.swift-accuracy-fs-on #swiftAccuracyFsBtnV72 {
+        background: #b91c1c !important;
+        border-color: #fecaca !important;
+        color: white !important;
+      }
+
+      #swiftAccuracyFsBtnV72,
+      #swiftAccuracyFsExitBtnV72 {
+        border-radius: 9px;
+        border: 1px solid #60a5fa;
+        background: #1d4ed8;
+        color: white;
+        padding: 6px 9px;
+        font-size: 11px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      #swiftAccuracyFsExitBtnV72 {
+        display: none;
+        position: fixed;
+        top: 14px;
+        left: 14px;
+        z-index: 2147483640;
+        background: #b91c1c;
+        border-color: #fecaca;
+        box-shadow: 0 10px 24px rgba(0,0,0,.42);
+      }
+
+      body.swift-accuracy-fs-on #swiftAccuracyFsExitBtnV72 {
+        display: inline-flex !important;
+      }
+
+      #swiftAccuracyFsBtnV72:hover,
+      #swiftAccuracyFsExitBtnV72:hover {
+        filter: brightness(1.12);
+      }
+
+      @media (max-width: 900px) {
+        body.swift-accuracy-fs-on #swiftAccuracyMain {
+          padding: 10px !important;
+        }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function forceChartResizeV72() {
+    for (const delay of [0, 80, 180, 360, 800, 1200]) {
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch {}
+        try { window.swiftLoadFailureAnalysis?.(); } catch {}
+        try { window.renderKpAiPanel?.(); } catch {}
+      }, delay);
+    }
+  }
+
+  function updateButtonV72() {
+    const on = document.body.classList.contains("swift-accuracy-fs-on");
+    const btn = q72("swiftAccuracyFsBtnV72");
+    if (btn) btn.textContent = on ? "↙ 通常表示" : "⛶ 的中率モニター全画面";
+  }
+
+  function toggleAccuracyFullscreenV72() {
+    const target = q72("swiftAccuracyMain");
+    if (!target) return;
+    document.body.classList.toggle("swift-accuracy-fs-on");
+    updateButtonV72();
+    forceChartResizeV72();
+  }
+
+  function exitAccuracyFullscreenV72() {
+    document.body.classList.remove("swift-accuracy-fs-on");
+    updateButtonV72();
+    forceChartResizeV72();
+  }
+
+  function ensureButtonV72() {
+    const main = q72("swiftAccuracyMain");
+    if (!main || q72("swiftAccuracyFsBtnV72")) return;
+
+    const firstTitle = main.querySelector(".swift-v52-title, .swift-v62-title, .card-header, h2");
+    const btn = document.createElement("button");
+    btn.id = "swiftAccuracyFsBtnV72";
+    btn.type = "button";
+    btn.textContent = "⛶ 的中率モニター全画面";
+    btn.onclick = toggleAccuracyFullscreenV72;
+
+    if (firstTitle && firstTitle.parentElement) {
+      firstTitle.parentElement.appendChild(btn);
+    } else {
+      main.insertBefore(btn, main.firstChild);
+    }
+
+    const exit = document.createElement("button");
+    exit.id = "swiftAccuracyFsExitBtnV72";
+    exit.type = "button";
+    exit.textContent = "↙ 通常表示";
+    exit.onclick = exitAccuracyFullscreenV72;
+    document.body.appendChild(exit);
+
+    updateButtonV72();
+  }
+
+  function bootV72() {
+    injectStyleV72();
+
+    for (const delay of [400, 1000, 1800, 3000]) {
+      setTimeout(() => {
+        ensureButtonV72();
+        updateButtonV72();
+      }, delay);
+    }
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && document.body.classList.contains("swift-accuracy-fs-on")) {
+        exitAccuracyFullscreenV72();
+      }
+    });
+  }
+
+  window.swiftToggleAccuracyFullscreenV72 = toggleAccuracyFullscreenV72;
+  window.swiftExitAccuracyFullscreenV72 = exitAccuracyFullscreenV72;
+  readyV72(bootV72);
+})();
+
