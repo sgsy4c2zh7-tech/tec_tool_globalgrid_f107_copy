@@ -6771,3 +6771,303 @@
   readyV67(bootV67);
 })();
 
+
+/* =========================================================
+ * SWIFT-TEC v6.8 heatmap color palette selector
+ * UI-only: keeps scale limits, changes palette colors.
+ * ========================================================= */
+(function () {
+  const PALETTES_V68 = {
+    classic: {
+      label: "Classic（従来）",
+      colors: null,
+    },
+    turbo: {
+      label: "Turbo",
+      colors: ["#30123b", "#4665d9", "#37a8fa", "#1ae4b6", "#72fe5f", "#d1e834", "#fe9b2d", "#e43d30", "#7a0403"],
+    },
+    viridis: {
+      label: "Viridis",
+      colors: ["#440154", "#46327e", "#365c8d", "#277f8e", "#1fa187", "#4ac16d", "#a0da39", "#fde725"],
+    },
+    plasma: {
+      label: "Plasma",
+      colors: ["#0d0887", "#5b02a3", "#9a179b", "#cb4679", "#ed7953", "#fb9f3a", "#fdca26", "#f0f921"],
+    },
+    blueRed: {
+      label: "Blue → White → Red",
+      colors: ["#1d4ed8", "#38bdf8", "#ffffff", "#facc15", "#dc2626"],
+    },
+    greenRed: {
+      label: "Green → Yellow → Red",
+      colors: ["#16a34a", "#bef264", "#facc15", "#f97316", "#dc2626"],
+    },
+    gray: {
+      label: "Gray scale",
+      colors: ["#020617", "#334155", "#94a3b8", "#e5e7eb", "#ffffff"],
+    },
+    night: {
+      label: "Night high contrast",
+      colors: ["#000014", "#16213e", "#0f9b8e", "#f4d35e", "#ee4266", "#ffffff"],
+    },
+    monoBlue: {
+      label: "Mono blue",
+      colors: ["#020617", "#0f172a", "#1e3a8a", "#2563eb", "#38bdf8", "#e0f2fe"],
+    },
+    purpleGold: {
+      label: "Purple → Gold",
+      colors: ["#1e103d", "#4c1d95", "#7e22ce", "#c084fc", "#fde68a", "#f59e0b"],
+    },
+  };
+
+  let originalValueToColorV68 = null;
+
+  function readyV68(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q68(id) { return document.getElementById(id); }
+
+  function hexToRgbV68(hex) {
+    let h = String(hex || "").replace("#", "").trim();
+    if (h.length === 3) h = h.split("").map(c => c + c).join("");
+    const n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  function rgbToHexV68(r, g, b) {
+    const h = n => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+    return `#${h(r)}${h(g)}${h(b)}`;
+  }
+
+  function lerpV68(a, b, t) { return a + (b - a) * t; }
+
+  function samplePaletteV68(colors, t) {
+    if (!colors || !colors.length) return "#ffffff";
+    if (colors.length === 1) return colors[0];
+    const x = Math.max(0, Math.min(1, t)) * (colors.length - 1);
+    const i0 = Math.floor(x);
+    const i1 = Math.min(colors.length - 1, i0 + 1);
+    const f = x - i0;
+    const a = hexToRgbV68(colors[i0]);
+    const b = hexToRgbV68(colors[i1]);
+    return rgbToHexV68(
+      lerpV68(a[0], b[0], f),
+      lerpV68(a[1], b[1], f),
+      lerpV68(a[2], b[2], f)
+    );
+  }
+
+  function getPaletteNameV68() {
+    return q68("swiftHeatmapPaletteSelectV68")?.value || localStorage.getItem("swiftHeatmapPaletteV68") || "classic";
+  }
+
+  function getReverseV68() {
+    const el = q68("swiftHeatmapPaletteReverseV68");
+    if (el) return !!el.checked;
+    return localStorage.getItem("swiftHeatmapPaletteReverseV68") === "1";
+  }
+
+  function buildScaleWithPaletteV68(scale) {
+    const sorted = (scale || []).slice().sort((a, b) => Number(a.limit) - Number(b.limit));
+    if (!sorted.length) return scale;
+
+    const name = getPaletteNameV68();
+    const p = PALETTES_V68[name] || PALETTES_V68.classic;
+    if (!p.colors) return sorted;
+
+    const reverse = getReverseV68();
+    const colors = reverse ? p.colors.slice().reverse() : p.colors.slice();
+    const n = sorted.length;
+
+    return sorted.map((item, idx) => ({
+      limit: item.limit,
+      color: samplePaletteV68(colors, n <= 1 ? 0 : idx / (n - 1)),
+    }));
+  }
+
+  function patchValueToColorV68() {
+    if (originalValueToColorV68) return;
+    if (typeof valueToColor !== "function") return;
+
+    originalValueToColorV68 = valueToColor;
+    valueToColor = function (v, scale) {
+      try {
+        return originalValueToColorV68(v, buildScaleWithPaletteV68(scale));
+      } catch (e) {
+        return originalValueToColorV68(v, scale);
+      }
+    };
+    window.valueToColor = valueToColor;
+  }
+
+  function injectStyleV68() {
+    if (q68("swiftHeatmapPaletteStyleV68")) return;
+    const st = document.createElement("style");
+    st.id = "swiftHeatmapPaletteStyleV68";
+    st.textContent = `
+      .swift-v68-card {
+        margin-top: 10px;
+        border: 1px solid #1f355a;
+        border-radius: 14px;
+        background: rgba(7, 14, 28, .98);
+        padding: 10px;
+      }
+      .swift-v68-title {
+        color: #eaf2ff;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      .swift-v68-sub {
+        color: #9fb0cc;
+        font-size: 10px;
+        line-height: 1.38;
+        margin-top: 3px;
+      }
+      .swift-v68-row {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .swift-v68-select {
+        background: #061020;
+        border: 1px solid #2a4774;
+        color: #eaf2ff;
+        border-radius: 9px;
+        padding: 6px 8px;
+        font-size: 11px;
+        min-width: 170px;
+      }
+      .swift-v68-check {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: #dbeafe;
+        font-size: 10px;
+      }
+      .swift-v68-preview {
+        display: flex;
+        width: 100%;
+        height: 14px;
+        border: 1px solid #1f355a;
+        border-radius: 999px;
+        overflow: hidden;
+        background: #020617;
+      }
+      .swift-v68-preview span {
+        flex: 1 1 auto;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function updatePreviewV68() {
+    const box = q68("swiftHeatmapPalettePreviewV68");
+    if (!box) return;
+    const name = getPaletteNameV68();
+    const p = PALETTES_V68[name] || PALETTES_V68.classic;
+    const reverse = getReverseV68();
+    const colors = p.colors ? (reverse ? p.colors.slice().reverse() : p.colors.slice()) : ["#2f55ff", "#46d9ff", "#fff176", "#ff2f2f"];
+    box.innerHTML = colors.map(c => `<span style="background:${c}"></span>`).join("");
+  }
+
+  function refreshMapV68() {
+    try { if (typeof updateLegend === "function") updateLegend(); } catch {}
+    try { if (typeof requestDraw === "function") requestDraw(); } catch {}
+    setTimeout(() => {
+      try { if (typeof updateLegend === "function") updateLegend(); } catch {}
+      try { if (typeof requestDraw === "function") requestDraw(); } catch {}
+    }, 120);
+  }
+
+  function onChangeV68() {
+    const sel = q68("swiftHeatmapPaletteSelectV68");
+    const rev = q68("swiftHeatmapPaletteReverseV68");
+    if (sel) localStorage.setItem("swiftHeatmapPaletteV68", sel.value);
+    if (rev) localStorage.setItem("swiftHeatmapPaletteReverseV68", rev.checked ? "1" : "0");
+    updatePreviewV68();
+    refreshMapV68();
+  }
+
+  function ensurePaletteUiV68() {
+    const side = q68("swiftAccuracySide") || document.querySelector(".sidebar");
+    if (!side || q68("swiftHeatmapPalettePanelV68")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "swiftHeatmapPalettePanelV68";
+    panel.className = "swift-v68-card";
+    panel.innerHTML = `
+      <div class="swift-v68-title">ヒートマップ色設定</div>
+      <div class="swift-v68-sub">TEC / DOP / TEC×DOPの色だけ変更します。閾値や計算値は変えません。</div>
+      <div class="swift-v68-row">
+        <select id="swiftHeatmapPaletteSelectV68" class="swift-v68-select">
+          ${Object.entries(PALETTES_V68).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join("")}
+        </select>
+        <label class="swift-v68-check"><input id="swiftHeatmapPaletteReverseV68" type="checkbox"> 反転</label>
+      </div>
+      <div class="swift-v68-row">
+        <div id="swiftHeatmapPalettePreviewV68" class="swift-v68-preview"></div>
+      </div>
+    `;
+
+    const after = q68("swiftGnssVisiblePanelV66") || q68("swiftPointDopPanelV65") || q68("swiftV57ModelRuleNote");
+    if (after && after.parentElement) after.insertAdjacentElement("afterend", panel);
+    else side.appendChild(panel);
+
+    const saved = localStorage.getItem("swiftHeatmapPaletteV68") || "classic";
+    const rev = localStorage.getItem("swiftHeatmapPaletteReverseV68") === "1";
+    const sel = q68("swiftHeatmapPaletteSelectV68");
+    if (sel && PALETTES_V68[saved]) sel.value = saved;
+    const cb = q68("swiftHeatmapPaletteReverseV68");
+    if (cb) cb.checked = rev;
+
+    sel?.addEventListener("change", onChangeV68);
+    cb?.addEventListener("change", onChangeV68);
+    updatePreviewV68();
+  }
+
+  function addDockPaletteV68() {
+    const dock = q68("swiftTimelineDockV64");
+    if (!dock || q68("swiftDockPaletteSelectV68")) return;
+    const row = dock.querySelector(".swift-v64-timeline-row:last-child") || dock;
+    const label = document.createElement("span");
+    label.className = "swift-v64-muted";
+    label.textContent = "色";
+    const sel = document.createElement("select");
+    sel.id = "swiftDockPaletteSelectV68";
+    for (const [k, p] of Object.entries(PALETTES_V68)) {
+      const o = document.createElement("option");
+      o.value = k;
+      o.textContent = p.label.replace("（従来）", "");
+      sel.appendChild(o);
+    }
+    sel.value = getPaletteNameV68();
+    sel.onchange = () => {
+      const main = q68("swiftHeatmapPaletteSelectV68");
+      if (main) main.value = sel.value;
+      localStorage.setItem("swiftHeatmapPaletteV68", sel.value);
+      updatePreviewV68();
+      refreshMapV68();
+    };
+    row.appendChild(label);
+    row.appendChild(sel);
+  }
+
+  function bootV68() {
+    patchValueToColorV68();
+    injectStyleV68();
+    for (const delay of [300, 900, 1600, 2600]) {
+      setTimeout(() => {
+        patchValueToColorV68();
+        ensurePaletteUiV68();
+        addDockPaletteV68();
+      }, delay);
+    }
+  }
+
+  window.swiftRefreshHeatmapPaletteV68 = onChangeV68;
+  readyV68(bootV68);
+})();
+
