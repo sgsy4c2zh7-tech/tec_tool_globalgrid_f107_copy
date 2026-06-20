@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""Train SWIFT-TEC Kp cubic AI corrector at grid-cell level.
+"""Train SWIFT-TEC Kp AI coefficients following the user's Base-Kp rule.
 
-Learning level:
-  - AI learns one cubic Kp residual model for each grid cell and month.
+User model:
+  BaseTEC(t0, cell) = ObservedTEC(t0, cell) - F_Kp(KpB(t0), cell, month)
+  ForecastTEC(t1, cell) = BaseTEC(t0, cell) + F_Kp(KpF(t1), cell, month)
 
-UI/display level:
-  - The browser still displays 18 regional summaries for clarity.
+Therefore, for training pairs where t0 is the previous-day same UTC slot:
+  ObservedTEC(t1) - ObservedTEC(t0)
+    ~= F_Kp(Kp_actual(t1)) - F_Kp(Kp_actual(t0))
 
-Formula:
-  residual_tecu ~= k0 + k1*(Kp-3) + k2*(Kp-3)^2 + k3*(Kp-3)^3
+The AI fits F_Kp for every grid cell and month:
+  F_Kp(Kp) = k0 + k1*(Kp-3) + k2*(Kp-3)^2 + k3*(Kp-3)^3
 
 Outputs:
-  docs/data/ai/kp_grid_coefficients.json   # grid-cell coefficients used by forecast correction
+  docs/data/ai/kp_grid_coefficients.json   # full-grid coefficients used by forecast correction
   docs/data/ai/kp_coefficients.json        # 18-region aggregated coefficients for UI display
   docs/data/ai/kp_performance.json         # 18-region hit-rate/RMSE metrics
   docs/data/ai/kp_learning_history.json    # up to ~2 years of daily trend points
@@ -28,10 +30,15 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 UTC = timezone.utc
+
 TEC_ROOT = Path(os.environ.get("SWIFTTEC_TEC_ROOT", "docs/data/tec"))
 AI_ROOT = Path(os.environ.get("SWIFTTEC_AI_ROOT", "docs/data/ai"))
 K_INDEX_URL = os.environ.get("SWIFTTEC_KP_URL", "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json")
+
 TRAIN_DAYS = int(os.environ.get("SWIFTTEC_KP_AI_TRAIN_DAYS", "30"))
+PAIR_HOURS = float(os.environ.get("SWIFTTEC_KP_AI_PAIR_HOURS", "24"))
+PAIR_TOLERANCE_MIN = int(os.environ.get("SWIFTTEC_KP_AI_PAIR_TOLERANCE_MIN", "20"))
+
 MIN_CELL_SAMPLES = int(os.environ.get("SWIFTTEC_KP_AI_MIN_CELL_SAMPLES", "6"))
 BLEND_ALPHA = float(os.environ.get("SWIFTTEC_KP_AI_BLEND_ALPHA", "0.20"))
 RIDGE = float(os.environ.get("SWIFTTEC_KP_AI_RIDGE", "0.35"))
@@ -64,7 +71,7 @@ def parse_time(s: str) -> datetime | None:
 
 
 def http_json(url: str):
-    req = Request(url, headers={"User-Agent": "SWIFT-TEC-kp-grid-ai-corrector/1.0"})
+    req = Request(url, headers={"User-Agent": "SWIFT-TEC-kp-model-rule-ai/1.0"})
     with urlopen(req, timeout=60) as res:
         return json.loads(res.read().decode("utf-8"))
 
@@ -76,54 +83,21 @@ def load_json_maybe_gz(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def region_defs():
-    regions = []
-    rid = 1
-    for lat_min, lat_max, lat_label in LAT_BANDS:
-        for lon_min, lon_max in LON_BANDS:
-            regions.append({
-                "id": f"R{rid:02d}",
-                "label": f"{lat_label} {lon_min:g}..{lon_max:g}",
-                "lat_min": lat_min,
-                "lat_max": lat_max,
-                "lon_min": lon_min,
-                "lon_max": lon_max,
-            })
-            rid += 1
-    return regions
-
-
-REGIONS = region_defs()
-
-
-def normalize_lon(lon: float) -> float:
-    while lon < -180:
-        lon += 360
-    while lon >= 180:
-        lon -= 360
-    return lon
-
-
-def region_id(lat: float, lon: float) -> str:
-    lon = normalize_lon(lon)
-    lat_band = 0 if lat < -30 else (1 if lat < 30 else 2)
-    lon_band = int(math.floor((lon + 180) / 60))
-    lon_band = max(0, min(5, lon_band))
-    return f"R{lat_band * 6 + lon_band + 1:02d}"
-
-
 def load_frame_meta() -> list[dict]:
     idx_path = TEC_ROOT / "index.json"
     if not idx_path.exists():
-        raise FileNotFoundError(f"{idx_path} not found")
+        return []
     idx = json.loads(idx_path.read_text(encoding="utf-8"))
+    frames = idx.get("frames") or []
     now = datetime.now(UTC)
-    cutoff = now - timedelta(days=TRAIN_DAYS)
+    cutoff = now - timedelta(days=TRAIN_DAYS + 2)
     out = []
-    for row in idx.get("frames") or []:
-        t = parse_time(row.get("time_utc"))
-        rel = row.get("file")
-        if not t or t < cutoff or not rel:
+    for f in frames:
+        t = parse_time(f.get("time_utc") or f.get("time"))
+        if not t or t < cutoff:
+            continue
+        rel = f.get("file") or f.get("path")
+        if not rel:
             continue
         path = TEC_ROOT / rel
         if path.exists():
@@ -132,117 +106,93 @@ def load_frame_meta() -> list[dict]:
     return out
 
 
+def nearest_meta(metas: list[dict], target: datetime, tolerance_min: int) -> dict | None:
+    best = None
+    best_diff = float("inf")
+    for m in metas:
+        d = abs((m["time"] - target).total_seconds())
+        if d < best_diff:
+            best_diff = d
+            best = m
+    if best and best_diff <= tolerance_min * 60:
+        return best
+    return None
+
+
+def flatten_grid(frame: dict):
+    lat_arr = frame.get("lat_arr") or frame.get("latArr") or []
+    lon_arr = frame.get("lon_arr") or frame.get("lonArr") or []
+    grid = frame.get("grid") or []
+    vals: list[float] = []
+    for row in grid:
+        for v in row:
+            try:
+                x = float(v)
+                vals.append(x if math.isfinite(x) else float("nan"))
+            except Exception:
+                vals.append(float("nan"))
+    return lat_arr, lon_arr, vals
+
+
 def parse_kp_json(obj) -> list[tuple[datetime, float]]:
-    rows = []
+    rows: list[tuple[datetime, float]] = []
     if not isinstance(obj, list):
         return rows
-    header = None
-    data = obj
-    if obj and isinstance(obj[0], list) and any(str(x).lower() in ("time_tag", "kp") for x in obj[0]):
-        header = [str(x).lower() for x in obj[0]]
-        data = obj[1:]
-    for row in data:
-        t = None
-        kp = None
-        if isinstance(row, dict):
-            t = parse_time(row.get("time_tag") or row.get("time") or row.get("t"))
-            kp = row.get("Kp") or row.get("kp") or row.get("value")
-        elif isinstance(row, list):
-            if header:
-                ti = header.index("time_tag") if "time_tag" in header else 0
-                ki = header.index("kp") if "kp" in header else 1
-                if len(row) > max(ti, ki):
-                    t = parse_time(row[ti])
-                    kp = row[ki]
-            elif len(row) >= 2:
-                t = parse_time(row[0])
-                kp = row[1]
-        try:
-            kpf = float(kp)
-        except Exception:
-            continue
-        if t and math.isfinite(kpf):
-            rows.append((t, kpf))
+    for r in obj:
+        if isinstance(r, list) and len(r) >= 2:
+            t = parse_time(r[0])
+            try:
+                kp = float(r[1])
+            except Exception:
+                continue
+            if t and math.isfinite(kp):
+                rows.append((t, kp))
+        elif isinstance(r, dict):
+            t = parse_time(r.get("time_tag") or r.get("time") or r.get("t"))
+            try:
+                kp = float(r.get("kp_index") or r.get("kp") or r.get("Kp"))
+            except Exception:
+                continue
+            if t and math.isfinite(kp):
+                rows.append((t, kp))
     rows.sort(key=lambda x: x[0])
     return rows
 
 
-def kp_at(t: datetime, kp_rows: list[tuple[datetime, float]]) -> float | None:
-    if not kp_rows:
+def kp_at(t: datetime, rows: list[tuple[datetime, float]]) -> float | None:
+    if not rows:
         return None
+    # NOAA K-index is 3-hourly. Use nearest within 120 minutes.
     best = None
-    best_diff = 10**18
-    for kt, kv in kp_rows:
-        diff = abs((kt - t).total_seconds())
-        if diff < best_diff:
-            best_diff = diff
-            best = kv
-    if best is None or best_diff > 4 * 3600:
+    best_diff = float("inf")
+    for rt, kp in rows:
+        d = abs((rt - t).total_seconds())
+        if d < best_diff:
+            best_diff = d
+            best = kp
+    if best is None or best_diff > 2 * 3600:
         return None
-    return best
+    return float(best)
 
 
-def flatten_grid(frame: dict) -> tuple[list[float], list[float], list[float]]:
-    lat_arr = [float(x) for x in frame.get("lat_arr") or []]
-    lon_arr = [float(x) for x in frame.get("lon_arr") or []]
-    grid = frame.get("grid") or []
-    vals = []
-    for i in range(len(lat_arr)):
-        row = grid[i] if i < len(grid) else []
-        for j in range(len(lon_arr)):
-            try:
-                v = float(row[j])
-            except Exception:
-                v = float("nan")
-            vals.append(v if math.isfinite(v) and v >= 0 else float("nan"))
-    return lat_arr, lon_arr, vals
+def phi(kp: float) -> tuple[float, float, float, float]:
+    x = float(kp) - 3.0
+    return (1.0, x, x * x, x * x * x)
 
 
-def solve4(a, b):
-    n = 4
-    m = [list(a[i]) + [b[i]] for i in range(n)]
-    for col in range(n):
-        piv = max(range(col, n), key=lambda r: abs(m[r][col]))
-        if abs(m[piv][col]) < 1e-12:
-            return [0.0, 0.0, 0.0, 0.0]
-        if piv != col:
-            m[col], m[piv] = m[piv], m[col]
-        div = m[col][col]
-        for k in range(col, n + 1):
-            m[col][k] /= div
-        for r in range(n):
-            if r == col:
-                continue
-            fac = m[r][col]
-            for k in range(col, n + 1):
-                m[r][k] -= fac * m[col][k]
-    return [m[i][n] for i in range(n)]
+def feature_delta(kp_forecast: float, kp_base: float) -> tuple[float, float, float, float]:
+    pf = phi(kp_forecast)
+    pb = phi(kp_base)
+    return tuple(pf[i] - pb[i] for i in range(4))
 
 
-def fit_from_acc(acc, idx: int) -> list[float]:
-    # symmetric terms: 00,01,02,03,11,12,13,22,23,33
-    a = [
-        [acc["xx00"][idx] + RIDGE, acc["xx01"][idx], acc["xx02"][idx], acc["xx03"][idx]],
-        [acc["xx01"][idx], acc["xx11"][idx] + RIDGE, acc["xx12"][idx], acc["xx13"][idx]],
-        [acc["xx02"][idx], acc["xx12"][idx], acc["xx22"][idx] + RIDGE, acc["xx23"][idx]],
-        [acc["xx03"][idx], acc["xx13"][idx], acc["xx23"][idx], acc["xx33"][idx] + RIDGE],
-    ]
-    b = [acc["xy0"][idx], acc["xy1"][idx], acc["xy2"][idx], acc["xy3"][idx]]
-    return solve4(a, b)
+def predict(coeff: list[float] | tuple[float, float, float, float], kp: float) -> float:
+    p = phi(kp)
+    return sum(float(coeff[i]) * p[i] for i in range(4))
 
 
-def predict(coeffs, kp: float) -> float:
-    x = kp - 3.0
-    y = coeffs[0] + coeffs[1] * x + coeffs[2] * x * x + coeffs[3] * x * x * x
-    return max(-CORRECTION_CLIP_TECU, min(CORRECTION_CLIP_TECU, y))
-
-
-def rmse(vals):
-    return None if not vals else math.sqrt(sum(v * v for v in vals) / len(vals))
-
-
-def mean(vals):
-    return None if not vals else sum(vals) / len(vals)
+def predict_delta(coeff: list[float] | tuple[float, float, float, float], kp_f: float, kp_b: float) -> float:
+    return predict(coeff, kp_f) - predict(coeff, kp_b)
 
 
 def zeros(n: int) -> list[float]:
@@ -253,11 +203,49 @@ def intzeros(n: int) -> list[int]:
     return [0] * n
 
 
-def new_acc(n: int) -> dict:
-    keys = ["xx00", "xx01", "xx02", "xx03", "xx11", "xx12", "xx13", "xx22", "xx23", "xx33", "xy0", "xy1", "xy2", "xy3"]
-    d = {k: zeros(n) for k in keys}
-    d["count"] = intzeros(n)
-    return d
+def new_acc(n: int) -> dict[str, list[float] | list[int]]:
+    return {
+        "count": intzeros(n),
+        "xx00": zeros(n), "xx01": zeros(n), "xx02": zeros(n), "xx03": zeros(n),
+        "xx11": zeros(n), "xx12": zeros(n), "xx13": zeros(n),
+        "xx22": zeros(n), "xx23": zeros(n), "xx33": zeros(n),
+        "xy0": zeros(n), "xy1": zeros(n), "xy2": zeros(n), "xy3": zeros(n),
+    }
+
+
+def solve4(a: list[list[float]], b: list[float]) -> list[float]:
+    n = 4
+    m = [a[i][:] + [b[i]] for i in range(n)]
+    for col in range(n):
+        piv = max(range(col, n), key=lambda r: abs(m[r][col]))
+        if abs(m[piv][col]) < 1e-10:
+            return [0.0, 0.0, 0.0, 0.0]
+        if piv != col:
+            m[col], m[piv] = m[piv], m[col]
+        div = m[col][col]
+        for j in range(col, n + 1):
+            m[col][j] /= div
+        for r in range(n):
+            if r == col:
+                continue
+            f = m[r][col]
+            if f == 0:
+                continue
+            for j in range(col, n + 1):
+                m[r][j] -= f * m[col][j]
+    return [m[i][n] for i in range(n)]
+
+
+def fit_from_acc(acc: dict, idx: int) -> list[float]:
+    a = [
+        [acc["xx00"][idx] + RIDGE, acc["xx01"][idx], acc["xx02"][idx], acc["xx03"][idx]],
+        [acc["xx01"][idx], acc["xx11"][idx] + RIDGE, acc["xx12"][idx], acc["xx13"][idx]],
+        [acc["xx02"][idx], acc["xx12"][idx], acc["xx22"][idx] + RIDGE, acc["xx23"][idx]],
+        [acc["xx03"][idx], acc["xx13"][idx], acc["xx23"][idx], acc["xx33"][idx] + RIDGE],
+    ]
+    b = [acc["xy0"][idx], acc["xy1"][idx], acc["xy2"][idx], acc["xy3"][idx]]
+    vals = solve4(a, b)
+    return [max(-CORRECTION_CLIP_TECU, min(CORRECTION_CLIP_TECU, float(x))) for x in vals]
 
 
 def old_grid_coeffs() -> dict:
@@ -265,16 +253,59 @@ def old_grid_coeffs() -> dict:
     if not p.exists():
         return {}
     try:
-        return json.loads(p.read_text(encoding="utf-8")).get("coefficients_grid") or {}
+        return json.loads(p.read_text(encoding="utf-8"))
     except Exception:
         return {}
 
 
-def old_cell_coeff(old, month: int, name: str, i: int, j: int):
+def old_cell_coeff(old: dict, month: int, name: str, i: int, j: int) -> float:
     try:
-        return float(old[str(month)][name][i][j])
+        g = old.get("coefficients_grid") or old.get("grid_coefficients") or {}
+        v = g.get(str(month), {}).get(name, [])[i][j]
+        x = float(v)
+        return x if math.isfinite(x) else 0.0
     except Exception:
         return 0.0
+
+
+def region_defs():
+    regions = []
+    rid = 1
+    for lat_min, lat_max, lat_name in LAT_BANDS:
+        for lon_min, lon_max in LON_BANDS:
+            regions.append({
+                "id": f"R{rid:02d}",
+                "lat_min": lat_min,
+                "lat_max": lat_max,
+                "lon_min": lon_min,
+                "lon_max": lon_max,
+                "name": f"{lat_name}_{lon_min:g}_{lon_max:g}",
+            })
+            rid += 1
+    return regions
+
+
+REGIONS = region_defs()
+
+
+def region_id(lat: float, lon: float) -> str:
+    lon = ((float(lon) + 180.0) % 360.0) - 180.0
+    for r in REGIONS:
+        lat_ok = (float(lat) >= r["lat_min"] and float(lat) < r["lat_max"]) or (r["lat_max"] == 90.0 and float(lat) <= 90.0)
+        lon_ok = (lon >= r["lon_min"] and lon < r["lon_max"]) or (r["lon_max"] == 180.0 and lon <= 180.0)
+        if lat_ok and lon_ok:
+            return r["id"]
+    return "R01"
+
+
+def rmse(errors: list[float]) -> float | None:
+    if not errors:
+        return None
+    return math.sqrt(sum(e * e for e in errors) / len(errors))
+
+
+def mean(vals: list[float]) -> float | None:
+    return None if not vals else sum(vals) / len(vals)
 
 
 def to_grid(flat, n_lat, n_lon, digits=6):
@@ -284,25 +315,46 @@ def to_grid(flat, n_lat, n_lon, digits=6):
         row = []
         for _ in range(n_lon):
             v = flat[k]
-            row.append(round(float(v), digits) if isinstance(v, float) else v)
+            if isinstance(v, int):
+                row.append(v)
+            else:
+                row.append(round(float(v), digits))
             k += 1
         out.append(row)
     return out
 
 
+def summarize_errors(raw: list[float], corr: list[float]) -> dict:
+    return {
+        "sample_count": len(raw),
+        "raw_rmse": None if not raw else round(rmse(raw), 4),
+        "corrected_rmse": None if not corr else round(rmse(corr), 4),
+        "raw_bias": None if not raw else round(mean(raw), 4),
+        "corrected_bias": None if not corr else round(mean(corr), 4),
+        "raw_hit_rate": 0 if not raw else round(sum(abs(e) <= HIT_THRESHOLD_TECU for e in raw) / len(raw), 4),
+        "corrected_hit_rate": 0 if not corr else round(sum(abs(e) <= HIT_THRESHOLD_TECU for e in corr) / len(corr), 4),
+    }
+
+
 def main() -> int:
     AI_ROOT.mkdir(parents=True, exist_ok=True)
     now = datetime.now(UTC).replace(microsecond=0)
-    metas = load_frame_meta()
-    print(f"Loaded TEC frame metadata: {len(metas)}")
-    if not metas:
-        raise RuntimeError("No TEC archive frames. Run Fetch NOAA TEC archive first.")
+
+    metas_all = load_frame_meta()
+    print(f"Loaded TEC frame metadata: {len(metas_all)}")
+    if len(metas_all) < 2:
+        raise RuntimeError("No enough TEC archive frames. Run Fetch NOAA TEC archive first.")
+
+    train_cutoff = now - timedelta(days=TRAIN_DAYS)
+    target_metas = [m for m in metas_all if m["time"] >= train_cutoff]
 
     kp_rows = parse_kp_json(http_json(K_INDEX_URL))
     print(f"Loaded Kp rows: {len(kp_rows)}")
+    if not kp_rows:
+        raise RuntimeError("No NOAA Kp rows loaded.")
 
-    first = load_json_maybe_gz(metas[0]["path"])
-    lat_arr, lon_arr, vals0 = flatten_grid(first)
+    first = load_json_maybe_gz(metas_all[0]["path"])
+    lat_arr, lon_arr, _ = flatten_grid(first)
     n_lat, n_lon = len(lat_arr), len(lon_arr)
     n_cell = n_lat * n_lon
     if not n_cell:
@@ -313,54 +365,54 @@ def main() -> int:
         for lon in lon_arr:
             cell_region.append(region_id(lat, lon))
 
-    # Pass 1: quiet-time baseline proxy = mean TEC for each month/hour/grid cell.
-    base_sum: dict[tuple[int, int], list[float]] = {}
-    base_cnt: dict[tuple[int, int], list[int]] = {}
-    for meta in metas:
-        frame = load_json_maybe_gz(meta["path"])
-        _, _, vals = flatten_grid(frame)
-        key = (meta["time"].month, meta["time"].hour)
-        if key not in base_sum:
-            base_sum[key] = zeros(n_cell)
-            base_cnt[key] = intzeros(n_cell)
-        s, c = base_sum[key], base_cnt[key]
-        for idx, v in enumerate(vals):
-            if math.isfinite(v):
-                s[idx] += v
-                c[idx] += 1
-
-    # Pass 2: accumulate normal equations per grid cell and month.
+    # Accumulate normal equations for each grid cell and target month.
     acc_by_month = {m: new_acc(n_cell) for m in range(1, 13)}
-    used_frames = 0
-    for meta in metas:
-        kp = kp_at(meta["time"], kp_rows)
-        if kp is None:
+    pair_records: list[dict] = []
+
+    for meta_f in target_metas:
+        meta_b = nearest_meta(metas_all, meta_f["time"] - timedelta(hours=PAIR_HOURS), PAIR_TOLERANCE_MIN)
+        if not meta_b:
             continue
-        frame = load_json_maybe_gz(meta["path"])
-        _, _, vals = flatten_grid(frame)
-        month = meta["time"].month
-        hour = meta["time"].hour
-        bs, bc = base_sum.get((month, hour)), base_cnt.get((month, hour))
-        if not bs or not bc:
+        kp_f = kp_at(meta_f["time"], kp_rows)
+        kp_b = kp_at(meta_b["time"], kp_rows)
+        if kp_f is None or kp_b is None:
             continue
-        x = kp - 3.0
-        p0, p1, p2, p3 = 1.0, x, x * x, x * x * x
-        xx = (p0*p0, p0*p1, p0*p2, p0*p3, p1*p1, p1*p2, p1*p3, p2*p2, p2*p3, p3*p3)
+
+        frame_f = load_json_maybe_gz(meta_f["path"])
+        frame_b = load_json_maybe_gz(meta_b["path"])
+        _, _, vals_f = flatten_grid(frame_f)
+        _, _, vals_b = flatten_grid(frame_b)
+        if len(vals_f) != n_cell or len(vals_b) != n_cell:
+            continue
+
+        month = meta_f["time"].month
+        d = feature_delta(kp_f, kp_b)
+        xx = (
+            d[0]*d[0], d[0]*d[1], d[0]*d[2], d[0]*d[3],
+            d[1]*d[1], d[1]*d[2], d[1]*d[3],
+            d[2]*d[2], d[2]*d[3], d[3]*d[3],
+        )
         acc = acc_by_month[month]
-        used_frames += 1
-        for idx, v in enumerate(vals):
-            if not math.isfinite(v) or bc[idx] <= 0:
+        pair_records.append({"month": month, "kp_f": kp_f, "kp_b": kp_b, "vals_f": vals_f, "vals_b": vals_b})
+
+        for idx, (vf, vb) in enumerate(zip(vals_f, vals_b)):
+            if not math.isfinite(vf) or not math.isfinite(vb):
                 continue
-            residual = v - (bs[idx] / bc[idx])
+            y = vf - vb
             acc["count"][idx] += 1
             acc["xx00"][idx] += xx[0]; acc["xx01"][idx] += xx[1]; acc["xx02"][idx] += xx[2]; acc["xx03"][idx] += xx[3]
             acc["xx11"][idx] += xx[4]; acc["xx12"][idx] += xx[5]; acc["xx13"][idx] += xx[6]
             acc["xx22"][idx] += xx[7]; acc["xx23"][idx] += xx[8]; acc["xx33"][idx] += xx[9]
-            acc["xy0"][idx] += p0 * residual; acc["xy1"][idx] += p1 * residual; acc["xy2"][idx] += p2 * residual; acc["xy3"][idx] += p3 * residual
+            acc["xy0"][idx] += d[0] * y; acc["xy1"][idx] += d[1] * y; acc["xy2"][idx] += d[2] * y; acc["xy3"][idx] += d[3] * y
+
+    print(f"Training pairs: {len(pair_records)}")
+    if not pair_records:
+        raise RuntimeError("No previous-day TEC/Kp training pairs found.")
 
     old_grid = old_grid_coeffs()
     grid_out = {}
     updated_cells_total = 0
+
     for month in range(1, 13):
         acc = acc_by_month[month]
         k0, k1, k2, k3 = zeros(n_cell), zeros(n_cell), zeros(n_cell), zeros(n_cell)
@@ -376,6 +428,7 @@ def main() -> int:
             else:
                 vals = old_vals
             k0[idx], k1[idx], k2[idx], k3[idx] = vals
+
         grid_out[str(month)] = {
             "k0": to_grid(k0, n_lat, n_lon),
             "k1": to_grid(k1, n_lat, n_lon),
@@ -393,14 +446,13 @@ def main() -> int:
         for idx, rid in enumerate(cell_region):
             i, j = divmod(idx, n_lon)
             cnt = int(mg["sample_count"][i][j] or 0)
-            w = max(1, cnt) if cnt else 0
-            if not w:
+            if cnt <= 0:
                 continue
-            sums[rid][0] += mg["k0"][i][j] * w
-            sums[rid][1] += mg["k1"][i][j] * w
-            sums[rid][2] += mg["k2"][i][j] * w
-            sums[rid][3] += mg["k3"][i][j] * w
-            sums[rid][4] += w
+            sums[rid][0] += mg["k0"][i][j] * cnt
+            sums[rid][1] += mg["k1"][i][j] * cnt
+            sums[rid][2] += mg["k2"][i][j] * cnt
+            sums[rid][3] += mg["k3"][i][j] * cnt
+            sums[rid][4] += cnt
         for rid, s in sums.items():
             w = s[4]
             coeffs_region[rid][str(month)] = {
@@ -412,113 +464,101 @@ def main() -> int:
                 "updated": w > 0,
             }
 
-    # Pass 3: performance by region/month using grid-cell correction.
+    # Performance:
+    # raw forecast = previous-day observed TEC.
+    # corrected forecast = previous-day TEC - F(KpB) + F(KpF).
     perf_raw = defaultdict(list)
     perf_corr = defaultdict(list)
-    for meta in metas:
-        kp = kp_at(meta["time"], kp_rows)
-        if kp is None:
-            continue
-        frame = load_json_maybe_gz(meta["path"])
-        _, _, vals = flatten_grid(frame)
-        month = meta["time"].month
-        hour = meta["time"].hour
-        bs, bc = base_sum.get((month, hour)), base_cnt.get((month, hour))
-        if not bs or not bc:
-            continue
+
+    for rec in pair_records:
+        month = rec["month"]
+        kp_f = rec["kp_f"]
+        kp_b = rec["kp_b"]
         mg = grid_out[str(month)]
-        for idx, v in enumerate(vals):
-            if not math.isfinite(v) or bc[idx] <= 0:
+        for idx, (vf, vb) in enumerate(zip(rec["vals_f"], rec["vals_b"])):
+            if not math.isfinite(vf) or not math.isfinite(vb):
                 continue
-            residual = v - (bs[idx] / bc[idx])
             i, j = divmod(idx, n_lon)
             cf = [mg[name][i][j] for name in ("k0", "k1", "k2", "k3")]
-            corr = residual - predict(cf, kp)
+            raw_forecast = vb
+            corrected_forecast = vb - predict(cf, kp_b) + predict(cf, kp_f)
+            raw_err = vf - raw_forecast
+            corr_err = vf - corrected_forecast
             key = (cell_region[idx], month)
-            perf_raw[key].append(residual)
-            perf_corr[key].append(corr)
+            perf_raw[key].append(raw_err)
+            perf_corr[key].append(corr_err)
 
-    metrics_out = {r["id"]: {} for r in REGIONS}
+    metrics_region = {r["id"]: {} for r in REGIONS}
     all_raw, all_corr = [], []
-    for rid in metrics_out:
+    for rid in metrics_region:
         for month in range(1, 13):
             raw = perf_raw.get((rid, month), [])
             corr = perf_corr.get((rid, month), [])
+            metrics_region[rid][str(month)] = summarize_errors(raw, corr)
             all_raw.extend(raw)
             all_corr.extend(corr)
-            metrics_out[rid][str(month)] = {
-                "sample_count": len(raw),
-                "raw_rmse": None if not raw else round(rmse(raw), 4),
-                "corrected_rmse": None if not corr else round(rmse(corr), 4),
-                "raw_bias": None if not raw else round(mean(raw), 4),
-                "corrected_bias": None if not corr else round(mean(corr), 4),
-                "raw_hit_rate": 0 if not raw else round(sum(abs(e) <= HIT_THRESHOLD_TECU for e in raw) / len(raw), 4),
-                "corrected_hit_rate": 0 if not corr else round(sum(abs(e) <= HIT_THRESHOLD_TECU for e in corr) / len(corr), 4),
-            }
 
-    model = {
-        "formula": "delta_tecu = k0 + k1*(Kp-3) + k2*(Kp-3)^2 + k3*(Kp-3)^3",
-        "x": "Kp - 3",
-        "learning_level": "grid_cell",
-        "display_level": "18_regions",
-        "blend_alpha": BLEND_ALPHA,
-        "ridge": RIDGE,
-        "min_cell_samples": MIN_CELL_SAMPLES,
-        "correction_clip_tecu": CORRECTION_CLIP_TECU,
-    }
-    grid_doc = {
-        "version": "swifttec-kp-cubic-ai-grid-v1",
+    coeff_doc = {
+        "version": "swifttec-kp-model-rule-ai-region-v1",
         "updated_utc": iso(now),
+        "model_rule": "BaseTEC = PrevObservedTEC - F(KpB); ForecastTEC = BaseTEC + F(KpF)",
+        "formula": "F(Kp) = k0 + k1*(Kp-3) + k2*(Kp-3)^2 + k3*(Kp-3)^3",
         "train_days": TRAIN_DAYS,
-        "used_frames": used_frames,
+        "pair_hours": PAIR_HOURS,
+        "regions": REGIONS,
+        "coefficients": coeffs_region,
+    }
+
+    grid_doc = {
+        "version": "swifttec-kp-model-rule-ai-grid-v1",
+        "updated_utc": iso(now),
+        "model_rule": "BaseTEC = PrevObservedTEC - F(KpB); ForecastTEC = BaseTEC + F(KpF)",
+        "formula": "F(Kp) = k0 + k1*(Kp-3) + k2*(Kp-3)^2 + k3*(Kp-3)^3",
         "lat_arr": lat_arr,
         "lon_arr": lon_arr,
         "n_lat": n_lat,
         "n_lon": n_lon,
-        "model": model,
+        "train_days": TRAIN_DAYS,
+        "pair_hours": PAIR_HOURS,
+        "pair_tolerance_min": PAIR_TOLERANCE_MIN,
+        "min_cell_samples": MIN_CELL_SAMPLES,
+        "blend_alpha": BLEND_ALPHA,
+        "ridge": RIDGE,
+        "correction_clip_tecu": CORRECTION_CLIP_TECU,
         "coefficients_grid": grid_out,
     }
-    coeff_doc = {
-        "version": "swifttec-kp-cubic-ai-region-display-v2",
-        "updated_utc": iso(now),
-        "train_days": TRAIN_DAYS,
-        "regions": REGIONS,
-        "model": model,
-        "note": "Display coefficients are aggregated from grid-cell AI coefficients. Forecast correction uses kp_grid_coefficients.json when available.",
-        "coefficients": coeffs_region,
-    }
+
     perf_doc = {
-        "version": "swifttec-kp-cubic-ai-performance-v2",
+        "version": "swifttec-kp-model-rule-ai-performance-v1",
         "updated_utc": iso(now),
+        "model_rule": "raw=PrevObservedTEC, corrected=PrevObservedTEC - F(KpB) + F(KpF)",
         "hit_threshold_tecu": HIT_THRESHOLD_TECU,
-        "summary": {
-            "sample_count": len(all_raw),
-            "updated_groups": updated_cells_total,
+        "summary": summarize_errors(all_raw, all_corr) | {
             "updated_cells": updated_cells_total,
-            "raw_rmse": None if not all_raw else round(rmse(all_raw), 4),
-            "corrected_rmse": None if not all_corr else round(rmse(all_corr), 4),
-            "raw_hit_rate": 0 if not all_raw else round(sum(abs(e) <= HIT_THRESHOLD_TECU for e in all_raw) / len(all_raw), 4),
-            "corrected_hit_rate": 0 if not all_corr else round(sum(abs(e) <= HIT_THRESHOLD_TECU for e in all_corr) / len(all_corr), 4),
+            "training_pairs": len(pair_records),
         },
-        "metrics": metrics_out,
+        "metrics": metrics_region,
     }
 
     hist_path = AI_ROOT / "kp_learning_history.json"
     try:
-        hist = json.loads(hist_path.read_text(encoding="utf-8")) if hist_path.exists() else {"version": "swifttec-kp-cubic-ai-history-v2", "runs": []}
+        hist = json.loads(hist_path.read_text(encoding="utf-8")) if hist_path.exists() else {"version": "swifttec-kp-ai-history-v1", "runs": []}
     except Exception:
-        hist = {"version": "swifttec-kp-cubic-ai-history-v2", "runs": []}
-    hist["version"] = "swifttec-kp-cubic-ai-history-v2"
-    hist["retention_days"] = 730
-    hist["learning_level"] = "grid_cell"
+        hist = {"version": "swifttec-kp-ai-history-v1", "runs": []}
+    hist["version"] = "swifttec-kp-model-rule-ai-history-v1"
+    hist["model_rule"] = "BaseTEC = PrevObservedTEC - F(KpB); ForecastTEC = BaseTEC + F(KpF)"
     hist.setdefault("runs", []).append({"time_utc": iso(now), **perf_doc["summary"]})
     hist["runs"] = hist["runs"][-HISTORY_MAX_RUNS:]
 
-    (AI_ROOT / "kp_grid_coefficients.json").write_text(json.dumps(grid_doc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (AI_ROOT / "kp_grid_coefficients.json").write_text(json.dumps(grid_doc, ensure_ascii=False, indent=2), encoding="utf-8")
     (AI_ROOT / "kp_coefficients.json").write_text(json.dumps(coeff_doc, ensure_ascii=False, indent=2), encoding="utf-8")
     (AI_ROOT / "kp_performance.json").write_text(json.dumps(perf_doc, ensure_ascii=False, indent=2), encoding="utf-8")
     hist_path.write_text(json.dumps(hist, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Kp grid AI training complete: cells={n_cell}, used_frames={used_frames}, updated_cells={updated_cells_total}, samples={len(all_raw)}")
+
+    print(
+        f"Kp model-rule AI training complete: pairs={len(pair_records)}, "
+        f"updated_cells={updated_cells_total}, samples={len(all_raw)}"
+    )
     return 0
 
 
