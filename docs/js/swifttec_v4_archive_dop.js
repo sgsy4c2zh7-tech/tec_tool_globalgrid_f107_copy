@@ -9,11 +9,11 @@
   const KP_AI_GRID_COEFF_URL = "data/ai/kp_grid_coefficients.json";
 
   const GNSS_SOURCES = {
-    gps:     { label: "GPS",     url: "data/gnss/gps_latest.tle",     checked: true  },
-    galileo: { label: "Galileo", url: "data/gnss/galileo_latest.tle", checked: false },
-    glonass: { label: "GLONASS", url: "data/gnss/glonass_latest.tle", checked: false },
-    beidou:  { label: "BeiDou",  url: "data/gnss/beidou_latest.tle",  checked: false },
-    qzss:    { label: "QZSS",    url: "data/gnss/qzss_latest.tle",    checked: true  },
+    gps:     { label: "GPS",     url: "data/gnss/gps_latest.tle",     liveUrl: "https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle",     checked: true  },
+    galileo: { label: "Galileo", url: "data/gnss/galileo_latest.tle", liveUrl: "https://celestrak.org/NORAD/elements/gp.php?GROUP=galileo&FORMAT=tle", checked: false },
+    glonass: { label: "GLONASS", url: "data/gnss/glonass_latest.tle", liveUrl: "https://celestrak.org/NORAD/elements/gp.php?GROUP=glo-ops&FORMAT=tle", checked: false },
+    beidou:  { label: "BeiDou",  url: "data/gnss/beidou_latest.tle",  liveUrl: "https://celestrak.org/NORAD/elements/gp.php?GROUP=beidou&FORMAT=tle",  checked: false },
+    qzss:    { label: "QZSS",    url: "data/gnss/qzss_latest.tle",    liveUrl: "https://celestrak.org/NORAD/elements/gp.php?GROUP=qzss&FORMAT=tle",    checked: true  },
   };
 
   let archiveIndex = null;
@@ -1088,7 +1088,7 @@
 
   async function loadGnssDopData() {
     try {
-      setV4Status("GNSS TLEとsatellite.jsを読み込み中…");
+      setV4Status("GNSS TLEを読み込み中… local data/gnss → 失敗時CelesTrak live");
       await loadScriptOnce(SATELLITE_JS_URL);
 
       const selectedConst = selectedConstellationsFromUi();
@@ -1101,9 +1101,14 @@
       for (const key of selectedConst) {
         const src = GNSS_SOURCES[key];
         try {
-          const tle = await fetchTleIfExists(src.url);
+          let tle = await fetchTleIfExists(src.url);
+          let tleSource = "local";
+          if (!tle && src.liveUrl) {
+            tle = await fetchTleIfExists(src.liveUrl);
+            tleSource = "CelesTrak";
+          }
           if (!tle) {
-            failed.push(`${src.label}: not found`);
+            failed.push(`${src.label}: not found local/live`);
             continue;
           }
           const records = parseTleText(tle);
@@ -2327,6 +2332,127 @@
     });
   }
 
+
+  function nearestGridCellForPointSeries(lat, lon) {
+    if (!gGrid || !gGrid.latArr || !gGrid.lonArr) return null;
+    let bestI = 0, bestJ = 0, bestD = Infinity;
+    for (let i = 0; i < gGrid.nLat; i++) {
+      const dLat = Math.abs(Number(gGrid.latArr[i]) - lat);
+      if (dLat > bestD) continue;
+      for (let j = 0; j < gGrid.nLon; j++) {
+        let dLon = Math.abs(Number(gGrid.lonArr[j]) - lon);
+        dLon = Math.min(dLon, 360 - dLon);
+        const d = dLat + dLon * 0.4;
+        if (d < bestD) { bestD = d; bestI = i; bestJ = j; }
+      }
+    }
+    return { i: bestI, j: bestJ, lat: Number(gGrid.latArr[bestI]), lon: Number(gGrid.lonArr[bestJ]) };
+  }
+
+  function pointTecAtTimeForSeries(t, i, j) {
+    const raw = interpolateGridAtTime(t);
+    if (!raw) return NaN;
+    const grid = applyKpAiCorrectionToGrid(raw, t);
+    const v = Number(grid?.[i]?.[j]);
+    return isFinite(v) ? v : NaN;
+  }
+
+  function pointDopAtTimeForSeries(lat, lon, t) {
+    if (!gnssLoaded || !gnssSatList.length) return null;
+    const sats = propagatedGnssEcf(t);
+    return dopAllAt(lat, lon, sats, getElevationMaskDeg());
+  }
+
+  function buildPointDopSeries(lat, lon, opts = {}) {
+    const stepMin = Math.max(1, Number(opts.stepMin || 5));
+    const metric = String(opts.metric || "pdop");
+    if (!gGrid || !gForecastTimes.length) throw new Error("先にTEC/予報ヒートマップを作成してください。");
+    if (!gnssLoaded || !gnssSatList.length) throw new Error("先にGNSS TLE読込 / DOP準備を実行してください。");
+
+    const cell = nearestGridCellForPointSeries(Number(lat), Number(lon));
+    if (!cell) throw new Error("選択地点に対応する格子を取得できません。");
+
+    const start = gForecastTimes[0];
+    const end = gForecastTimes[gForecastTimes.length - 1];
+    if (!(start instanceof Date) || isNaN(start.getTime()) || !(end instanceof Date) || isNaN(end.getTime())) {
+      throw new Error("予報時刻列がありません。");
+    }
+
+    const cfg = (typeof getConfigFromUI === "function") ? getConfigFromUI() : { kL1: 0.162 };
+    const kL1 = Number(cfg.kL1 || 0.162);
+    const rows = [];
+    const maxN = Math.min(2000, Math.floor((end.getTime() - start.getTime()) / (stepMin * 60000)) + 1);
+
+    for (let n = 0; n < maxN; n++) {
+      const t = new Date(start.getTime() + n * stepMin * 60000);
+      if (t > end) break;
+      const d = pointDopAtTimeForSeries(cell.lat, cell.lon, t) || {};
+      const tec = pointTecAtTimeForSeries(t, cell.i, cell.j);
+      const l1 = isFinite(tec) ? tec * kL1 : NaN;
+
+      const row = {
+        time: t.toISOString().replace(".000Z", "Z"),
+        time_ms: t.getTime(),
+        lat: cell.lat,
+        lon: cell.lon,
+        selected_lat: Number(lat),
+        selected_lon: Number(lon),
+        tec,
+        l1,
+        count: Number(d.count),
+        gdop: Number(d.gdop),
+        pdop: Number(d.pdop),
+        hdop: Number(d.hdop),
+        vdop: Number(d.vdop),
+        tdop: Number(d.tdop),
+      };
+      row.gdoptec = isFinite(row.gdop) && isFinite(l1) ? row.gdop * l1 : NaN;
+      row.pdoptec = isFinite(row.pdop) && isFinite(l1) ? row.pdop * l1 : NaN;
+      row.hdoptec = isFinite(row.hdop) && isFinite(l1) ? row.hdop * l1 : NaN;
+      row.vdoptec = isFinite(row.vdop) && isFinite(l1) ? row.vdop * l1 : NaN;
+      row.tdoptec = isFinite(row.tdop) && isFinite(l1) ? row.tdop * l1 : NaN;
+      row.value = Number(row[metric]);
+      rows.push(row);
+    }
+
+    return {
+      metric,
+      step_min: stepMin,
+      start_utc: start.toISOString().replace(".000Z", "Z"),
+      end_utc: end.toISOString().replace(".000Z", "Z"),
+      cell,
+      rows,
+      gnss_total: gnssSatList.length,
+      gnss_active_selected: selectedActiveSats().length,
+      elevation_mask_deg: getElevationMaskDeg(),
+    };
+  }
+
+  function applyGnssPrnHealthMap(healthMap) {
+    if (!healthMap || typeof healthMap !== "object") return { applied: 0, inactive: 0 };
+    let applied = 0;
+    let inactive = 0;
+    for (const s of gnssSatList) {
+      if (s.constellation !== "gps") continue;
+      const prnRaw = (String(s.name || "").match(/PRN\s*([0-9]+)/i) || String(s.displayName || "").match(/PRN\s*([0-9]+)/i) || [])[1];
+      if (!prnRaw) continue;
+      const prn = String(Number(prnRaw)).padStart(2, "0");
+      if (!(prn in healthMap)) continue;
+      const ok = Number(healthMap[prn]) === 0;
+      s.active = ok;
+      s.health = Number(healthMap[prn]);
+      applied++;
+      if (!ok) inactive++;
+    }
+    selectionVersion++;
+    dopFrameCache.clear();
+    renderSatelliteSelection();
+    updateGnssQuickStatus();
+    if (typeof requestDraw === "function") requestDraw();
+    return { applied, inactive };
+  }
+
+
   window.loadTecArchiveIndex = loadTecArchiveIndex;
   window.loadTecArchiveRange = loadTecArchiveRange;
   window.loadTecArchivePlusCurrentForecast = loadTecArchivePlusCurrentForecast;
@@ -2348,6 +2474,8 @@
   window.setAllSatActive = setAllSatActive;
   window.renderSatelliteSelection = renderSatelliteSelection;
   window.markGnssSelectionChanged = markSelectionChanged;
+  window.swiftBuildPointDopSeries = buildPointDopSeries;
+  window.swiftApplyGnssPrnHealthMap = applyGnssPrnHealthMap;
 
   document.addEventListener("DOMContentLoaded", bootAddon);
 })();
@@ -5300,5 +5428,784 @@
 
   window.swiftLoadFailureAnalysis = loadFailPerfV62;
   readyV62(bootV62);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v6.3 map focus controls
+ * Keeps timeline slider and playback controls visible in map-focus mode.
+ * ========================================================= */
+(function () {
+  function readyV63(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q63(id) { return document.getElementById(id); }
+
+  function forceResizeV63() {
+    for (const delay of [0, 80, 180, 360, 800]) {
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch {}
+        try { window.requestDraw?.(); } catch {}
+      }, delay);
+    }
+  }
+
+  function updateFocusButtonV63() {
+    const on = document.documentElement.classList.contains("swift-map-focus");
+    const b = q63("swiftMapFocusButton");
+    if (b) {
+      b.textContent = on ? "↙ 通常表示" : "⛶ 地図だけ拡大";
+      b.onclick = on ? window.swiftExitMapFocusMode : window.swiftEnterMapFocusMode;
+    }
+  }
+
+  function patchFocusFunctionsV63() {
+    const oldEnter = window.swiftEnterMapFocusMode;
+    const oldExit = window.swiftExitMapFocusMode;
+    const oldToggle = window.swiftToggleMapFocusMode;
+
+    window.swiftEnterMapFocusMode = function () {
+      if (typeof oldEnter === "function") oldEnter();
+      else document.documentElement.classList.add("swift-map-focus");
+      updateFocusButtonV63();
+      forceResizeV63();
+    };
+
+    window.swiftExitMapFocusMode = function () {
+      if (typeof oldExit === "function") oldExit();
+      else document.documentElement.classList.remove("swift-map-focus");
+      updateFocusButtonV63();
+      forceResizeV63();
+    };
+
+    window.swiftToggleMapFocusMode = function () {
+      if (typeof oldToggle === "function") oldToggle();
+      else document.documentElement.classList.toggle("swift-map-focus");
+      updateFocusButtonV63();
+      forceResizeV63();
+    };
+  }
+
+  function bootV63() {
+    patchFocusFunctionsV63();
+    updateFocusButtonV63();
+
+    const slider = q63("timeSlider");
+    if (slider) {
+      slider.addEventListener("input", () => {
+        if (document.documentElement.classList.contains("swift-map-focus")) forceResizeV63();
+      });
+    }
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") {
+        setTimeout(updateFocusButtonV63, 0);
+      }
+    });
+  }
+
+  readyV63(bootV63);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v6.4 persistent timeline dock + GNSS load helper
+ * - Shows a floating timeline dock when forecast heatmap exists or map focus is on.
+ * - Timeline dock keeps slider/play/stop/speed usable even if the original slider-card is hidden.
+ * - GNSS load uses local data/gnss first, then CelesTrak live fallback in the core loader.
+ * ========================================================= */
+(function () {
+  function readyV64(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function q64(id) { return document.getElementById(id); }
+
+  function injectStyleV64() {
+    if (q64("swiftTimelineDockStyleV64")) return;
+    const st = document.createElement("style");
+    st.id = "swiftTimelineDockStyleV64";
+    st.textContent = `
+      #swiftTimelineDockV64 {
+        position: fixed;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        width: min(1180px, calc(100vw - 28px));
+        z-index: 2147483642;
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px 10px;
+        border: 1px solid rgba(96,165,250,.90);
+        border-radius: 14px;
+        background: rgba(3, 7, 18, .95);
+        color: #eaf2ff;
+        box-shadow: 0 18px 44px rgba(0,0,0,.58);
+        backdrop-filter: blur(9px);
+        font-size: 11px;
+      }
+      #swiftTimelineDockV64.swift-show {
+        display: flex !important;
+      }
+      .swift-v64-timeline-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        flex-wrap: nowrap;
+      }
+      #swiftTimelineSliderV64 {
+        flex: 1 1 auto;
+        min-width: 280px;
+        accent-color: #60a5fa;
+      }
+      #swiftTimelineDockV64 button,
+      #swiftTimelineDockV64 select {
+        min-height: 24px;
+        border-radius: 8px;
+        border: 1px solid #334155;
+        background: #0f172a;
+        color: #dbeafe;
+        padding: 3px 8px;
+        font-size: 11px;
+      }
+      #swiftTimelineDockV64 button {
+        cursor: pointer;
+        font-weight: 750;
+      }
+      #swiftTimelineDockV64 button.primary {
+        background: #1d4ed8;
+        border-color: #60a5fa;
+        color: #fff;
+      }
+      #swiftTimelineDockV64 button.danger {
+        background: #7f1d1d;
+        border-color: #fecaca;
+        color: #fff;
+      }
+      .swift-v64-label {
+        white-space: nowrap;
+        color: #c8d8f2;
+      }
+      .swift-v64-muted {
+        color: #8ba0c2;
+        font-size: 10px;
+      }
+      html.swift-map-focus #swiftTimelineDockV64 {
+        display: flex !important;
+      }
+      html.swift-map-focus .slider-card {
+        display: none !important;
+      }
+      html.swift-map-focus .map-card {
+        padding-bottom: 78px !important;
+      }
+      #swiftGnssLoadStatusV64 {
+        margin-top: 6px;
+        font-size: 10px;
+        color: #9fb0cc;
+        line-height: 1.35;
+      }
+      @media (max-width: 760px) {
+        #swiftTimelineDockV64 {
+          width: calc(100vw - 16px);
+          bottom: 8px;
+          padding: 7px;
+          max-height: 180px;
+          overflow: auto;
+        }
+        .swift-v64-timeline-row {
+          flex-wrap: wrap;
+        }
+        #swiftTimelineSliderV64 {
+          min-width: 160px;
+        }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function forceResizeV64() {
+    for (const delay of [0, 80, 180, 360, 800]) {
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch {}
+        try { window.requestDraw?.(); } catch {}
+      }, delay);
+    }
+  }
+
+  function hasForecastV64() {
+    const slider = q64("timeSlider");
+    const max = Number(slider?.max || 0);
+    const utc = String(q64("utcLabel")?.textContent || "");
+    if (max > 0 && utc && !utc.includes("--")) return true;
+    try {
+      if (typeof gForecastTimes !== "undefined" && Array.isArray(gForecastTimes) && gForecastTimes.length > 0) return true;
+    } catch {}
+    return false;
+  }
+
+  function nativeSliderVisibleV64() {
+    const card = document.querySelector(".slider-card");
+    if (!card) return false;
+    const r = card.getBoundingClientRect();
+    const style = getComputedStyle(card);
+    if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
+    return r.width > 50 && r.height > 20 && r.bottom > 0 && r.top < window.innerHeight;
+  }
+
+  function ensureDockV64() {
+    if (q64("swiftTimelineDockV64")) return q64("swiftTimelineDockV64");
+    const dock = document.createElement("div");
+    dock.id = "swiftTimelineDockV64";
+    dock.innerHTML = `
+      <div class="swift-v64-timeline-row">
+        <button class="danger" type="button" id="swiftV64ExitFocusBtn">↙ 通常表示</button>
+        <span class="swift-v64-label">時間</span>
+        <input id="swiftTimelineSliderV64" type="range" min="0" max="192" value="0">
+        <span id="swiftTimelineFrameV64" class="swift-v64-label">frame --</span>
+        <span id="swiftTimelineUtcV64" class="swift-v64-label">UTC: --</span>
+        <span id="swiftTimelineKpV64" class="swift-v64-label">KpF=-- / KpB=--</span>
+      </div>
+      <div class="swift-v64-timeline-row">
+        <button class="primary" type="button" id="swiftV64PlayBtn">▶ 再生</button>
+        <button type="button" id="swiftV64StopBtn">⏸ 停止</button>
+        <span class="swift-v64-muted">速度</span>
+        <select id="swiftV64SpeedSelect">
+          <option value="1">x1</option>
+          <option value="2">x2</option>
+          <option value="4">x4</option>
+        </select>
+        <span class="swift-v64-muted">表示</span>
+        <select id="swiftV64MapModeSelect"></select>
+        <button type="button" id="swiftV64HideDockBtn">下部バーを隠す</button>
+      </div>
+    `;
+    document.body.appendChild(dock);
+
+    q64("swiftTimelineSliderV64").addEventListener("input", () => {
+      const native = q64("timeSlider");
+      const v = q64("swiftTimelineSliderV64").value;
+      if (native) {
+        native.value = v;
+        try { window.onSliderChange?.(); } catch {}
+      }
+      syncDockV64(true);
+      forceResizeV64();
+    });
+
+    q64("swiftV64PlayBtn").onclick = () => {
+      try { window.playArchiveMovie?.(); } catch {}
+      showDockV64(true, true);
+    };
+    q64("swiftV64StopBtn").onclick = () => {
+      try { window.stopArchiveMovie?.(); } catch {}
+      showDockV64(true, true);
+    };
+    q64("swiftV64ExitFocusBtn").onclick = () => {
+      try { window.swiftExitMapFocusMode?.(); } catch {}
+      document.documentElement.classList.remove("swift-map-focus");
+      showDockV64(hasForecastV64() && !nativeSliderVisibleV64(), true);
+      forceResizeV64();
+    };
+    q64("swiftV64HideDockBtn").onclick = () => {
+      dock.dataset.userHidden = "1";
+      if (!document.documentElement.classList.contains("swift-map-focus")) showDockV64(false, true);
+    };
+    q64("swiftV64SpeedSelect").onchange = () => {
+      const native = q64("movieSpeedSelect");
+      if (native) native.value = q64("swiftV64SpeedSelect").value;
+    };
+    q64("swiftV64MapModeSelect").onchange = () => {
+      const native = q64("mapModeSelect");
+      if (native) {
+        native.value = q64("swiftV64MapModeSelect").value;
+        try { window.changeMapMode?.(); } catch {}
+      }
+      forceResizeV64();
+    };
+
+    return dock;
+  }
+
+  function populateMapModeV64() {
+    const native = q64("mapModeSelect");
+    const mini = q64("swiftV64MapModeSelect");
+    if (!native || !mini || mini.options.length) return;
+    for (const opt of native.options) {
+      const o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.textContent;
+      mini.appendChild(o);
+    }
+  }
+
+  function syncDockV64(keepUserValue = false) {
+    ensureDockV64();
+    populateMapModeV64();
+
+    const nativeSlider = q64("timeSlider");
+    const miniSlider = q64("swiftTimelineSliderV64");
+    if (nativeSlider && miniSlider) {
+      miniSlider.min = nativeSlider.min || "0";
+      miniSlider.max = nativeSlider.max || "192";
+      if (!keepUserValue) miniSlider.value = nativeSlider.value || "0";
+    }
+
+    const frame = q64("swiftTimelineFrameV64");
+    if (frame && nativeSlider) frame.textContent = `frame ${nativeSlider.value || "0"} / ${nativeSlider.max || "--"}`;
+
+    const utc = q64("swiftTimelineUtcV64");
+    if (utc) utc.textContent = q64("utcLabel")?.textContent || "UTC: --";
+
+    const kp = q64("swiftTimelineKpV64");
+    if (kp) kp.textContent = q64("kpNowLabel")?.textContent || "KpF=-- / KpB=--";
+
+    const nativeSpeed = q64("movieSpeedSelect");
+    const miniSpeed = q64("swiftV64SpeedSelect");
+    if (nativeSpeed && miniSpeed) miniSpeed.value = nativeSpeed.value || "1";
+
+    const nativeMode = q64("mapModeSelect");
+    const miniMode = q64("swiftV64MapModeSelect");
+    if (nativeMode && miniMode) miniMode.value = nativeMode.value || "tec";
+  }
+
+  function showDockV64(show, force = false) {
+    const dock = ensureDockV64();
+    if (!force && dock.dataset.userHidden === "1" && !document.documentElement.classList.contains("swift-map-focus")) return;
+    dock.classList.toggle("swift-show", !!show);
+    if (show) syncDockV64();
+  }
+
+  function autoVisibilityV64() {
+    const focus = document.documentElement.classList.contains("swift-map-focus");
+    const forecast = hasForecastV64();
+    const nativeVisible = nativeSliderVisibleV64();
+
+    if (focus) {
+      showDockV64(true, true);
+      return;
+    }
+
+    if (forecast && !nativeVisible) {
+      showDockV64(true);
+    } else {
+      showDockV64(false, true);
+    }
+  }
+
+  function patchFocusFunctionsV64() {
+    const oldEnter = window.swiftEnterMapFocusMode;
+    const oldExit = window.swiftExitMapFocusMode;
+
+    window.swiftEnterMapFocusMode = function () {
+      if (typeof oldEnter === "function") oldEnter();
+      else document.documentElement.classList.add("swift-map-focus");
+      showDockV64(true, true);
+      forceResizeV64();
+    };
+
+    window.swiftExitMapFocusMode = function () {
+      if (typeof oldExit === "function") oldExit();
+      else document.documentElement.classList.remove("swift-map-focus");
+      autoVisibilityV64();
+      forceResizeV64();
+    };
+  }
+
+  function patchGnssButtonStatusV64() {
+    const side = document.getElementById("swiftAccuracySide");
+    if (!side || document.getElementById("swiftGnssLoadStatusV64")) return;
+    const s = document.createElement("div");
+    s.id = "swiftGnssLoadStatusV64";
+    s.textContent = "GNSS: local data/gnss → 失敗時CelesTrak liveで読込";
+    side.appendChild(s);
+  }
+
+  function bootV64() {
+    injectStyleV64();
+    ensureDockV64();
+    patchFocusFunctionsV64();
+    patchGnssButtonStatusV64();
+
+    const slider = q64("timeSlider");
+    if (slider) slider.addEventListener("input", () => setTimeout(syncDockV64, 0));
+
+    // After forecast execution, the native slider may be pushed outside visible area.
+    // Poll lightly so the dock appears exactly when needed.
+    setInterval(() => {
+      syncDockV64();
+      autoVisibilityV64();
+    }, 900);
+
+    for (const delay of [300, 1000, 2000]) {
+      setTimeout(() => {
+        syncDockV64();
+        autoVisibilityV64();
+        patchGnssButtonStatusV64();
+      }, delay);
+    }
+  }
+
+  window.swiftShowTimelineDock = () => showDockV64(true, true);
+  readyV64(bootV64);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v6.5 selected point 5-minute DOP graph
+ * Adds selectable DOP / TECxDOP time series for clicked lat/lon.
+ * Also adds a GPS Yuma almanac health loader where available.
+ * ========================================================= */
+(function () {
+  let selectedPointV65 = null;
+  let lastSeriesV65 = null;
+
+  const METRICS_V65 = {
+    count: "可視衛星数",
+    gdop: "GDOP",
+    pdop: "PDOP",
+    hdop: "HDOP",
+    vdop: "VDOP",
+    tdop: "TDOP",
+    tec: "TEC [TECU]",
+    l1: "L1電離圏誤差 [m]",
+    gdoptec: "GDOP × L1誤差 [m]",
+    pdoptec: "PDOP × L1誤差 [m]",
+    hdoptec: "HDOP × L1誤差 [m]",
+    vdoptec: "VDOP × L1誤差 [m]",
+    tdoptec: "TDOP × L1誤差 [m]",
+  };
+
+  function readyV65(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q65(id) { return document.getElementById(id); }
+  function num65(v, d = 2) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(d) : "--";
+  }
+  function parseLatLonFromPointInfoV65(text) {
+    const m = String(text || "").match(/Clicked:\s*lat=([-\d.]+),\s*lon=([-\d.]+)/i);
+    if (!m) return null;
+    return { lat: Number(m[1]), lon: Number(m[2]) };
+  }
+
+  function injectStyleV65() {
+    if (q65("swiftPointDopGraphStyleV65")) return;
+    const st = document.createElement("style");
+    st.id = "swiftPointDopGraphStyleV65";
+    st.textContent = `
+      .swift-v65-card {
+        margin-top: 10px;
+        border: 1px solid #1f355a;
+        border-radius: 14px;
+        background: rgba(7, 14, 28, .98);
+        padding: 10px;
+      }
+      .swift-v65-title {
+        color: #eaf2ff;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      .swift-v65-sub {
+        color: #9fb0cc;
+        font-size: 10px;
+        line-height: 1.35;
+        margin-top: 3px;
+      }
+      .swift-v65-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .swift-v65-row > * {
+        min-width: 0;
+      }
+      .swift-v65-select,
+      .swift-v65-input {
+        background: #061020;
+        border: 1px solid #2a4774;
+        color: #eaf2ff;
+        border-radius: 9px;
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+      .swift-v65-btn {
+        border-radius: 9px;
+        border: 1px solid #3b82f6;
+        background: #1d4ed8;
+        color: white;
+        padding: 6px 9px;
+        font-size: 11px;
+        font-weight: 750;
+        cursor: pointer;
+      }
+      .swift-v65-btn.secondary {
+        border-color: #334155;
+        background: #0f172a;
+      }
+      #swiftPointDopCanvasV65 {
+        width: 100%;
+        height: 185px;
+        border: 1px solid #1f355a;
+        border-radius: 12px;
+        background: #030712;
+        display: block;
+        margin-top: 8px;
+      }
+      .swift-v65-kpi {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .swift-v65-mini {
+        border: 1px solid #1f355a;
+        border-radius: 10px;
+        background: #061020;
+        padding: 7px;
+      }
+      .swift-v65-mini-label {
+        color: #8ba0c2;
+        font-size: 9px;
+      }
+      .swift-v65-mini-value {
+        color: #f8fafc;
+        font-size: 14px;
+        font-weight: 900;
+        margin-top: 3px;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function ensurePanelV65() {
+    const side = q65("swiftAccuracySide") || document.querySelector(".sidebar");
+    if (!side || q65("swiftPointDopPanelV65")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "swiftPointDopPanelV65";
+    panel.className = "swift-v65-card";
+    panel.innerHTML = `
+      <div class="swift-v65-title">選択地点 5分DOPグラフ</div>
+      <div class="swift-v65-sub">
+        地図をクリックした緯度経度について、5分間隔でDOP/TEC×DOPを時系列表示します。
+      </div>
+      <div class="swift-v65-row">
+        <select id="swiftPointDopMetricV65" class="swift-v65-select">
+          ${Object.entries(METRICS_V65).map(([k, v]) => `<option value="${k}" ${k === "pdoptec" ? "selected" : ""}>${v}</option>`).join("")}
+        </select>
+        <select id="swiftPointDopStepV65" class="swift-v65-select">
+          <option value="5" selected>5分</option>
+          <option value="10">10分</option>
+          <option value="15">15分</option>
+          <option value="30">30分</option>
+        </select>
+        <button class="swift-v65-btn" onclick="window.swiftRenderPointDopGraphV65()">グラフ更新</button>
+      </div>
+      <div class="swift-v65-sub" id="swiftPointDopSelectedV65">地点: 未選択。地図をクリックしてください。</div>
+      <canvas id="swiftPointDopCanvasV65"></canvas>
+      <div class="swift-v65-kpi">
+        <div class="swift-v65-mini"><div class="swift-v65-mini-label">最小</div><div class="swift-v65-mini-value" id="swiftPointDopMinV65">--</div></div>
+        <div class="swift-v65-mini"><div class="swift-v65-mini-label">平均</div><div class="swift-v65-mini-value" id="swiftPointDopAvgV65">--</div></div>
+        <div class="swift-v65-mini"><div class="swift-v65-mini-label">最大</div><div class="swift-v65-mini-value" id="swiftPointDopMaxV65">--</div></div>
+      </div>
+      <div class="swift-v65-row">
+        <button class="swift-v65-btn secondary" onclick="window.swiftLoadGpsYumaHealthV65()">GPS Almanac Health読込</button>
+      </div>
+      <div class="swift-v65-sub" id="swiftAlmanacStatusV65">
+        Almanac healthはGPS Yumaを取得できる場合のみ反映。TLE運用グループは従来通りlocal→CelesTrakで読込。
+      </div>
+    `;
+    side.appendChild(panel);
+
+    const metric = q65("swiftPointDopMetricV65");
+    const step = q65("swiftPointDopStepV65");
+    if (metric) metric.addEventListener("change", () => window.swiftRenderPointDopGraphV65?.());
+    if (step) step.addEventListener("change", () => window.swiftRenderPointDopGraphV65?.());
+  }
+
+  function drawSeriesV65(series) {
+    const canvas = q65("swiftPointDopCanvasV65");
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(300, Math.floor(rect.width * dpr));
+    const h = Math.max(150, Math.floor(rect.height * dpr));
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#030712";
+    ctx.fillRect(0, 0, w, h);
+
+    const rows = series?.rows || [];
+    const vals = rows.map(r => Number(r.value)).filter(Number.isFinite);
+    const metricLabel = METRICS_V65[series?.metric] || series?.metric || "metric";
+
+    ctx.font = `${12 * dpr}px system-ui`;
+    ctx.fillStyle = "#dbeafe";
+    ctx.fillText(metricLabel + ` / ${series?.step_min || 5}分間隔`, 12 * dpr, 18 * dpr);
+
+    if (!vals.length) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText("データなし。予報作成とGNSS読込後に地図をクリックしてください。", 14 * dpr, 55 * dpr);
+      return;
+    }
+
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    q65("swiftPointDopMinV65").textContent = num65(min);
+    q65("swiftPointDopAvgV65").textContent = num65(avg);
+    q65("swiftPointDopMaxV65").textContent = num65(max);
+
+    const pad = { l: 42 * dpr, r: 12 * dpr, t: 28 * dpr, b: 24 * dpr };
+    const x0 = pad.l, x1 = w - pad.r, y0 = pad.t, y1 = h - pad.b;
+    const yMin = Math.min(0, min);
+    const yMax = max === yMin ? yMin + 1 : max * 1.08;
+
+    ctx.strokeStyle = "rgba(148,163,184,.22)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = y1 - (y1 - y0) * i / 4;
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+      ctx.fillStyle = "#73839e";
+      ctx.font = `${9 * dpr}px system-ui`;
+      ctx.fillText(num65(yMin + (yMax - yMin) * i / 4, 1), 5 * dpr, y + 3 * dpr);
+    }
+
+    const xAt = i => rows.length === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (rows.length - 1);
+    const yAt = v => y1 - (y1 - y0) * ((v - yMin) / Math.max(1e-9, yMax - yMin));
+
+    ctx.strokeStyle = "#60a5fa";
+    ctx.lineWidth = 2 * dpr;
+    ctx.beginPath();
+    let started = false;
+    rows.forEach((r, i) => {
+      const v = Number(r.value);
+      if (!Number.isFinite(v)) return;
+      const x = xAt(i), y = yAt(v);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = `${9 * dpr}px system-ui`;
+    const first = rows[0]?.time || "--";
+    const last = rows[rows.length - 1]?.time || "--";
+    ctx.fillText(first.slice(11, 16), x0, h - 7 * dpr);
+    ctx.fillText(last.slice(11, 16), x1 - 38 * dpr, h - 7 * dpr);
+  }
+
+  function renderPointDopGraphV65() {
+    ensurePanelV65();
+    const status = q65("swiftPointDopSelectedV65");
+    if (!selectedPointV65) {
+      if (status) status.textContent = "地点: 未選択。地図をクリックしてください。";
+      drawSeriesV65({ rows: [] });
+      return;
+    }
+
+    try {
+      const metric = q65("swiftPointDopMetricV65")?.value || "pdoptec";
+      const stepMin = Number(q65("swiftPointDopStepV65")?.value || 5);
+      const series = window.swiftBuildPointDopSeries?.(selectedPointV65.lat, selectedPointV65.lon, { metric, stepMin });
+      lastSeriesV65 = series;
+      if (status) {
+        status.textContent = `地点: click lat=${selectedPointV65.lat.toFixed(3)}, lon=${selectedPointV65.lon.toFixed(3)} / grid lat=${num65(series.cell.lat)}, lon=${num65(series.cell.lon)} / GNSS使用=${series.gnss_active_selected}`;
+      }
+      drawSeriesV65(series);
+    } catch (e) {
+      console.error(e);
+      if (status) status.textContent = "グラフ作成失敗: " + e.message;
+      drawSeriesV65({ rows: [] });
+    }
+  }
+
+  function observePointInfoV65() {
+    const pre = q65("pointInfo");
+    if (!pre) return;
+    const update = () => {
+      const p = parseLatLonFromPointInfoV65(pre.textContent || "");
+      if (p && Number.isFinite(p.lat) && Number.isFinite(p.lon)) {
+        selectedPointV65 = p;
+        const el = q65("swiftPointDopSelectedV65");
+        if (el) el.textContent = `地点: lat=${p.lat.toFixed(3)}, lon=${p.lon.toFixed(3)} / グラフ更新を押してください`;
+        // Light auto refresh only if a previous graph exists.
+        if (lastSeriesV65) setTimeout(renderPointDopGraphV65, 0);
+      }
+    };
+    update();
+    const mo = new MutationObserver(update);
+    mo.observe(pre, { childList: true, characterData: true, subtree: true });
+  }
+
+  function parseYumaHealthV65(text) {
+    const map = {};
+    const blocks = String(text || "").split(/\n\s*\n/);
+    for (const b of blocks) {
+      const id = (b.match(/(?:ID|PRN)\s*:\s*(\d+)/i) || [])[1];
+      const health = (b.match(/Health\s*:\s*([0-9]+)/i) || [])[1];
+      if (id && health != null) map[String(Number(id)).padStart(2, "0")] = Number(health);
+    }
+    return map;
+  }
+
+  async function loadGpsYumaHealthV65() {
+    const el = q65("swiftAlmanacStatusV65");
+    if (el) el.textContent = "GPS Yuma almanac health取得中…";
+    const urls = [
+      "https://celestrak.org/GPS/almanac/Yuma/current.al3",
+      "https://celestrak.org/GPS/almanac/Yuma/current.txt",
+      "https://celestrak.org/GPS/almanac/Yuma/current.alm"
+    ];
+    let text = null;
+    let used = null;
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (res.ok) {
+          text = await res.text();
+          used = url;
+          break;
+        }
+      } catch {}
+    }
+    if (!text) {
+      if (el) el.textContent = "GPS Almanac health取得失敗。CelesTrak Yuma current URLにアクセスできません。";
+      return;
+    }
+    const map = parseYumaHealthV65(text);
+    const n = Object.keys(map).length;
+    if (!n) {
+      if (el) el.textContent = "GPS Almanacは取得できたがHealth値を解析できませんでした。";
+      return;
+    }
+    const result = window.swiftApplyGnssPrnHealthMap?.(map) || { applied: 0, inactive: 0 };
+    if (el) el.textContent = `GPS Almanac health反映: PRN=${n}, 適用=${result.applied}, inactive=${result.inactive} / ${used}`;
+    setTimeout(renderPointDopGraphV65, 0);
+  }
+
+  function bootV65() {
+    injectStyleV65();
+    for (const delay of [600, 1200, 2200]) {
+      setTimeout(() => {
+        ensurePanelV65();
+        observePointInfoV65();
+      }, delay);
+    }
+  }
+
+  window.swiftRenderPointDopGraphV65 = renderPointDopGraphV65;
+  window.swiftLoadGpsYumaHealthV65 = loadGpsYumaHealthV65;
+  readyV65(bootV65);
 })();
 
