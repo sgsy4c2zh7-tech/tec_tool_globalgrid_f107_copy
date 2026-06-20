@@ -6,6 +6,7 @@
   const SATELLITE_JS_URL = "https://unpkg.com/satellite.js/dist/satellite.min.js";
   const KP_AI_COEFF_URL = "data/ai/kp_coefficients.json";
   const KP_AI_PERF_URL = "data/ai/kp_performance.json";
+  const KP_AI_GRID_COEFF_URL = "data/ai/kp_grid_coefficients.json";
 
   const GNSS_SOURCES = {
     gps:     { label: "GPS",     url: "data/gnss/gps_latest.tle",     checked: true  },
@@ -44,6 +45,7 @@
 
   let kpAiCoefficients = null;
   let kpAiPerformance = null;
+  let kpAiGridCoefficients = null;
   let kpAiLoaded = false;
   let kpAiLoadError = null;
   let kpAiRenderMode = "hitrate";
@@ -601,16 +603,68 @@
     return isFinite(y) ? c(y, -lim, lim) : 0;
   }
 
+
+  function kpAiGridMonthFor(monthKey) {
+    const g = kpAiGridCoefficients?.coefficients_grid || kpAiGridCoefficients?.grid_coefficients || {};
+    return g[monthKey] || g[String(parseInt(monthKey, 10))] || null;
+  }
+
+  function kpAiNearestIndex(arr, value) {
+    if (!Array.isArray(arr) || !arr.length) return -1;
+    let best = 0, bestD = Infinity;
+    const v = Number(value);
+    for (let i = 0; i < arr.length; i++) {
+      const d = Math.abs(Number(arr[i]) - v);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+
+  function kpAiGridCoeffAt(monthGrid, i, j, lat, lon) {
+    if (!monthGrid) return null;
+    let ii = i, jj = j;
+    const latArr = kpAiGridCoefficients?.lat_arr || kpAiGridCoefficients?.latArr;
+    const lonArr = kpAiGridCoefficients?.lon_arr || kpAiGridCoefficients?.lonArr;
+    if (Array.isArray(latArr) && Array.isArray(lonArr)) {
+      if (!monthGrid.k0?.[ii] || monthGrid.k0?.[ii]?.[jj] === undefined) {
+        ii = kpAiNearestIndex(latArr, lat);
+        jj = kpAiNearestIndex(lonArr, lon);
+      }
+    }
+    const n = Number(monthGrid.sample_count?.[ii]?.[jj] ?? monthGrid.count?.[ii]?.[jj] ?? 0);
+    if (!isFinite(n) || n < 4) return null;
+    return {
+      k0: Number(monthGrid.k0?.[ii]?.[jj] || 0),
+      k1: Number(monthGrid.k1?.[ii]?.[jj] || 0),
+      k2: Number(monthGrid.k2?.[ii]?.[jj] || 0),
+      k3: Number(monthGrid.k3?.[ii]?.[jj] || 0),
+      sample_count: n,
+    };
+  }
+
   function applyKpAiCorrectionToGrid(grid, t) {
     if (!kpAiEnabled() || !grid || !gGrid) return grid;
     const kp = kpAiKpAtTime(t);
+    const mk = kpAiMonthKey(t);
+    const monthGrid = kpAiGridMonthFor(mk);
+    const x = (isFinite(kp) ? kp : 3.0) - 3.0;
+    const lim = kpAiClipLimit();
     const out = Array.from({ length: gGrid.nLat }, () => Array(gGrid.nLon).fill(NaN));
     for (let i = 0; i < gGrid.nLat; i++) {
       const lat = gGrid.latArr[i];
       for (let j = 0; j < gGrid.nLon; j++) {
         const v = Number(grid?.[i]?.[j]);
         if (!isFinite(v)) { out[i][j] = NaN; continue; }
-        const corr = kpAiCorrectionValue(lat, gGrid.lonArr[j], t, kp);
+        let cf = kpAiGridCoeffAt(monthGrid, i, j, lat, gGrid.lonArr[j]);
+        if (!cf) {
+          const rid = kpAiRegionId(lat, gGrid.lonArr[j]);
+          cf = kpAiCoeffFor(rid, mk);
+        }
+        let corr = 0;
+        if (cf && Number(cf.sample_count || 0) >= 4) {
+          const y = Number(cf.k0 || 0) + Number(cf.k1 || 0) * x + Number(cf.k2 || 0) * x * x + Number(cf.k3 || 0) * x * x * x;
+          corr = isFinite(y) ? c(y, -lim, lim) : 0;
+        }
         out[i][j] = Math.max(0, v + corr);
       }
     }
@@ -621,13 +675,15 @@
     if (kpAiLoaded && !force) return;
     kpAiLoadError = null;
     try {
-      const [coeff, perf] = await Promise.all([
+      const [coeff, perf, gridCoeff] = await Promise.all([
         fetch(KP_AI_COEFF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null),
         fetch(KP_AI_PERF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null),
+        fetch(KP_AI_GRID_COEFF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
       kpAiCoefficients = coeff;
       kpAiPerformance = perf;
-      kpAiLoaded = !!coeff;
+      kpAiGridCoefficients = gridCoeff;
+      kpAiLoaded = !!(coeff || gridCoeff);
       renderKpAiPanel();
     } catch (e) {
       kpAiLoadError = e.message;
@@ -665,7 +721,7 @@
     if (status) {
       if (kpAiLoaded) {
         const updated = kpAiCoefficients?.updated_utc || "--";
-        status.textContent = `AI係数読込OK: updated=${updated}`;
+        status.textContent = `AI係数読込OK: grid-cell + 18地域表示 / updated=${updated}`;
       } else if (kpAiLoadError) {
         status.textContent = `AI係数未読込: ${kpAiLoadError}`;
       } else {
@@ -699,10 +755,10 @@
     card.className = "card";
     card.id = "kpAiCorrectorCard";
     card.innerHTML = `
-      <div class="card-header"><h2>8d. Kp Cubic AI Corrector</h2><span>18地域×月別×3次式</span></div>
+      <div class="card-header"><h2>8d. Kp Cubic AI Corrector</h2><span>全格子AI解析 / 18地域表示</span></div>
       <div class="small">
         ・Kpによる残差だけを <b>k0 + k1(Kp-3) + k2(Kp-3)^2 + k3(Kp-3)^3</b> で補正します。<br>
-        ・係数は <b>18地域×12か月</b> で毎日1回更新。補正前/補正後の的中率を見られます。
+        ・係数は <b>全格子×12か月</b> で学習し、UIでは18地域に集約して表示します。
       </div>
       <div class="row small" style="margin-top:6px;">
         <label><input id="kpAiCorrectionEnabled" type="checkbox" onchange="tecInterpCache.clear(); requestDraw();"> AI Kp補正ON</label>
@@ -2271,3 +2327,1314 @@
 
   document.addEventListener("DOMContentLoaded", bootAddon);
 })();
+
+
+
+/* =========================================================
+ * SWIFT-TEC v5.1 Clean Dashboard UI
+ * Keeps the existing calculation engine, but replaces the busy sidebar
+ * with a compact forecast + AI learning dashboard.
+ * ========================================================= */
+(function () {
+  const AI_BASE = "data/ai/";
+  const REGION_LABELS = (() => {
+    const latBands = ["南緯帯", "赤道帯", "北緯帯"];
+    const lonBands = ["180W-120W", "120W-60W", "60W-0", "0-60E", "60E-120E", "120E-180E"];
+    const out = [];
+    let id = 1;
+    for (const lat of latBands) {
+      for (const lon of lonBands) out.push({ id: `R${String(id++).padStart(2, "0")}`, label: `${lat} / ${lon}` });
+    }
+    return out;
+  })();
+
+  let cleanAiPerf = null;
+  let cleanAiCoeff = null;
+  let cleanAiHistory = null;
+  let cleanTecIndex = null;
+
+  function ready(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function q(id) { return document.getElementById(id); }
+  function pct(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : "--";
+  }
+  function num(v, d = 2) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(d) : "--";
+  }
+  function safeArray(x) { return Array.isArray(x) ? x : []; }
+
+  async function fetchJsonSafe(url) {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`${url} HTTP ${res.status}`);
+    return await res.json();
+  }
+
+  function injectCleanStyle() {
+    if (q("swiftCleanDashboardStyle")) return;
+    const style = document.createElement("style");
+    style.id = "swiftCleanDashboardStyle";
+    style.textContent = `
+      body.swift-clean-ui .sidebar { width: 460px; min-width: 430px; max-width: 520px; background: linear-gradient(180deg, #08111f 0%, #050816 55%, #03040b 100%); }
+      body.swift-clean-ui .sidebar > .card.swift-legacy-hidden { display: none !important; }
+      body.swift-clean-ui .main { gap: 10px; }
+      body.swift-clean-ui .map-card { min-height: 66vh; }
+      body.swift-clean-ui .slider-card { background: rgba(7, 12, 24, 0.96); border-color: #1f355a; }
+      body.swift-clean-ui .output-card { display: none; }
+      .swift-clean-card { background: rgba(7, 14, 28, 0.98); border: 1px solid #1f355a; border-radius: 14px; padding: 12px; margin-bottom: 10px; box-shadow: 0 12px 30px rgba(0,0,0,.28); }
+      .swift-clean-hero { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+      .swift-clean-title { font-size: 18px; font-weight: 800; letter-spacing:.04em; }
+      .swift-clean-sub { font-size: 10px; color:#a9b8d2; line-height:1.4; margin-top:3px; }
+      .swift-clean-pill { display:inline-flex; align-items:center; gap:5px; border:1px solid #2a4774; border-radius:999px; padding:2px 8px; font-size:10px; background:#08152a; color:#d8e7ff; white-space:nowrap; }
+      .swift-dot { width:7px; height:7px; border-radius:999px; background:#64748b; display:inline-block; }
+      .swift-dot.ok { background:#22c55e; box-shadow:0 0 8px rgba(34,197,94,.55); }
+      .swift-dot.warn { background:#f59e0b; box-shadow:0 0 8px rgba(245,158,11,.55); }
+      .swift-clean-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+      .swift-stat { border:1px solid #1f355a; border-radius:12px; background:#061020; padding:8px; min-height:58px; }
+      .swift-stat-label { font-size:10px; color:#9fb0cc; }
+      .swift-stat-value { margin-top:3px; font-size:18px; font-weight:800; color:#f8fafc; }
+      .swift-stat-note { margin-top:2px; font-size:9px; color:#8090ad; }
+      .swift-clean-tabs { display:grid; grid-template-columns:repeat(5, 1fr); gap:5px; margin:10px 0 8px; }
+      .swift-clean-tab { border:1px solid #243a60; background:#08152a; color:#c7d6f0; padding:6px 3px; border-radius:10px; font-size:10px; cursor:pointer; }
+      .swift-clean-tab.active { background:#1d4ed8; border-color:#60a5fa; color:white; font-weight:700; }
+      .swift-clean-panel { display:none; }
+      .swift-clean-panel.active { display:block; }
+      .swift-clean-row { display:flex; gap:7px; align-items:center; flex-wrap:wrap; margin:6px 0; }
+      .swift-clean-row > div { flex:1; min-width:120px; }
+      .swift-clean-btn { border-radius:10px; border:1px solid #3b82f6; background:#1d4ed8; color:white; padding:7px 10px; font-size:11px; cursor:pointer; font-weight:650; }
+      .swift-clean-btn.secondary { border-color:#334155; background:#0f172a; color:#d7e5ff; }
+      .swift-clean-btn.ghost { border-color:#1f355a; background:transparent; color:#bcd0ee; }
+      .swift-clean-btn.warn { border-color:#b45309; background:#92400e; }
+      .swift-clean-select, .swift-clean-input { width:100%; background:#061020; border:1px solid #2a4774; color:#eaf2ff; border-radius:9px; padding:6px 8px; font-size:11px; }
+      .swift-mini-label { font-size:10px; color:#9fb0cc; margin-bottom:3px; }
+      .swift-clean-chart { width:100%; height:150px; border:1px solid #1f355a; background:#030712; border-radius:12px; display:block; }
+      .swift-region-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; max-height:265px; overflow:auto; padding-right:2px; }
+      .swift-region-tile { border:1px solid #1f355a; border-radius:10px; background:#061020; padding:7px; cursor:pointer; }
+      .swift-region-tile.active { border-color:#60a5fa; background:#082451; }
+      .swift-region-id { font-size:11px; font-weight:800; }
+      .swift-region-label { font-size:9px; color:#9fb0cc; margin-top:2px; min-height:22px; }
+      .swift-region-hit { font-size:14px; font-weight:800; margin-top:4px; }
+      .swift-clean-table { width:100%; border-collapse:collapse; font-size:10px; }
+      .swift-clean-table th, .swift-clean-table td { border:1px solid #1f355a; padding:4px 5px; }
+      .swift-clean-table th { background:#0b1730; color:#bcd0ee; }
+      .swift-clean-status { font-size:10px; color:#a9b8d2; min-height:16px; margin-top:4px; }
+      .swift-advanced-open .sidebar > .card.swift-legacy-hidden { display:block !important; opacity:.72; }
+      .swift-advanced-open #swiftCleanDashboard { position:sticky; top:0; z-index:30; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function setHiddenLegacy(hide) {
+    const dash = q("swiftCleanDashboard");
+    document.querySelectorAll(".sidebar > .card").forEach(card => {
+      if (card === dash) return;
+      card.classList.toggle("swift-legacy-hidden", hide);
+    });
+  }
+
+  function setStatus(msg) {
+    const el = q("cleanDashboardStatus");
+    if (el) el.textContent = msg || "";
+    if (typeof window.logInfo === "function") window.logInfo(msg || "");
+  }
+
+  function syncForecastSourceToLegacy() {
+    const src = q("cleanForecastTecSource")?.value || "archive_data_30m";
+    const legacy = q("forecastTecApiSourceSelect");
+    if (legacy) legacy.value = src;
+    if (typeof window.setForecastTecApiMode === "function") window.setForecastTecApiMode(src);
+  }
+
+  function syncAiControlsToLegacy() {
+    const enabled = !!q("cleanAiEnabled")?.checked;
+    const clip = Number(q("cleanAiClip")?.value || 20);
+    const e = q("kpAiCorrectionEnabled");
+    const c = q("kpAiCorrectionClip");
+    if (e) e.checked = enabled;
+    if (c && Number.isFinite(clip)) c.value = String(clip);
+    try { window.markGnssSelectionChanged?.(); } catch {}
+    try { window.requestDraw?.(); } catch {}
+  }
+
+  async function cleanLoadForecastTec() {
+    syncForecastSourceToLegacy();
+    setStatus("予報用TECを読み込み中…");
+    await window.loadForecastTecFromSelectedApi?.(false);
+    setStatus("予報用TECを読み込みました。続けて『予報実行』できます。");
+  }
+
+  async function cleanRunForecast() {
+    syncForecastSourceToLegacy();
+    syncAiControlsToLegacy();
+    setStatus("TEC予報を計算中…");
+    const auto = q("forecastTecAutoFetch");
+    if (auto) auto.checked = true;
+    await window.runForecast?.();
+    setStatus("予報を実行しました。地図とスライダーで確認してください。");
+  }
+
+  async function cleanLoadAiData() {
+    setStatus("AI学習結果を読み込み中…");
+    const results = await Promise.allSettled([
+      fetchJsonSafe(AI_BASE + "kp_performance.json"),
+      fetchJsonSafe(AI_BASE + "kp_coefficients.json"),
+      fetchJsonSafe(AI_BASE + "kp_learning_history.json"),
+      fetchJsonSafe("data/tec/index.json"),
+    ]);
+    cleanAiPerf = results[0].status === "fulfilled" ? results[0].value : null;
+    cleanAiCoeff = results[1].status === "fulfilled" ? results[1].value : null;
+    cleanAiHistory = results[2].status === "fulfilled" ? results[2].value : null;
+    cleanTecIndex = results[3].status === "fulfilled" ? results[3].value : null;
+    try { await window.loadKpAiData?.(false); } catch {}
+    updateCleanStats();
+    renderCleanLearning();
+    setStatus(cleanAiPerf ? "AI学習結果を読み込みました。" : "AI学習結果はまだありません。Actionsで Train Kp AI Corrector を実行してください。");
+  }
+
+  function monthValue() {
+    const v = Number(q("cleanAiMonth")?.value || (new Date()).getUTCMonth() + 1);
+    return Number.isFinite(v) ? String(Math.max(1, Math.min(12, Math.round(v)))) : String((new Date()).getUTCMonth() + 1);
+  }
+
+  function regionRowsForMonth(month) {
+    const metrics = cleanAiPerf?.metrics || {};
+    return REGION_LABELS.map(r => {
+      const m = metrics[r.id]?.[String(month)] || {};
+      const coeff = cleanAiCoeff?.coefficients?.[r.id]?.[String(month)] || {};
+      return { ...r, metrics: m, coeff };
+    });
+  }
+
+  function summary() { return cleanAiPerf?.summary || {}; }
+
+  function updateCleanStats() {
+    const s = summary();
+    const rawHit = Number(s.raw_hit_rate);
+    const corrHit = Number(s.corrected_hit_rate);
+    const rawRmse = Number(s.raw_rmse);
+    const corrRmse = Number(s.corrected_rmse);
+    const updated = cleanAiPerf?.updated_utc || cleanAiCoeff?.updated_utc || "--";
+    const frames = safeArray(cleanTecIndex?.frames);
+
+    const elHit = q("cleanStatHit");
+    if (elHit) elHit.textContent = `${pct(rawHit)} → ${pct(corrHit)}`;
+    const elRmse = q("cleanStatRmse");
+    if (elRmse) elRmse.textContent = `${num(rawRmse)} → ${num(corrRmse)}`;
+    const elData = q("cleanStatData");
+    if (elData) elData.textContent = frames.length ? `${frames.length} frames` : "--";
+    const elGroups = q("cleanStatGroups");
+    if (elGroups) elGroups.textContent = `${s.updated_groups ?? 0} groups`;
+    const elAi = q("cleanAiUpdated");
+    if (elAi) elAi.textContent = String(updated).replace("T", " ").replace("Z", "Z");
+    const dot = q("cleanAiDot");
+    if (dot) dot.className = "swift-dot " + (cleanAiPerf ? "ok" : "warn");
+    const dataNote = q("cleanStatDataNote");
+    if (dataNote && frames.length) dataNote.textContent = `${frames[0].time_utc || "--"} 〜 ${frames[frames.length - 1].time_utc || "--"}`;
+  }
+
+  function canvasClear(ctx, w, h) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#030712";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(148,163,184,.18)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const y = (h - 28) * i / 4 + 10;
+      ctx.beginPath(); ctx.moveTo(34, y); ctx.lineTo(w - 10, y); ctx.stroke();
+    }
+  }
+
+  function drawLineChart(canvas, rows) {
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(320, Math.floor(rect.width * dpr));
+    const h = Math.max(130, Math.floor(rect.height * dpr));
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    canvasClear(ctx, w, h);
+    ctx.font = `${11 * dpr}px system-ui`;
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText("Hit rate trend", 12 * dpr, 16 * dpr);
+    if (!rows.length) { ctx.fillText("No learning history yet", 12 * dpr, 45 * dpr); return; }
+    const plot = { x0: 38 * dpr, y0: 22 * dpr, x1: w - 12 * dpr, y1: h - 22 * dpr };
+    const maxY = 1;
+    const minY = 0;
+    const xAt = i => rows.length === 1 ? (plot.x0 + plot.x1) / 2 : plot.x0 + (plot.x1 - plot.x0) * i / (rows.length - 1);
+    const yAt = v => plot.y1 - (plot.y1 - plot.y0) * ((v - minY) / (maxY - minY));
+    function line(key, color) {
+      ctx.strokeStyle = color; ctx.lineWidth = 2 * dpr; ctx.beginPath();
+      rows.forEach((r, i) => { const x = xAt(i), y = yAt(Number(r[key]) || 0); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+      ctx.stroke();
+      ctx.fillStyle = color;
+      rows.forEach((r, i) => { const x = xAt(i), y = yAt(Number(r[key]) || 0); ctx.beginPath(); ctx.arc(x, y, 2.3 * dpr, 0, Math.PI * 2); ctx.fill(); });
+    }
+    line("raw_hit_rate", "#64748b");
+    line("corrected_hit_rate", "#60a5fa");
+    ctx.fillStyle = "#64748b"; ctx.fillText("raw", plot.x0, h - 6 * dpr);
+    ctx.fillStyle = "#60a5fa"; ctx.fillText("AI corrected", plot.x0 + 44 * dpr, h - 6 * dpr);
+    ctx.fillStyle = "#94a3b8"; ctx.fillText("100%", 4 * dpr, plot.y0 + 3 * dpr); ctx.fillText("0%", 12 * dpr, plot.y1);
+  }
+
+  function drawRegionBars(canvas, rows) {
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(320, Math.floor(rect.width * dpr));
+    const h = Math.max(150, Math.floor(rect.height * dpr));
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    canvasClear(ctx, w, h);
+    ctx.font = `${10 * dpr}px system-ui`;
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText("18 regions hit rate", 12 * dpr, 16 * dpr);
+    const plot = { x0: 44 * dpr, y0: 25 * dpr, x1: w - 10 * dpr, y1: h - 12 * dpr };
+    const n = rows.length || 18;
+    const gap = 2 * dpr;
+    const barH = Math.max(3 * dpr, (plot.y1 - plot.y0 - gap * (n - 1)) / n);
+    rows.forEach((r, i) => {
+      const y = plot.y0 + i * (barH + gap);
+      const raw = Number(r.metrics.raw_hit_rate || 0);
+      const corr = Number(r.metrics.corrected_hit_rate || 0);
+      ctx.fillStyle = "#94a3b8"; ctx.fillText(r.id, 10 * dpr, y + barH * .75);
+      ctx.fillStyle = "rgba(100,116,139,.45)"; ctx.fillRect(plot.x0, y, (plot.x1 - plot.x0) * raw, barH);
+      ctx.fillStyle = "#3b82f6"; ctx.fillRect(plot.x0, y + barH * .45, (plot.x1 - plot.x0) * corr, barH * .55);
+    });
+  }
+
+  function renderRegionGrid(rows) {
+    const box = q("cleanRegionGrid");
+    if (!box) return;
+    box.innerHTML = rows.map(r => {
+      const hit = Number(r.metrics.corrected_hit_rate || 0);
+      const raw = Number(r.metrics.raw_hit_rate || 0);
+      const rmse = Number(r.metrics.corrected_rmse);
+      const good = hit >= 0.75 ? "ok" : (hit >= 0.55 ? "warn" : "");
+      return `<div class="swift-region-tile" data-region="${r.id}" onclick="window.swiftCleanSelectRegion('${r.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span class="swift-region-id">${r.id}</span><span class="swift-dot ${good}"></span></div>
+        <div class="swift-region-label">${r.label}</div>
+        <div class="swift-region-hit">${pct(hit)}</div>
+        <div class="swift-stat-note">raw ${pct(raw)} / RMSE ${num(rmse)}</div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderRegionDetail(regionId, month) {
+    const box = q("cleanRegionDetail");
+    if (!box) return;
+    const row = regionRowsForMonth(month).find(r => r.id === regionId) || regionRowsForMonth(month)[0];
+    if (!row) { box.innerHTML = ""; return; }
+    document.querySelectorAll(".swift-region-tile").forEach(x => x.classList.toggle("active", x.dataset.region === row.id));
+    const m = row.metrics || {}, k = row.coeff || {};
+    box.innerHTML = `<table class="swift-clean-table">
+      <tbody>
+        <tr><th>地域</th><td>${row.id} / ${row.label}</td></tr>
+        <tr><th>Hit</th><td>${pct(m.raw_hit_rate)} → <b>${pct(m.corrected_hit_rate)}</b></td></tr>
+        <tr><th>RMSE</th><td>${num(m.raw_rmse)} → <b>${num(m.corrected_rmse)}</b></td></tr>
+        <tr><th>Bias</th><td>${num(m.raw_bias)} → <b>${num(m.corrected_bias)}</b></td></tr>
+        <tr><th>N</th><td>${m.sample_count || 0}</td></tr>
+        <tr><th>k0/k1/k2/k3</th><td class="mono">${num(k.k0,3)} / ${num(k.k1,3)} / ${num(k.k2,3)} / ${num(k.k3,3)}</td></tr>
+      </tbody>
+    </table>`;
+  }
+
+  function renderCleanLearning() {
+    const month = monthValue();
+    const rows = regionRowsForMonth(month);
+    const histRows = safeArray(cleanAiHistory?.runs).slice(-30);
+    drawLineChart(q("cleanTrendChart"), histRows);
+    drawRegionBars(q("cleanRegionBarChart"), rows);
+    renderRegionGrid(rows);
+    renderRegionDetail(window.swiftCleanSelectedRegion || "R01", month);
+    const updated = q("cleanLearningUpdated");
+    if (updated) updated.textContent = cleanAiPerf?.updated_utc ? `updated: ${cleanAiPerf.updated_utc}` : "AI学習データなし";
+  }
+
+  window.swiftCleanSelectRegion = function (rid) {
+    window.swiftCleanSelectedRegion = rid;
+    renderRegionDetail(rid, monthValue());
+  };
+
+  function setTab(name) {
+    document.querySelectorAll(".swift-clean-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    document.querySelectorAll(".swift-clean-panel").forEach(p => p.classList.toggle("active", p.dataset.panel === name));
+  }
+
+  function installCleanDashboard() {
+    if (q("swiftCleanDashboard")) return;
+    injectCleanStyle();
+    document.body.classList.add("swift-clean-ui");
+    setHiddenLegacy(true);
+
+    const sidebar = document.querySelector(".sidebar");
+    if (!sidebar) return;
+    const dash = document.createElement("div");
+    dash.className = "swift-clean-card";
+    dash.id = "swiftCleanDashboard";
+    dash.innerHTML = `
+      <div class="swift-clean-hero">
+        <div>
+          <div class="swift-clean-title">SWIFT-TEC AI Forecast</div>
+          <div class="swift-clean-sub">NOAA 30分TEC / GNSS DOP / Kp Cubic AI Corrector</div>
+        </div>
+        <span class="swift-clean-pill"><span id="cleanAiDot" class="swift-dot warn"></span><span id="cleanAiUpdated">AI未読込</span></span>
+      </div>
+      <div class="swift-clean-stats">
+        <div class="swift-stat"><div class="swift-stat-label">的中率</div><div id="cleanStatHit" class="swift-stat-value">--</div><div class="swift-stat-note">raw → AI補正後</div></div>
+        <div class="swift-stat"><div class="swift-stat-label">RMSE</div><div id="cleanStatRmse" class="swift-stat-value">--</div><div class="swift-stat-note">raw → AI補正後</div></div>
+        <div class="swift-stat"><div class="swift-stat-label">TEC data</div><div id="cleanStatData" class="swift-stat-value">--</div><div id="cleanStatDataNote" class="swift-stat-note">NOAA archive</div></div>
+        <div class="swift-stat"><div class="swift-stat-label">学習更新</div><div id="cleanStatGroups" class="swift-stat-value">--</div><div class="swift-stat-note">18地域×月別</div></div>
+      </div>
+      <div class="swift-clean-tabs">
+        <button class="swift-clean-tab active" data-tab="forecast">予報</button>
+        <button class="swift-clean-tab" data-tab="learning">的中率</button>
+        <button class="swift-clean-tab" data-tab="region">18地域</button>
+        <button class="swift-clean-tab" data-tab="gnss">GNSS</button>
+        <button class="swift-clean-tab" data-tab="advanced">設定</button>
+      </div>
+      <div class="swift-clean-panel active" data-panel="forecast">
+        <div class="swift-clean-row">
+          <div><div class="swift-mini-label">予報TECソース</div><select id="cleanForecastTecSource" class="swift-clean-select"><option value="archive_data_30m">取りため済み data/tec</option><option value="noaa_direct_30m">NOAA API直取得</option></select></div>
+          <div><div class="swift-mini-label">AI補正</div><label class="swift-clean-pill" style="width:100%;justify-content:center;"><input id="cleanAiEnabled" type="checkbox"> Kp AI ON</label></div>
+        </div>
+        <div class="swift-clean-row">
+          <div><div class="swift-mini-label">補正上限[TECU]</div><input id="cleanAiClip" class="swift-clean-input" type="number" value="20" min="1" max="60" step="1"></div>
+          <div><div class="swift-mini-label">表示モード</div><select id="cleanMapMode" class="swift-clean-select"><option value="tec">TEC</option><option value="gps">GPS L1誤差</option><option value="pdoptec">PDOP×TEC</option><option value="hdoptec">HDOP×TEC</option><option value="satcount">可視衛星数</option></select></div>
+        </div>
+        <div class="swift-clean-row">
+          <button class="swift-clean-btn" id="cleanRunForecastBtn">予報実行</button>
+          <button class="swift-clean-btn secondary" id="cleanLoadForecastTecBtn">TEC入力取得</button>
+          <button class="swift-clean-btn secondary" onclick="loadTecArchiveRange()">過去TEC表示</button>
+        </div>
+        <div class="swift-clean-row">
+          <button class="swift-clean-btn ghost" onclick="loadTecDataDriven3DayForecast()">data基準3日予報</button>
+          <button class="swift-clean-btn ghost" onclick="loadTecArchivePlusCurrentForecast()">過去+予報接続</button>
+          <button class="swift-clean-btn ghost" onclick="playArchiveMovie()">▶ 再生</button>
+          <button class="swift-clean-btn ghost" onclick="stopArchiveMovie()">停止</button>
+        </div>
+      </div>
+      <div class="swift-clean-panel" data-panel="learning">
+        <div class="swift-clean-row">
+          <button class="swift-clean-btn" id="cleanReloadAiBtn">学習結果読込</button>
+          <div><div class="swift-mini-label">対象月</div><select id="cleanAiMonth" class="swift-clean-select">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${(i+1)===(new Date()).getUTCMonth()+1?"selected":""}>${i+1}月</option>`).join("")}</select></div>
+        </div>
+        <div class="swift-clean-status" id="cleanLearningUpdated">AI学習データ未読込</div>
+        <canvas id="cleanTrendChart" class="swift-clean-chart"></canvas>
+        <div style="height:8px"></div>
+        <canvas id="cleanRegionBarChart" class="swift-clean-chart"></canvas>
+      </div>
+      <div class="swift-clean-panel" data-panel="region">
+        <div class="swift-clean-row"><button class="swift-clean-btn secondary" onclick="window.swiftCleanRefreshLearning()">更新</button><span class="swift-clean-status">地域をクリックすると係数と精度を表示</span></div>
+        <div id="cleanRegionGrid" class="swift-region-grid"></div>
+        <div style="height:8px"></div>
+        <div id="cleanRegionDetail"></div>
+      </div>
+      <div class="swift-clean-panel" data-panel="gnss">
+        <div class="swift-clean-row">
+          <button class="swift-clean-btn" onclick="loadGnssDopData()">GNSS TLE読込</button>
+          <button class="swift-clean-btn secondary" onclick="setAllSatSelected(true)">全衛星使用</button>
+          <button class="swift-clean-btn secondary" onclick="setAllSatSelected(false)">全解除</button>
+        </div>
+        <div class="swift-clean-row">
+          <button class="swift-clean-btn ghost" onclick="setAllSatActive(true)">全Active</button>
+          <button class="swift-clean-btn ghost" onclick="setAllSatActive(false)">全Inactive</button>
+        </div>
+        <div class="swift-clean-status" id="cleanGnssNote">詳細な衛星ON/OFFは設定タブで旧UIを表示して調整できます。</div>
+      </div>
+      <div class="swift-clean-panel" data-panel="advanced">
+        <div class="swift-clean-row">
+          <button class="swift-clean-btn secondary" id="cleanToggleLegacyBtn">旧UI/詳細設定を表示</button>
+          <button class="swift-clean-btn ghost" onclick="loadTecArchiveIndex(true)">index再読込</button>
+        </div>
+        <div class="swift-clean-status">詳細係数、手動Kp、色設定などは旧UIを開いて調整。</div>
+      </div>
+      <div id="cleanDashboardStatus" class="swift-clean-status">Ready</div>
+    `;
+    sidebar.insertBefore(dash, sidebar.firstChild);
+
+    dash.querySelectorAll(".swift-clean-tab").forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
+    q("cleanLoadForecastTecBtn")?.addEventListener("click", () => cleanLoadForecastTec().catch(e => setStatus("TEC入力取得失敗: " + e.message)));
+    q("cleanRunForecastBtn")?.addEventListener("click", () => cleanRunForecast().catch(e => setStatus("予報実行失敗: " + e.message)));
+    q("cleanReloadAiBtn")?.addEventListener("click", () => cleanLoadAiData().catch(e => setStatus("AI読込失敗: " + e.message)));
+    q("cleanAiMonth")?.addEventListener("change", renderCleanLearning);
+    q("cleanAiEnabled")?.addEventListener("change", syncAiControlsToLegacy);
+    q("cleanAiClip")?.addEventListener("change", syncAiControlsToLegacy);
+    q("cleanMapMode")?.addEventListener("change", () => {
+      const sel = q("mapModeSelect");
+      if (sel) { sel.value = q("cleanMapMode").value; window.changeMapMode?.(); }
+    });
+    q("cleanToggleLegacyBtn")?.addEventListener("click", () => {
+      const open = !document.body.classList.contains("swift-advanced-open");
+      document.body.classList.toggle("swift-advanced-open", open);
+      setHiddenLegacy(!open);
+      q("cleanToggleLegacyBtn").textContent = open ? "旧UI/詳細設定を隠す" : "旧UI/詳細設定を表示";
+    });
+
+    window.swiftCleanRefreshLearning = () => { updateCleanStats(); renderCleanLearning(); };
+    cleanLoadAiData().catch(() => { updateCleanStats(); renderCleanLearning(); });
+  }
+
+  ready(() => {
+    // bootAddonが既存カードを作った後に被せる。
+    setTimeout(installCleanDashboard, 150);
+    setTimeout(installCleanDashboard, 800);
+  });
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v5.3 Accuracy First Grid Dashboard UI
+ * Main focus: hit-rate trend for the past two years.
+ * Left input area is minimized; legacy controls can be opened only when needed.
+ * ========================================================= */
+(function () {
+  const AI_BASE = "data/ai/";
+  const TWO_YEARS_DAYS = 730;
+
+  const REGION_LABELS_V52 = (() => {
+    const latBands = [
+      { key: "S", label: "南緯帯" },
+      { key: "E", label: "赤道帯" },
+      { key: "N", label: "北緯帯" },
+    ];
+    const lonBands = ["180W-120W", "120W-60W", "60W-0", "0-60E", "60E-120E", "120E-180E"];
+    const out = [];
+    let id = 1;
+    for (const lat of latBands) {
+      for (const lon of lonBands) out.push({ id: `R${String(id++).padStart(2, "0")}`, label: `${lat.label} / ${lon}` });
+    }
+    return out;
+  })();
+
+  let perfV52 = null;
+  let coeffV52 = null;
+  let histV52 = null;
+  let tecIndexV52 = null;
+  let selectedRegionV52 = "R01";
+
+  function readyV52(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function q52(id) { return document.getElementById(id); }
+  function arr52(x) { return Array.isArray(x) ? x : []; }
+  function n52(v) { const x = Number(v); return Number.isFinite(x) ? x : NaN; }
+  function clamp52(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function pct52(v, digits = 1) {
+    const x = n52(v);
+    return Number.isFinite(x) ? `${(x * 100).toFixed(digits)}%` : "--";
+  }
+  function num52(v, d = 2) {
+    const x = n52(v);
+    return Number.isFinite(x) ? x.toFixed(d) : "--";
+  }
+  function dateShort52(s) {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return "--";
+    return `${String(d.getUTCMonth() + 1).padStart(2, "0")}/${String(d.getUTCDate()).padStart(2, "0")}`;
+  }
+  function isoDate52(s) {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return "--";
+    return d.toISOString().slice(0, 10);
+  }
+
+  async function fetchJson52(url) {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`${url} HTTP ${res.status}`);
+    return await res.json();
+  }
+
+  function installStyle52() {
+    if (q52("swiftAccuracyStyleV52")) return;
+    const st = document.createElement("style");
+    st.id = "swiftAccuracyStyleV52";
+    st.textContent = `
+      body.swift-accuracy-ui {
+        background: #050816;
+      }
+      body.swift-accuracy-ui .page {
+        display: grid;
+        grid-template-columns: 330px minmax(0, 1fr);
+        height: 100vh;
+      }
+      body.swift-accuracy-ui .sidebar {
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        padding: 10px;
+        background: linear-gradient(180deg, #07111f 0%, #050816 55%, #03040b 100%);
+        border-right: 1px solid #1e3154;
+      }
+      body.swift-accuracy-ui .sidebar > .card {
+        display: none !important;
+      }
+      body.swift-accuracy-ui.swift-advanced-open .sidebar > .card {
+        display: block !important;
+        opacity: .78;
+      }
+      body.swift-accuracy-ui .sidebar #swiftAccuracySide {
+        display: block !important;
+      }
+      body.swift-accuracy-ui .main {
+        min-width: 0;
+        gap: 10px;
+        padding: 10px;
+      }
+      body.swift-accuracy-ui .slider-card {
+        background: rgba(7, 12, 24, 0.96);
+        border-color: #1f355a;
+        order: 2;
+      }
+      body.swift-accuracy-ui .map-card {
+        order: 3;
+        min-height: 52vh;
+      }
+      body.swift-accuracy-ui .output-card {
+        display: none !important;
+      }
+      #swiftAccuracyMain {
+        order: 1;
+      }
+      .swift-v52-card {
+        background: rgba(7, 14, 28, 0.98);
+        border: 1px solid #1f355a;
+        border-radius: 16px;
+        padding: 12px;
+        box-shadow: 0 14px 34px rgba(0,0,0,.30);
+      }
+      .swift-v52-title {
+        font-size: 18px;
+        font-weight: 850;
+        letter-spacing: .04em;
+      }
+      .swift-v52-sub {
+        font-size: 10px;
+        color: #9fb0cc;
+        line-height: 1.45;
+        margin-top: 3px;
+      }
+      .swift-v52-status {
+        min-height: 18px;
+        color: #a9b8d2;
+        font-size: 10px;
+        margin-top: 6px;
+      }
+      .swift-v52-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid #2a4774;
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 10px;
+        background: #08152a;
+        color: #d8e7ff;
+        white-space: nowrap;
+      }
+      .swift-v52-dot {
+        width: 7px; height: 7px;
+        border-radius: 999px;
+        background: #64748b;
+        display: inline-block;
+      }
+      .swift-v52-dot.ok { background:#22c55e; box-shadow:0 0 8px rgba(34,197,94,.55); }
+      .swift-v52-dot.warn { background:#f59e0b; box-shadow:0 0 8px rgba(245,158,11,.55); }
+      .swift-v52-controls {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .swift-v52-label {
+        font-size: 10px;
+        color: #9fb0cc;
+        margin-bottom: 3px;
+      }
+      .swift-v52-select,
+      .swift-v52-input {
+        width: 100%;
+        background: #061020;
+        border: 1px solid #2a4774;
+        color: #eaf2ff;
+        border-radius: 10px;
+        padding: 7px 8px;
+        font-size: 11px;
+      }
+      .swift-v52-row {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .swift-v52-row > * { flex: 1; min-width: 0; }
+      .swift-v52-btn {
+        border-radius: 11px;
+        border: 1px solid #3b82f6;
+        background: #1d4ed8;
+        color: #fff;
+        padding: 8px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .swift-v52-btn.secondary {
+        border-color:#334155;
+        background:#0f172a;
+        color:#d7e5ff;
+      }
+      .swift-v52-btn.ghost {
+        border-color:#1f355a;
+        background:transparent;
+        color:#bcd0ee;
+      }
+      .swift-v52-mini-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 7px;
+        margin-top: 10px;
+      }
+      .swift-v52-mini {
+        border:1px solid #1f355a;
+        border-radius: 12px;
+        background:#061020;
+        padding:8px;
+        min-height:58px;
+      }
+      .swift-v52-mini-label { color:#9fb0cc; font-size:9px; }
+      .swift-v52-mini-value { color:#f8fafc; font-weight:850; font-size:17px; margin-top:4px; }
+      .swift-v52-mini-note { color:#7788a6; font-size:9px; margin-top:2px; }
+      .swift-v52-grid-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(280px, .85fr);
+        gap: 10px;
+      }
+      .swift-v52-chart-head {
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:8px;
+        margin-bottom:8px;
+      }
+      .swift-v52-head-actions {
+        display:flex;
+        gap:6px;
+        flex-wrap:wrap;
+        justify-content:flex-end;
+      }
+      .swift-v52-chip {
+        border:1px solid #1f355a;
+        background:#08152a;
+        color:#bcd0ee;
+        border-radius:999px;
+        padding:5px 8px;
+        font-size:10px;
+        cursor:pointer;
+      }
+      .swift-v52-chip.active {
+        border-color:#60a5fa;
+        background:#1d4ed8;
+        color:white;
+        font-weight:800;
+      }
+      .swift-v52-canvas-big {
+        width: 100%;
+        height: 285px;
+        border: 1px solid #1f355a;
+        background:#030712;
+        border-radius: 14px;
+        display:block;
+      }
+      .swift-v52-canvas-small {
+        width: 100%;
+        height: 190px;
+        border: 1px solid #1f355a;
+        background:#030712;
+        border-radius: 14px;
+        display:block;
+      }
+      .swift-v52-region-list {
+        display:grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap:6px;
+        max-height: 260px;
+        overflow:auto;
+        padding-right:2px;
+      }
+      .swift-v52-region {
+        border:1px solid #1f355a;
+        border-radius:10px;
+        background:#061020;
+        padding:7px;
+        cursor:pointer;
+      }
+      .swift-v52-region.active {
+        border-color:#60a5fa;
+        background:#082451;
+      }
+      .swift-v52-region-id { font-weight:850; font-size:11px; }
+      .swift-v52-region-label { color:#9fb0cc; font-size:8.5px; margin-top:2px; min-height:20px; }
+      .swift-v52-region-hit { font-size:14px; font-weight:850; margin-top:4px; }
+      .swift-v52-table {
+        width:100%;
+        border-collapse:collapse;
+        font-size:10px;
+        margin-top:8px;
+      }
+      .swift-v52-table th,.swift-v52-table td {
+        border:1px solid #1f355a;
+        padding:5px 6px;
+      }
+      .swift-v52-table th {
+        background:#0b1730;
+        color:#bcd0ee;
+        text-align:left;
+      }
+      .swift-v52-kpi-row {
+        display:grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap:8px;
+        margin-bottom:10px;
+      }
+      .swift-v52-kpi {
+        border:1px solid #1f355a;
+        border-radius:13px;
+        background:#061020;
+        padding:10px;
+      }
+      .swift-v52-kpi-label { color:#9fb0cc; font-size:10px; }
+      .swift-v52-kpi-value { color:#f8fafc; font-size:22px; font-weight:900; margin-top:4px; }
+      .swift-v52-kpi-note { color:#7788a6; font-size:9px; margin-top:2px; }
+      @media (max-width: 980px) {
+        body.swift-accuracy-ui .page { grid-template-columns: 1fr; height:auto; }
+        body.swift-accuracy-ui .sidebar { border-right:0; border-bottom:1px solid #1e3154; }
+        .swift-v52-grid-main { grid-template-columns: 1fr; }
+        .swift-v52-kpi-row { grid-template-columns: 1fr 1fr; }
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function setV52Status(msg) {
+    const el = q52("swiftV52Status");
+    if (el) el.textContent = msg || "";
+    try { window.logInfo?.(msg || ""); } catch {}
+  }
+
+  function historyRowsV52(days = TWO_YEARS_DAYS) {
+    const runs = arr52(histV52?.runs).slice().sort((a, b) => new Date(a.time_utc) - new Date(b.time_utc));
+    const now = Date.now();
+    const minT = now - days * 86400000;
+    return runs.filter(r => {
+      const t = new Date(r.time_utc).getTime();
+      return Number.isFinite(t) && t >= minT;
+    });
+  }
+
+  function summaryV52() {
+    return perfV52?.summary || {};
+  }
+
+  function monthV52() {
+    const m = Number(q52("swiftV52Month")?.value || (new Date()).getUTCMonth() + 1);
+    return String(clamp52(Math.round(Number.isFinite(m) ? m : 1), 1, 12));
+  }
+
+  function regionRowsV52(month) {
+    const metrics = perfV52?.metrics || {};
+    const coeffs = coeffV52?.coefficients || {};
+    return REGION_LABELS_V52.map(r => ({
+      ...r,
+      metrics: metrics[r.id]?.[String(month)] || {},
+      coeff: coeffs[r.id]?.[String(month)] || {},
+    }));
+  }
+
+  async function loadV52Data() {
+    setV52Status("AI学習結果を読み込み中…");
+    const results = await Promise.allSettled([
+      fetchJson52(AI_BASE + "kp_performance.json"),
+      fetchJson52(AI_BASE + "kp_coefficients.json"),
+      fetchJson52(AI_BASE + "kp_learning_history.json"),
+      fetchJson52("data/tec/index.json"),
+    ]);
+    perfV52 = results[0].status === "fulfilled" ? results[0].value : null;
+    coeffV52 = results[1].status === "fulfilled" ? results[1].value : null;
+    histV52 = results[2].status === "fulfilled" ? results[2].value : null;
+    tecIndexV52 = results[3].status === "fulfilled" ? results[3].value : null;
+    try { await window.loadKpAiData?.(false); } catch {}
+    renderV52All();
+    setV52Status(perfV52 ? "AI学習結果を読み込みました。" : "AI学習結果なし。Actionsで Train Kp AI Corrector を実行してください。");
+  }
+
+  function syncV52ForecastControls() {
+    const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
+    const legacySource = q52("forecastTecApiSourceSelect");
+    if (legacySource) legacySource.value = source;
+    try { window.setForecastTecApiMode?.(source); } catch {}
+
+    const enabled = !!q52("swiftV52AiEnabled")?.checked;
+    const legacyEnabled = q52("kpAiCorrectionEnabled");
+    if (legacyEnabled) legacyEnabled.checked = enabled;
+
+    const clip = q52("swiftV52AiClip")?.value || "20";
+    const legacyClip = q52("kpAiCorrectionClip");
+    if (legacyClip) legacyClip.value = clip;
+  }
+
+  async function v52LoadTec() {
+    syncV52ForecastControls();
+    setV52Status("予報用TECを取得中…");
+    await window.loadForecastTecFromSelectedApi?.(false);
+    setV52Status("予報用TECを取得しました。");
+  }
+
+  async function v52RunForecast() {
+    syncV52ForecastControls();
+    const auto = q52("forecastTecAutoFetch");
+    if (auto) auto.checked = true;
+    setV52Status("AI設定を反映してTEC予報を計算中…");
+    await window.runForecast?.();
+    setV52Status("予報を実行しました。地図・時間スライダーで確認できます。");
+  }
+
+  function drawAxes52(ctx, w, h, plot, yLabel) {
+    ctx.strokeStyle = "rgba(148,163,184,.26)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = plot.y1 - (plot.y1 - plot.y0) * i / 4;
+      ctx.beginPath();
+      ctx.moveTo(plot.x0, y);
+      ctx.lineTo(plot.x1, y);
+      ctx.stroke();
+      ctx.fillStyle = "#73839e";
+      ctx.font = `${10 * (window.devicePixelRatio || 1)}px system-ui`;
+      const label = yLabel === "pct" ? `${i * 25}%` : "";
+      if (label) ctx.fillText(label, 6 * (window.devicePixelRatio || 1), y + 3 * (window.devicePixelRatio || 1));
+    }
+  }
+
+  function setupCanvas52(canvas, minH = 180) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(360, Math.floor(rect.width * dpr));
+    const h = Math.max(minH, Math.floor(rect.height * dpr));
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#030712";
+    ctx.fillRect(0, 0, w, h);
+    return { ctx, w, h, dpr };
+  }
+
+  function drawHitTrendV52() {
+    const canvas = q52("swiftV52HitTrend");
+    if (!canvas) return;
+    const { ctx, w, h, dpr } = setupCanvas52(canvas, 240);
+    const span = Number(q52("swiftV52Span")?.value || TWO_YEARS_DAYS);
+    const rows = historyRowsV52(span);
+    const plot = { x0: 44 * dpr, y0: 26 * dpr, x1: w - 16 * dpr, y1: h - 34 * dpr };
+    ctx.fillStyle = "#dbeafe";
+    ctx.font = `${13 * dpr}px system-ui`;
+    ctx.fillText(`的中率推移（過去${span >= 730 ? "2年" : span + "日"}）`, 14 * dpr, 17 * dpr);
+    drawAxes52(ctx, w, h, plot, "pct");
+
+    if (!rows.length) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = `${13 * dpr}px system-ui`;
+      ctx.fillText("まだ学習履歴がありません。Train Kp AI Corrector を実行してください。", plot.x0, (plot.y0 + plot.y1) / 2);
+      return;
+    }
+
+    const xAt = i => rows.length === 1 ? (plot.x0 + plot.x1) / 2 : plot.x0 + (plot.x1 - plot.x0) * i / (rows.length - 1);
+    const yAt = v => plot.y1 - (plot.y1 - plot.y0) * clamp52(Number(v) || 0, 0, 1);
+
+    function line(key, color, width = 2.2) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width * dpr;
+      ctx.beginPath();
+      rows.forEach((r, i) => {
+        const x = xAt(i), y = yAt(r[key]);
+        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      });
+      ctx.stroke();
+      ctx.fillStyle = color;
+      const step = Math.max(1, Math.floor(rows.length / 18));
+      rows.forEach((r, i) => {
+        if (i % step && i !== rows.length - 1) return;
+        ctx.beginPath();
+        ctx.arc(xAt(i), yAt(r[key]), 2.2 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    line("raw_hit_rate", "#64748b", 1.8);
+    line("corrected_hit_rate", "#60a5fa", 2.6);
+
+    const latest = rows[rows.length - 1] || {};
+    ctx.font = `${11 * dpr}px system-ui`;
+    ctx.fillStyle = "#64748b";
+    ctx.fillText(`raw ${pct52(latest.raw_hit_rate)}`, plot.x0, h - 13 * dpr);
+    ctx.fillStyle = "#60a5fa";
+    ctx.fillText(`AI補正後 ${pct52(latest.corrected_hit_rate)}`, plot.x0 + 85 * dpr, h - 13 * dpr);
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText(`${isoDate52(rows[0].time_utc)} 〜 ${isoDate52(latest.time_utc)}`, plot.x1 - 155 * dpr, h - 13 * dpr);
+  }
+
+  function drawRmseTrendV52() {
+    const canvas = q52("swiftV52RmseTrend");
+    if (!canvas) return;
+    const { ctx, w, h, dpr } = setupCanvas52(canvas, 155);
+    const rows = historyRowsV52(Number(q52("swiftV52Span")?.value || TWO_YEARS_DAYS));
+    const plot = { x0: 44 * dpr, y0: 24 * dpr, x1: w - 12 * dpr, y1: h - 26 * dpr };
+    ctx.fillStyle = "#dbeafe";
+    ctx.font = `${12 * dpr}px system-ui`;
+    ctx.fillText("RMSE推移", 14 * dpr, 16 * dpr);
+    if (!rows.length) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText("No data", plot.x0, (plot.y0 + plot.y1) / 2);
+      return;
+    }
+    const vals = rows.flatMap(r => [n52(r.raw_rmse), n52(r.corrected_rmse)]).filter(Number.isFinite);
+    const maxV = Math.max(1, ...vals) * 1.08;
+    for (let i = 0; i <= 4; i++) {
+      const y = plot.y1 - (plot.y1 - plot.y0) * i / 4;
+      ctx.strokeStyle = "rgba(148,163,184,.20)";
+      ctx.beginPath(); ctx.moveTo(plot.x0, y); ctx.lineTo(plot.x1, y); ctx.stroke();
+      ctx.fillStyle = "#73839e"; ctx.font = `${9 * dpr}px system-ui`;
+      ctx.fillText((maxV * i / 4).toFixed(0), 10 * dpr, y + 3 * dpr);
+    }
+    const xAt = i => rows.length === 1 ? (plot.x0 + plot.x1) / 2 : plot.x0 + (plot.x1 - plot.x0) * i / (rows.length - 1);
+    const yAt = v => plot.y1 - (plot.y1 - plot.y0) * (clamp52(n52(v), 0, maxV) / maxV);
+    function line(key, color) {
+      ctx.strokeStyle = color; ctx.lineWidth = 2 * dpr; ctx.beginPath();
+      rows.forEach((r, i) => { const x = xAt(i), y = yAt(r[key]); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+      ctx.stroke();
+    }
+    line("raw_rmse", "#64748b");
+    line("corrected_rmse", "#38bdf8");
+  }
+
+  function drawRegionBarsV52() {
+    const canvas = q52("swiftV52RegionBars");
+    if (!canvas) return;
+    const { ctx, w, h, dpr } = setupCanvas52(canvas, 160);
+    const rows = regionRowsV52(monthV52());
+    const plot = { x0: 42 * dpr, y0: 22 * dpr, x1: w - 12 * dpr, y1: h - 16 * dpr };
+    ctx.fillStyle = "#dbeafe";
+    ctx.font = `${12 * dpr}px system-ui`;
+    ctx.fillText(`${monthV52()}月 18地域 的中率`, 12 * dpr, 15 * dpr);
+    const gap = 2 * dpr;
+    const barH = Math.max(3 * dpr, (plot.y1 - plot.y0 - gap * 17) / 18);
+    rows.forEach((r, i) => {
+      const y = plot.y0 + i * (barH + gap);
+      const raw = clamp52(n52(r.metrics.raw_hit_rate) || 0, 0, 1);
+      const corr = clamp52(n52(r.metrics.corrected_hit_rate) || 0, 0, 1);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = `${8.5 * dpr}px system-ui`;
+      ctx.fillText(r.id, 8 * dpr, y + barH * .8);
+      ctx.fillStyle = "rgba(100,116,139,.45)";
+      ctx.fillRect(plot.x0, y, (plot.x1 - plot.x0) * raw, barH);
+      ctx.fillStyle = "#60a5fa";
+      ctx.fillRect(plot.x0, y + barH * .48, (plot.x1 - plot.x0) * corr, Math.max(2 * dpr, barH * .52));
+    });
+  }
+
+  function renderRegionListV52() {
+    const box = q52("swiftV52Regions");
+    if (!box) return;
+    const rows = regionRowsV52(monthV52());
+    box.innerHTML = rows.map(r => {
+      const hit = n52(r.metrics.corrected_hit_rate);
+      const raw = n52(r.metrics.raw_hit_rate);
+      const cls = hit >= .75 ? "ok" : (hit >= .55 ? "warn" : "");
+      return `<div class="swift-v52-region ${selectedRegionV52 === r.id ? "active" : ""}" data-region="${r.id}" onclick="window.swiftV52SelectRegion('${r.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="swift-v52-region-id">${r.id}</span><span class="swift-v52-dot ${cls}"></span>
+        </div>
+        <div class="swift-v52-region-label">${r.label}</div>
+        <div class="swift-v52-region-hit">${pct52(hit)}</div>
+        <div class="swift-v52-mini-note">raw ${pct52(raw)}</div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderRegionDetailV52() {
+    const box = q52("swiftV52RegionDetail");
+    if (!box) return;
+    const r = regionRowsV52(monthV52()).find(x => x.id === selectedRegionV52) || regionRowsV52(monthV52())[0];
+    if (!r) { box.innerHTML = ""; return; }
+    const m = r.metrics || {}, k = r.coeff || {};
+    box.innerHTML = `
+      <table class="swift-v52-table">
+        <tbody>
+          <tr><th>地域</th><td>${r.id} / ${r.label}</td></tr>
+          <tr><th>Hit</th><td>${pct52(m.raw_hit_rate)} → <b>${pct52(m.corrected_hit_rate)}</b></td></tr>
+          <tr><th>RMSE</th><td>${num52(m.raw_rmse)} → <b>${num52(m.corrected_rmse)}</b></td></tr>
+          <tr><th>Bias</th><td>${num52(m.raw_bias)} → <b>${num52(m.corrected_bias)}</b></td></tr>
+          <tr><th>Samples</th><td>${m.sample_count || 0}</td></tr>
+          <tr><th>k0/k1/k2/k3</th><td>${num52(k.k0,3)} / ${num52(k.k1,3)} / ${num52(k.k2,3)} / ${num52(k.k3,3)}</td></tr>
+        </tbody>
+      </table>`;
+  }
+
+  function renderKpisV52() {
+    const s = summaryV52();
+    const rows = historyRowsV52(TWO_YEARS_DAYS);
+    const latest = rows[rows.length - 1] || s;
+    const set = (id, v) => { const el = q52(id); if (el) el.textContent = v; };
+    set("swiftV52KpiHit", `${pct52(latest.raw_hit_rate)} → ${pct52(latest.corrected_hit_rate)}`);
+    set("swiftV52KpiRmse", `${num52(latest.raw_rmse)} → ${num52(latest.corrected_rmse)}`);
+    set("swiftV52KpiSamples", String(latest.sample_count || s.sample_count || "--"));
+    set("swiftV52KpiRuns", String(rows.length || "--"));
+    const note = q52("swiftV52HistoryNote");
+    if (note) note.textContent = rows.length
+      ? `学習履歴: ${isoDate52(rows[0].time_utc)} 〜 ${isoDate52(rows[rows.length - 1].time_utc)} / 最大2年表示 / 係数は全格子学習`
+      : "学習履歴なし";
+    const dot = q52("swiftV52AiDot");
+    if (dot) dot.className = "swift-v52-dot " + (perfV52 ? "ok" : "warn");
+
+    const frames = arr52(tecIndexV52?.frames);
+    const dataEl = q52("swiftV52DataCount");
+    if (dataEl) dataEl.textContent = frames.length ? `${frames.length} frames` : "--";
+    const dataNote = q52("swiftV52DataNote");
+    if (dataNote && frames.length) dataNote.textContent = `${frames[0].time_utc || "--"} 〜 ${frames[frames.length - 1].time_utc || "--"}`;
+  }
+
+  function renderRecentRunsV52() {
+    const box = q52("swiftV52RecentRuns");
+    if (!box) return;
+    const rows = historyRowsV52(TWO_YEARS_DAYS).slice(-8).reverse();
+    if (!rows.length) {
+      box.innerHTML = `<div class="swift-v52-sub">まだ学習履歴がありません。</div>`;
+      return;
+    }
+    box.innerHTML = `<table class="swift-v52-table">
+      <thead><tr><th>UTC</th><th>Hit raw→AI</th><th>RMSE raw→AI</th><th>N</th></tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td>${isoDate52(r.time_utc)}</td>
+        <td>${pct52(r.raw_hit_rate)} → <b>${pct52(r.corrected_hit_rate)}</b></td>
+        <td>${num52(r.raw_rmse)} → <b>${num52(r.corrected_rmse)}</b></td>
+        <td>${r.sample_count || 0}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  }
+
+  function renderV52All() {
+    renderKpisV52();
+    drawHitTrendV52();
+    drawRmseTrendV52();
+    drawRegionBarsV52();
+    renderRegionListV52();
+    renderRegionDetailV52();
+    renderRecentRunsV52();
+  }
+
+  function buildSidebarV52() {
+    const sidebar = document.querySelector(".sidebar");
+    if (!sidebar) return;
+    q52("swiftCleanDashboard")?.remove();
+    q52("swiftAccuracySide")?.remove();
+
+    const card = document.createElement("div");
+    card.id = "swiftAccuracySide";
+    card.className = "swift-v52-card";
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div>
+          <div class="swift-v52-title">SWIFT-TEC AI</div>
+          <div class="swift-v52-sub">全格子AIで育てるTEC予報</div>
+        </div>
+        <span class="swift-v52-pill"><span id="swiftV52AiDot" class="swift-v52-dot warn"></span> AI</span>
+      </div>
+
+      <div class="swift-v52-mini-stats">
+        <div class="swift-v52-mini">
+          <div class="swift-v52-mini-label">最新Hit raw→AI</div>
+          <div class="swift-v52-mini-value" id="swiftV52KpiHit">--</div>
+          <div class="swift-v52-mini-note">±5 TECU以内</div>
+        </div>
+        <div class="swift-v52-mini">
+          <div class="swift-v52-mini-label">最新RMSE raw→AI</div>
+          <div class="swift-v52-mini-value" id="swiftV52KpiRmse">--</div>
+          <div class="swift-v52-mini-note">小さいほど良い</div>
+        </div>
+        <div class="swift-v52-mini">
+          <div class="swift-v52-mini-label">学習サンプル</div>
+          <div class="swift-v52-mini-value" id="swiftV52KpiSamples">--</div>
+          <div class="swift-v52-mini-note">直近学習回</div>
+        </div>
+        <div class="swift-v52-mini">
+          <div class="swift-v52-mini-label">2年内学習回数</div>
+          <div class="swift-v52-mini-value" id="swiftV52KpiRuns">--</div>
+          <div class="swift-v52-mini-note">最大730日分</div>
+        </div>
+      </div>
+
+      <div class="swift-v52-controls">
+        <div>
+          <div class="swift-v52-label">予報用TEC</div>
+          <select id="swiftV52TecSource" class="swift-v52-select" onchange="window.swiftV52SyncForecastControls()">
+            <option value="archive_data_30m" selected>取りため済みdata API</option>
+            <option value="noaa_direct_30m">NOAA API直取得</option>
+          </select>
+        </div>
+        <div class="swift-v52-row">
+          <label class="swift-v52-pill" style="justify-content:center;cursor:pointer;">
+            <input id="swiftV52AiEnabled" type="checkbox" onchange="window.swiftV52SyncForecastControls()" checked>
+            AI Kp補正ON
+          </label>
+          <div>
+            <div class="swift-v52-label">補正上限[TECU]</div>
+            <input id="swiftV52AiClip" class="swift-v52-input" type="number" value="20" min="0" max="50" step="1" onchange="window.swiftV52SyncForecastControls()">
+          </div>
+        </div>
+        <div class="swift-v52-row">
+          <button class="swift-v52-btn secondary" onclick="window.swiftV52LoadData()">AI読込</button>
+          <button class="swift-v52-btn secondary" onclick="window.swiftV52LoadTec()">TEC取得</button>
+        </div>
+        <button class="swift-v52-btn" onclick="window.swiftV52RunForecast()">予報実行</button>
+        <div class="swift-v52-row">
+          <button class="swift-v52-btn secondary" onclick="window.playArchiveMovie?.()">▶ 再生</button>
+          <button class="swift-v52-btn secondary" onclick="window.stopArchiveMovie?.()">⏸ 停止</button>
+        </div>
+        <div class="swift-v52-row">
+          <button class="swift-v52-btn ghost" onclick="window.loadGnssDopData?.()">GNSS読込</button>
+          <button class="swift-v52-btn ghost" onclick="document.body.classList.toggle('swift-advanced-open')">詳細設定</button>
+        </div>
+      </div>
+
+      <div class="swift-v52-mini" style="margin-top:10px;">
+        <div class="swift-v52-mini-label">TEC蓄積</div>
+        <div class="swift-v52-mini-value" id="swiftV52DataCount">--</div>
+        <div class="swift-v52-mini-note" id="swiftV52DataNote">--</div>
+      </div>
+      <div class="swift-v52-status" id="swiftV52Status"></div>
+    `;
+    sidebar.insertBefore(card, sidebar.firstChild);
+  }
+
+  function buildMainV52() {
+    const main = document.querySelector(".main");
+    if (!main) return;
+    q52("swiftAccuracyMain")?.remove();
+
+    const panel = document.createElement("div");
+    panel.id = "swiftAccuracyMain";
+    panel.className = "swift-v52-card";
+    panel.innerHTML = `
+      <div class="swift-v52-chart-head">
+        <div>
+          <div class="swift-v52-title">的中率モニター</div>
+          <div class="swift-v52-sub" id="swiftV52HistoryNote">全格子で学習し、18地域に集約した的中率を過去2年分表示します。</div>
+        </div>
+        <div class="swift-v52-head-actions">
+          <select id="swiftV52Span" class="swift-v52-select" style="width:118px;" onchange="window.swiftV52RenderAll()">
+            <option value="90">90日</option>
+            <option value="365">1年</option>
+            <option value="730" selected>2年</option>
+          </select>
+          <select id="swiftV52Month" class="swift-v52-select" style="width:80px;" onchange="window.swiftV52RenderAll()">
+            ${Array.from({ length: 12 }, (_, i) => `<option value="${i+1}" ${(i+1)===(new Date()).getUTCMonth()+1 ? "selected" : ""}>${i+1}月</option>`).join("")}
+          </select>
+          <button class="swift-v52-btn secondary" style="padding:7px 10px;" onclick="window.swiftV52LoadData()">更新</button>
+        </div>
+      </div>
+
+      <div class="swift-v52-kpi-row">
+        <div class="swift-v52-kpi">
+          <div class="swift-v52-kpi-label">最新Hit raw→AI</div>
+          <div class="swift-v52-kpi-value" id="swiftV52MainHit">--</div>
+          <div class="swift-v52-kpi-note">AI補正で上がるか確認</div>
+        </div>
+        <div class="swift-v52-kpi">
+          <div class="swift-v52-kpi-label">最新RMSE raw→AI</div>
+          <div class="swift-v52-kpi-value" id="swiftV52MainRmse">--</div>
+          <div class="swift-v52-kpi-note">小さいほど良い</div>
+        </div>
+        <div class="swift-v52-kpi">
+          <div class="swift-v52-kpi-label">2年内学習回数</div>
+          <div class="swift-v52-kpi-value" id="swiftV52MainRuns">--</div>
+          <div class="swift-v52-kpi-note">最大730回</div>
+        </div>
+        <div class="swift-v52-kpi">
+          <div class="swift-v52-kpi-label">最新サンプル数</div>
+          <div class="swift-v52-kpi-value" id="swiftV52MainSamples">--</div>
+          <div class="swift-v52-kpi-note">学習に使った点数</div>
+        </div>
+      </div>
+
+      <div class="swift-v52-grid-main">
+        <div>
+          <canvas id="swiftV52HitTrend" class="swift-v52-canvas-big"></canvas>
+          <div style="margin-top:10px;">
+            <canvas id="swiftV52RmseTrend" class="swift-v52-canvas-small"></canvas>
+          </div>
+        </div>
+        <div>
+          <canvas id="swiftV52RegionBars" class="swift-v52-canvas-small"></canvas>
+          <div style="margin-top:10px;" class="swift-v52-region-list" id="swiftV52Regions"></div>
+          <div id="swiftV52RegionDetail"></div>
+        </div>
+      </div>
+      <div id="swiftV52RecentRuns" style="margin-top:10px;"></div>
+    `;
+    main.insertBefore(panel, main.firstChild);
+  }
+
+  function syncMainKpisV52() {
+    const rows = historyRowsV52(TWO_YEARS_DAYS);
+    const latest = rows[rows.length - 1] || summaryV52();
+    const set = (id, val) => { const el = q52(id); if (el) el.textContent = val; };
+    set("swiftV52MainHit", `${pct52(latest.raw_hit_rate)} → ${pct52(latest.corrected_hit_rate)}`);
+    set("swiftV52MainRmse", `${num52(latest.raw_rmse)} → ${num52(latest.corrected_rmse)}`);
+    set("swiftV52MainRuns", String(rows.length || "--"));
+    set("swiftV52MainSamples", String(latest.sample_count || "--"));
+  }
+
+  const originalRenderV52All = renderV52All;
+  renderV52All = function () {
+    originalRenderV52All();
+    syncMainKpisV52();
+  };
+
+  function bootV52() {
+    document.body.classList.add("swift-accuracy-ui");
+    document.body.classList.remove("swift-advanced-open");
+    installStyle52();
+    setTimeout(() => {
+      q52("swiftCleanDashboard")?.remove();
+      buildSidebarV52();
+      buildMainV52();
+      syncV52ForecastControls();
+      loadV52Data().catch(e => {
+        console.warn(e);
+        renderV52All();
+        setV52Status("AI学習結果をまだ読めません。Train Kp AI Correctorを実行してください。");
+      });
+      window.addEventListener("resize", () => {
+        clearTimeout(window.__swiftV52ResizeTimer);
+        window.__swiftV52ResizeTimer = setTimeout(renderV52All, 150);
+      });
+    }, 550);
+  }
+
+  window.swiftV52LoadData = loadV52Data;
+  window.swiftV52LoadTec = v52LoadTec;
+  window.swiftV52RunForecast = v52RunForecast;
+  window.swiftV52SyncForecastControls = syncV52ForecastControls;
+  window.swiftV52RenderAll = renderV52All;
+  window.swiftV52SelectRegion = function (rid) {
+    selectedRegionV52 = rid;
+    renderRegionListV52();
+    renderRegionDetailV52();
+  };
+
+  readyV52(bootV52);
+})();
+
