@@ -7590,3 +7590,225 @@
   readyV70(bootV70);
 })();
 
+
+/* =========================================================
+ * SWIFT-TEC v7.1 linked heatmap color/value scale
+ * Makes the numeric threshold editor use the same palette colors.
+ * Color palette + threshold values are treated as one linked scale.
+ * ========================================================= */
+(function () {
+  const PALETTES_V71 = {
+    classic: ["#2f55ff", "#46d9ff", "#fff176", "#ff2f2f"],
+    turbo: ["#30123b", "#4665d9", "#37a8fa", "#1ae4b6", "#72fe5f", "#d1e834", "#fe9b2d", "#e43d30", "#7a0403"],
+    viridis: ["#440154", "#46327e", "#365c8d", "#277f8e", "#1fa187", "#4ac16d", "#a0da39", "#fde725"],
+    plasma: ["#0d0887", "#5b02a3", "#9a179b", "#cb4679", "#ed7953", "#fb9f3a", "#fdca26", "#f0f921"],
+    blueRed: ["#1d4ed8", "#38bdf8", "#ffffff", "#facc15", "#dc2626"],
+    greenRed: ["#16a34a", "#bef264", "#facc15", "#f97316", "#dc2626"],
+    gray: ["#020617", "#334155", "#94a3b8", "#e5e7eb", "#ffffff"],
+    night: ["#000014", "#16213e", "#0f9b8e", "#f4d35e", "#ee4266", "#ffffff"],
+    monoBlue: ["#020617", "#0f172a", "#1e3a8a", "#2563eb", "#38bdf8", "#e0f2fe"],
+    purpleGold: ["#1e103d", "#4c1d95", "#7e22ce", "#c084fc", "#fde68a", "#f59e0b"],
+  };
+
+  const GROUPS_V71 = {
+    tec: { label: "TEC [TECU]", unit: "TECU" },
+    gps: { label: "L1電離圏誤差 [m]", unit: "m" },
+    dop: { label: "DOP", unit: "" },
+    doptec: { label: "DOP × L1誤差 [m]", unit: "m" },
+    satcount: { label: "可視衛星数", unit: "機" },
+  };
+
+  function readyV71(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q71(id) { return document.getElementById(id); }
+
+  function hexToRgbV71(hex) {
+    let h = String(hex || "").replace("#", "").trim();
+    if (h.length === 3) h = h.split("").map(c => c + c).join("");
+    const n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function rgbToHexV71(r, g, b) {
+    const h = n => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+    return `#${h(r)}${h(g)}${h(b)}`;
+  }
+  function lerpV71(a, b, t) { return a + (b - a) * t; }
+
+  function sampleColorsV71(colors, n = 4) {
+    if (!colors || !colors.length) colors = PALETTES_V71.classic;
+    if (n <= 1) return [colors[0]];
+    const out = [];
+    for (let k = 0; k < n; k++) {
+      const x = (k / (n - 1)) * (colors.length - 1);
+      const i0 = Math.floor(x);
+      const i1 = Math.min(colors.length - 1, i0 + 1);
+      const f = x - i0;
+      const a = hexToRgbV71(colors[i0]);
+      const b = hexToRgbV71(colors[i1]);
+      out.push(rgbToHexV71(
+        lerpV71(a[0], b[0], f),
+        lerpV71(a[1], b[1], f),
+        lerpV71(a[2], b[2], f)
+      ));
+    }
+    return out;
+  }
+
+  function currentPaletteColorsV71(n = 4) {
+    const name = q71("swiftHeatmapPaletteSelectV68")?.value || localStorage.getItem("swiftHeatmapPaletteV68") || "classic";
+    let colors = (PALETTES_V71[name] || PALETTES_V71.classic).slice();
+    const rev = q71("swiftHeatmapPaletteReverseV68")?.checked || localStorage.getItem("swiftHeatmapPaletteReverseV68") === "1";
+    if (rev) colors = colors.reverse();
+    return sampleColorsV71(colors, n);
+  }
+
+  function activeThresholdGroupV71() {
+    return q71("swiftHeatmapThresholdGroupV69")?.value || "tec";
+  }
+
+  function thresholdValuesV71() {
+    return [1, 2, 3, 4].map(i => Number(q71(`swiftHeatmapThreshold${i}V69`)?.value)).filter(Number.isFinite);
+  }
+
+  function injectStyleV71() {
+    if (q71("swiftLinkedColorScaleStyleV71")) return;
+    const st = document.createElement("style");
+    st.id = "swiftLinkedColorScaleStyleV71";
+    st.textContent = `
+      #swiftLinkedColorScaleV71 {
+        margin-top: 8px;
+        border: 1px solid #1f355a;
+        border-radius: 12px;
+        background: #020617;
+        padding: 8px;
+      }
+      .swift-v71-title {
+        color: #eaf2ff;
+        font-size: 11px;
+        font-weight: 850;
+        margin-bottom: 6px;
+      }
+      .swift-v71-scale {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
+      }
+      .swift-v71-seg {
+        border: 1px solid #1f355a;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #061020;
+      }
+      .swift-v71-color {
+        height: 16px;
+      }
+      .swift-v71-val {
+        padding: 5px 4px;
+        font-size: 10px;
+        text-align: center;
+        color: #dbeafe;
+        white-space: nowrap;
+      }
+      .swift-v71-note {
+        margin-top: 6px;
+        color: #9fb0cc;
+        font-size: 10px;
+        line-height: 1.35;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function ensureLinkedPanelV71() {
+    const thresholdPanel = q71("swiftHeatmapThresholdPanelV69");
+    if (!thresholdPanel || q71("swiftLinkedColorScaleV71")) return;
+
+    const div = document.createElement("div");
+    div.id = "swiftLinkedColorScaleV71";
+    div.innerHTML = `
+      <div class="swift-v71-title">色・数値対応</div>
+      <div id="swiftLinkedScaleSegmentsV71" class="swift-v71-scale"></div>
+      <div class="swift-v71-note">
+        上の色パレットと、下の数値しきい値がこの対応でヒートマップに反映されます。
+      </div>
+    `;
+    thresholdPanel.appendChild(div);
+  }
+
+  function updateLinkedScaleV71() {
+    ensureLinkedPanelV71();
+
+    const box = q71("swiftLinkedScaleSegmentsV71");
+    if (!box) return;
+
+    const vals = thresholdValuesV71();
+    const colors = currentPaletteColorsV71(4);
+    const group = activeThresholdGroupV71();
+    const unit = GROUPS_V71[group]?.unit || "";
+
+    box.innerHTML = [0, 1, 2, 3].map(i => {
+      const v = vals[i];
+      return `<div class="swift-v71-seg">
+        <div class="swift-v71-color" style="background:${colors[i]}"></div>
+        <div class="swift-v71-val">${Number.isFinite(v) ? v : "--"} ${unit}</div>
+      </div>`;
+    }).join("");
+
+    // Also make v6.9 threshold preview match the selected palette.
+    const oldPreview = q71("swiftHeatmapThresholdPreviewV69");
+    if (oldPreview) {
+      oldPreview.innerHTML = colors.map(c => `<span style="background:${c}"></span>`).join("");
+    }
+  }
+
+  function attachEventsV71() {
+    const ids = [
+      "swiftHeatmapPaletteSelectV68",
+      "swiftHeatmapPaletteReverseV68",
+      "swiftHeatmapThresholdGroupV69",
+      "swiftHeatmapThreshold1V69",
+      "swiftHeatmapThreshold2V69",
+      "swiftHeatmapThreshold3V69",
+      "swiftHeatmapThreshold4V69",
+    ];
+    for (const id of ids) {
+      const el = q71(id);
+      if (!el || el.dataset.v71Linked) continue;
+      el.dataset.v71Linked = "1";
+      el.addEventListener("input", updateLinkedScaleV71);
+      el.addEventListener("change", updateLinkedScaleV71);
+    }
+
+    const apply = q71("swiftHeatmapThresholdApplyV69");
+    if (apply && !apply.dataset.v71Linked) {
+      apply.dataset.v71Linked = "1";
+      apply.addEventListener("click", () => setTimeout(updateLinkedScaleV71, 80));
+    }
+    const reset = q71("swiftHeatmapThresholdResetV69");
+    if (reset && !reset.dataset.v71Linked) {
+      reset.dataset.v71Linked = "1";
+      reset.addEventListener("click", () => setTimeout(updateLinkedScaleV71, 80));
+    }
+  }
+
+  function bootV71() {
+    injectStyleV71();
+    for (const delay of [500, 1000, 1800, 3000]) {
+      setTimeout(() => {
+        ensureLinkedPanelV71();
+        attachEventsV71();
+        updateLinkedScaleV71();
+      }, delay);
+    }
+    setInterval(() => {
+      attachEventsV71();
+      updateLinkedScaleV71();
+    }, 1500);
+  }
+
+  window.swiftUpdateLinkedHeatmapScaleV71 = updateLinkedScaleV71;
+  readyV71(bootV71);
+})();
+
