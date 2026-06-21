@@ -36,7 +36,7 @@
   // data/tecに保存されるTECはNOAA 30分値。UIではTEC系30分、DOP系10分へ展開する。
   const TEC_REPLAY_STEP_MIN = 30;
   const DOP_REPLAY_STEP_MIN = 10;
-  const TEC_FORECAST_HOURS = 72;
+  const TEC_FORECAST_HOURS = 96;
   const DEFAULT_TEC_FORECAST_BASE_DAYS = 7;
   let rawDisplayFrames = [];
   let activeTimelineStepMin = TEC_REPLAY_STEP_MIN;
@@ -7983,5 +7983,465 @@
   window.swiftToggleAccuracyFullscreenV72 = toggleAccuracyFullscreenV72;
   window.swiftExitAccuracyFullscreenV72 = exitAccuracyFullscreenV72;
   readyV72(bootV72);
+})();
+
+
+/* =========================================================
+ * SWIFT-TEC v7.3 forecast extension + coefficient Excel +
+ * operational hit rate by forecast lead day.
+ * ========================================================= */
+(function () {
+  let operationalHitDataV73 = null;
+
+  function readyV73(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q73(id) { return document.getElementById(id); }
+
+  function injectStyleV73() {
+    if (q73("swiftV73Style")) return;
+    const st = document.createElement("style");
+    st.id = "swiftV73Style";
+    st.textContent = `
+      .swift-v73-card {
+        margin-top: 10px;
+        border: 1px solid #1f355a;
+        border-radius: 14px;
+        background: rgba(7, 14, 28, .98);
+        padding: 10px;
+      }
+      .swift-v73-title {
+        color: #eaf2ff;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      .swift-v73-sub {
+        color: #9fb0cc;
+        font-size: 10px;
+        line-height: 1.38;
+        margin-top: 3px;
+      }
+      .swift-v73-row {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .swift-v73-btn,
+      .swift-v73-select {
+        border-radius: 9px;
+        border: 1px solid #3b82f6;
+        background: #1d4ed8;
+        color: white;
+        padding: 6px 9px;
+        font-size: 11px;
+        font-weight: 750;
+      }
+      .swift-v73-select {
+        background: #061020;
+        border-color: #2a4774;
+        color: #eaf2ff;
+        font-weight: 500;
+      }
+      .swift-v73-btn.secondary {
+        border-color: #334155;
+        background: #0f172a;
+      }
+      #swiftOperationalHitCanvasV73 {
+        width: 100%;
+        height: 185px;
+        border: 1px solid #1f355a;
+        border-radius: 12px;
+        background: #030712;
+        display: block;
+        margin-top: 8px;
+      }
+      .swift-v73-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .swift-v73-kpi {
+        border: 1px solid #1f355a;
+        background: #061020;
+        border-radius: 10px;
+        padding: 7px;
+      }
+      .swift-v73-kpi-label {
+        color: #8ba0c2;
+        font-size: 9px;
+      }
+      .swift-v73-kpi-value {
+        color: #f8fafc;
+        font-size: 14px;
+        font-weight: 900;
+        margin-top: 3px;
+      }
+      #swiftCoeffExcelStatusV73,
+      #swiftOperationalHitStatusV73 {
+        color: #c8d8f2;
+        font-size: 10px;
+        margin-top: 6px;
+        line-height: 1.35;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function loadSheetJsV73() {
+    return new Promise((resolve, reject) => {
+      if (window.XLSX) return resolve();
+      const urls = [
+        "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+        "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"
+      ];
+      let i = 0;
+      const next = () => {
+        if (window.XLSX) return resolve();
+        if (i >= urls.length) return reject(new Error("SheetJSの読み込みに失敗しました。"));
+        const s = document.createElement("script");
+        s.src = urls[i++];
+        s.async = true;
+        s.onload = () => window.XLSX ? resolve() : next();
+        s.onerror = next;
+        document.head.appendChild(s);
+      };
+      next();
+    });
+  }
+
+  function asNumberV73(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : "";
+  }
+
+  function coeffMonthV73(doc, month) {
+    const root = doc?.coefficients_grid || doc?.grid_coefficients || doc?.coefficients || {};
+    return root[String(month)] || root[month] || null;
+  }
+
+  function getCellV73(arr, i, j) {
+    return asNumberV73(arr?.[i]?.[j]);
+  }
+
+  function buildCoefficientRowsV73(doc) {
+    const latArr = doc?.lat_arr || doc?.latArr || [];
+    const lonArr = doc?.lon_arr || doc?.lonArr || [];
+    const nLat = Number(doc?.n_lat || doc?.nLat || latArr.length || 0);
+    const nLon = Number(doc?.n_lon || doc?.nLon || lonArr.length || 0);
+    if (!nLat || !nLon) throw new Error("kp_grid_coefficients.json に lat/lon 格子情報がありません。");
+
+    const rows = [];
+    for (let month = 1; month <= 12; month++) {
+      const m = coeffMonthV73(doc, month);
+      if (!m) continue;
+      for (let i = 0; i < nLat; i++) {
+        for (let j = 0; j < nLon; j++) {
+          rows.push({
+            month,
+            lat_index: i,
+            lon_index: j,
+            lat: asNumberV73(latArr[i]),
+            lon: asNumberV73(lonArr[j]),
+            k0: getCellV73(m.k0, i, j),
+            k1: getCellV73(m.k1, i, j),
+            k2: getCellV73(m.k2, i, j),
+            k3: getCellV73(m.k3, i, j),
+            sample_count: getCellV73(m.sample_count, i, j),
+            updated: getCellV73(m.updated, i, j),
+          });
+        }
+      }
+    }
+    return rows;
+  }
+
+  function buildMonthSheetsV73(wb, doc) {
+    const latArr = doc?.lat_arr || doc?.latArr || [];
+    const lonArr = doc?.lon_arr || doc?.lonArr || [];
+    const nLat = Number(doc?.n_lat || doc?.nLat || latArr.length || 0);
+    const nLon = Number(doc?.n_lon || doc?.nLon || lonArr.length || 0);
+
+    for (let month = 1; month <= 12; month++) {
+      const m = coeffMonthV73(doc, month);
+      if (!m) continue;
+      const rows = [];
+      for (let i = 0; i < nLat; i++) {
+        for (let j = 0; j < nLon; j++) {
+          rows.push({
+            lat: asNumberV73(latArr[i]),
+            lon: asNumberV73(lonArr[j]),
+            k0: getCellV73(m.k0, i, j),
+            k1: getCellV73(m.k1, i, j),
+            k2: getCellV73(m.k2, i, j),
+            k3: getCellV73(m.k3, i, j),
+            sample_count: getCellV73(m.sample_count, i, j),
+            updated: getCellV73(m.updated, i, j),
+          });
+        }
+      }
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), `M${String(month).padStart(2, "0")}`);
+    }
+  }
+
+  async function exportGridCoefficientsExcelV73() {
+    const status = q73("swiftCoeffExcelStatusV73");
+    try {
+      if (status) status.textContent = "格子別経験係数を読み込み中…";
+      await loadSheetJsV73();
+
+      const res = await fetch("data/ai/kp_grid_coefficients.json", { cache: "no-store" });
+      if (!res.ok) throw new Error(`kp_grid_coefficients.json が読めません: HTTP ${res.status}`);
+      const doc = await res.json();
+
+      const rows = buildCoefficientRowsV73(doc);
+      if (!rows.length) throw new Error("出力できる係数データがありません。Train Kp AI Correctorを実行してください。");
+
+      const summary = [
+        ["version", doc.version || ""],
+        ["updated_utc", doc.updated_utc || ""],
+        ["model_rule", doc.model_rule || ""],
+        ["formula", doc.formula || ""],
+        ["n_lat", doc.n_lat || doc.nLat || ""],
+        ["n_lon", doc.n_lon || doc.nLon || ""],
+        ["train_days", doc.train_days || ""],
+        ["pair_hours", doc.pair_hours || ""],
+        ["min_cell_samples", doc.min_cell_samples || ""],
+        ["blend_alpha", doc.blend_alpha || ""],
+        ["ridge", doc.ridge || ""],
+        ["correction_clip_tecu", doc.correction_clip_tecu || ""],
+        ["row_count", rows.length],
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Summary");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "All Grid Coefficients");
+      buildMonthSheetsV73(wb, doc);
+
+      const dt = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+      XLSX.writeFile(wb, `swifttec_grid_kp_coefficients_monthly_${dt}.xlsx`);
+      if (status) status.textContent = `Excel出力完了: ${rows.length}行 / updated=${doc.updated_utc || "--"}`;
+    } catch (e) {
+      console.error(e);
+      if (status) status.textContent = "Excel出力失敗: " + e.message;
+      alert("Excel出力失敗: " + e.message);
+    }
+  }
+
+  function pctV73(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : "--";
+  }
+  function numV73(v, d = 2) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(d) : "--";
+  }
+
+  async function loadOperationalHitRateV73() {
+    const status = q73("swiftOperationalHitStatusV73");
+    try {
+      if (status) status.textContent = "運用的中率データ読み込み中…";
+      const res = await fetch("data/ai/operational_hit_rate.json", { cache: "no-store" });
+      if (!res.ok) throw new Error(`operational_hit_rate.json がありません: HTTP ${res.status}`);
+      operationalHitDataV73 = await res.json();
+      if (status) status.textContent = `updated=${operationalHitDataV73.updated_utc || "--"} / issue=${operationalHitDataV73.forecast_issue_count || 0}`;
+    } catch (e) {
+      operationalHitDataV73 = null;
+      if (status) status.textContent = "未作成: Fetch Kp Forecast Archive and Score を実行してください。";
+    }
+    renderOperationalHitGraphV73();
+  }
+
+  function currentThresholdV73() {
+    return q73("swiftOperationalThresholdV73")?.value || "5";
+  }
+
+  function leadSummaryV73(leadDay, threshold) {
+    const d = operationalHitDataV73?.by_lead_day?.[String(leadDay)];
+    if (!d) return null;
+    return d.thresholds?.[String(threshold)] || d;
+  }
+
+  function renderOperationalHitGraphV73() {
+    const canvas = q73("swiftOperationalHitCanvasV73");
+    if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(320, Math.floor(rect.width * dpr));
+    const h = Math.max(170, Math.floor(rect.height * dpr));
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#030712";
+    ctx.fillRect(0, 0, w, h);
+
+    const threshold = currentThresholdV73();
+    const leads = [1, 2, 3, 4];
+    const rows = leads.map(lead => {
+      const s = leadSummaryV73(lead, threshold) || {};
+      return {
+        lead,
+        hit: Number(s.corrected_hit_rate),
+        raw: Number(s.raw_hit_rate),
+        n: Number(s.sample_count || 0),
+        rmse: Number(s.corrected_rmse),
+      };
+    });
+
+    const title = `予報Kp使用 運用的中率 ±${threshold} TECU`;
+    ctx.font = `${13 * dpr}px system-ui`;
+    ctx.fillStyle = "#dbeafe";
+    ctx.fillText(title, 12 * dpr, 20 * dpr);
+
+    if (!operationalHitDataV73) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = `${11 * dpr}px system-ui`;
+      ctx.fillText("データ未作成。Actionsで Fetch Kp Forecast Archive and Score を実行してください。", 14 * dpr, 60 * dpr);
+      updateOperationalKpisV73(rows);
+      return;
+    }
+
+    const pad = { l: 34 * dpr, r: 14 * dpr, t: 34 * dpr, b: 30 * dpr };
+    const x0 = pad.l, x1 = w - pad.r, y0 = pad.t, y1 = h - pad.b;
+
+    ctx.strokeStyle = "rgba(148,163,184,.22)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = y1 - (y1 - y0) * i / 4;
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.stroke();
+      ctx.fillStyle = "#73839e";
+      ctx.font = `${9 * dpr}px system-ui`;
+      ctx.fillText(`${i * 25}%`, 4 * dpr, y + 3 * dpr);
+    }
+
+    const barW = (x1 - x0) / leads.length * 0.54;
+    rows.forEach((r, idx) => {
+      const cx = x0 + (idx + 0.5) * (x1 - x0) / leads.length;
+      const hit = Number.isFinite(r.hit) ? Math.max(0, Math.min(1, r.hit)) : 0;
+      const bh = (y1 - y0) * hit;
+      ctx.fillStyle = r.n > 0 ? "#60a5fa" : "#334155";
+      ctx.fillRect(cx - barW / 2, y1 - bh, barW, bh);
+      ctx.fillStyle = "#dbeafe";
+      ctx.font = `${10 * dpr}px system-ui`;
+      ctx.fillText(`${r.lead}日後`, cx - 16 * dpr, y1 + 15 * dpr);
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = `${10 * dpr}px system-ui`;
+      ctx.fillText(r.n > 0 ? pctV73(r.hit) : "N=0", cx - 18 * dpr, y1 - bh - 5 * dpr);
+    });
+
+    updateOperationalKpisV73(rows);
+  }
+
+  function updateOperationalKpisV73(rows) {
+    for (const r of rows) {
+      const el = q73(`swiftOperationalLead${r.lead}V73`);
+      if (!el) continue;
+      el.innerHTML = `
+        <div class="swift-v73-kpi-label">${r.lead}日後</div>
+        <div class="swift-v73-kpi-value">${r.n > 0 ? pctV73(r.hit) : "--"}</div>
+        <div class="swift-v73-sub">N=${r.n || 0} / RMSE=${Number.isFinite(r.rmse) ? numV73(r.rmse) : "--"}</div>
+      `;
+    }
+  }
+
+  function ensureCoeffExcelUiV73() {
+    const side = q73("swiftAccuracySide") || document.querySelector(".sidebar");
+    if (!side || q73("swiftCoeffExcelPanelV73")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "swiftCoeffExcelPanelV73";
+    panel.className = "swift-v73-card";
+    panel.innerHTML = `
+      <div class="swift-v73-title">格子別経験係数 Excel出力</div>
+      <div class="swift-v73-sub">
+        現在の kp_grid_coefficients.json から、月別・格子別の k0/k1/k2/k3 をExcel出力します。
+      </div>
+      <div class="swift-v73-row">
+        <button class="swift-v73-btn" id="swiftCoeffExcelBtnV73">格子係数Excel出力</button>
+      </div>
+      <div id="swiftCoeffExcelStatusV73">未出力</div>
+    `;
+
+    const after = q73("swiftFailureAnalysisV62") || q73("swiftV57ModelRuleNote") || q73("swiftHeatmapThresholdPanelV69");
+    if (after && after.parentElement) after.insertAdjacentElement("afterend", panel);
+    else side.appendChild(panel);
+
+    q73("swiftCoeffExcelBtnV73").onclick = exportGridCoefficientsExcelV73;
+  }
+
+  function ensureOperationalUiV73() {
+    const main = q73("swiftAccuracyMain");
+    if (!main || q73("swiftOperationalHitPanelV73")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "swiftOperationalHitPanelV73";
+    panel.className = "swift-v73-card";
+    panel.innerHTML = `
+      <div class="swift-v73-title">運用的中率（予報Kp使用）</div>
+      <div class="swift-v73-sub">
+        実測Kpで見るモデル的中率とは別に、保存済みの予報Kpを使った実運用の的中率を1〜4日後別に表示します。
+      </div>
+      <div class="swift-v73-row">
+        <span class="swift-v73-sub">誤差しきい値</span>
+        <select id="swiftOperationalThresholdV73" class="swift-v73-select">
+          <option value="5" selected>±5 TECU</option>
+          <option value="10">±10 TECU</option>
+          <option value="15">±15 TECU</option>
+          <option value="20">±20 TECU</option>
+        </select>
+        <button class="swift-v73-btn secondary" id="swiftOperationalReloadV73">再読込</button>
+      </div>
+      <canvas id="swiftOperationalHitCanvasV73"></canvas>
+      <div class="swift-v73-kpi-grid">
+        <div class="swift-v73-kpi" id="swiftOperationalLead1V73"></div>
+        <div class="swift-v73-kpi" id="swiftOperationalLead2V73"></div>
+        <div class="swift-v73-kpi" id="swiftOperationalLead3V73"></div>
+        <div class="swift-v73-kpi" id="swiftOperationalLead4V73"></div>
+      </div>
+      <div id="swiftOperationalHitStatusV73">未読込</div>
+    `;
+    main.appendChild(panel);
+
+    q73("swiftOperationalThresholdV73").addEventListener("change", renderOperationalHitGraphV73);
+    q73("swiftOperationalReloadV73").onclick = loadOperationalHitRateV73;
+    setTimeout(loadOperationalHitRateV73, 80);
+  }
+
+  function updateForecastNoteV73() {
+    const side = q73("swiftAccuracySide") || document.querySelector(".sidebar");
+    if (!side || q73("swiftForecastLengthNoteV73")) return;
+    const div = document.createElement("div");
+    div.id = "swiftForecastLengthNoteV73";
+    div.className = "swift-v73-card";
+    div.innerHTML = `
+      <div class="swift-v73-title">予報期間</div>
+      <div class="swift-v73-sub">v7.3で予報期間を前版から+1日延長しました。</div>
+    `;
+    side.appendChild(div);
+  }
+
+  function bootV73() {
+    injectStyleV73();
+    for (const delay of [400, 1000, 1800, 3000]) {
+      setTimeout(() => {
+        ensureCoeffExcelUiV73();
+        ensureOperationalUiV73();
+        updateForecastNoteV73();
+      }, delay);
+    }
+
+    window.addEventListener("resize", () => setTimeout(renderOperationalHitGraphV73, 80));
+  }
+
+  window.swiftExportGridCoefficientsExcelV73 = exportGridCoefficientsExcelV73;
+  window.swiftLoadOperationalHitRateV73 = loadOperationalHitRateV73;
+  readyV73(bootV73);
 })();
 
