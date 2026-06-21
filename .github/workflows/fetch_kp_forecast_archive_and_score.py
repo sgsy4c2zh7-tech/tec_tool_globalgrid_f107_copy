@@ -1,1 +1,37 @@
 
+name: Fetch Kp Forecast Archive and Score
+
+on:
+  schedule:
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-kp-forecast-archive
+  cancel-in-progress: false
+
+jobs:
+  fetch-score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Archive forecast Kp and score operational hit rate
+        run: python scripts/fetch_kp_forecast_archive_and_score.py
+      - name: Commit Kp forecast archive and operational score
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/data/ai/kp_forecast_archive.json docs/data/ai/operational_hit_rate.json
+          if git diff --cached --quiet; then
+            echo "No Kp forecast archive changes to commit"
+          else
+            git commit -m "data: update Kp forecast archive and operational hit rate"
+            git pull --rebase
+            git push
+          fi
