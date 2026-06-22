@@ -9268,3 +9268,275 @@
   readyV75(bootV75);
 })();
 
+
+/* =========================================================
+ * SWIFT-TEC v7.6 async GPS Almanac cache loader
+ * Local cache first, no UI blocking, live update only in background/manual.
+ * ========================================================= */
+(function () {
+  const LOCAL_HEALTH_V76 = "data/gnss/gps_almanac_health.json";
+  const LOCAL_YUMA_V76 = "data/gnss/gps_yuma_current.alm";
+
+  const LIVE_ALMANAC_URLS_V76 = [
+    { label: "local yuma cache", url: LOCAL_YUMA_V76, timeout: 800 },
+    { label: "CelesTrak Latest Yuma", url: "https://celestrak.org/GPS/almanac/Yuma/almanac.yuma.txt", timeout: 2600 },
+    { label: "old yuma current.al3", url: "https://celestrak.org/GPS/almanac/Yuma/current.al3", timeout: 1800 },
+    { label: "old yuma current.txt", url: "https://celestrak.org/GPS/almanac/Yuma/current.txt", timeout: 1800 },
+    { label: "old yuma current.alm", url: "https://celestrak.org/GPS/almanac/Yuma/current.alm", timeout: 1800 },
+  ];
+
+  function readyV76(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q76(id) { return document.getElementById(id); }
+
+  function injectStyleV76() {
+    if (q76("swiftAlmanacV76Style")) return;
+    const st = document.createElement("style");
+    st.id = "swiftAlmanacV76Style";
+    st.textContent = `
+      #swiftAlmanacPanelV75.swift-v76-cache-first {
+        border-color: #2563eb !important;
+      }
+      .swift-v76-badge {
+        display: inline-block;
+        border: 1px solid #1f355a;
+        background: #061020;
+        color: #bfdbfe;
+        border-radius: 999px;
+        padding: 3px 7px;
+        font-size: 9px;
+        margin-left: 4px;
+      }
+      .swift-v76-note {
+        color: #9fb0cc;
+        font-size: 10px;
+        line-height: 1.36;
+        margin-top: 6px;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function setStatusV76(msg, append = false) {
+    const el = q76("swiftAlmanacStatusV75") || q76("swiftGnssVisibleStatusV66");
+    if (!el) return;
+    if (append && el.textContent) el.textContent += "\n" + msg;
+    else el.textContent = msg;
+  }
+
+  function fetchTextTimeoutV76(url, timeoutMs = 2500) {
+    return new Promise((resolve, reject) => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => {
+        try { ctrl.abort(); } catch {}
+        reject(new Error(`timeout ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      fetch(url, { cache: "no-store", signal: ctrl.signal })
+        .then(async res => {
+          clearTimeout(t);
+          const text = res.ok ? await res.text() : "";
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          resolve(text);
+        })
+        .catch(err => {
+          clearTimeout(t);
+          reject(err);
+        });
+    });
+  }
+
+  function parseYumaHealthV76(text) {
+    if (typeof window.swiftParseYumaHealthV75 === "function") {
+      const m = window.swiftParseYumaHealthV75(text);
+      if (m && Object.keys(m).length) return m;
+    }
+    const map = {};
+    const src = String(text || "");
+    const re = /(?:ID|PRN)\s*:\s*(\d+)[\s\S]{0,420}?Health\s*:\s*([0-9]+)/gi;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      map[String(Number(m[1])).padStart(2, "0")] = Number(m[2]);
+    }
+    return map;
+  }
+
+  function applyHealthMapV76(map, sourceLabel, silent = false) {
+    const n = Object.keys(map || {}).length;
+    if (!n) throw new Error("Health mapが空です。");
+    const result = window.swiftApplyGnssPrnHealthMap?.(map) || { applied: 0, inactive: 0 };
+    const msg = `${sourceLabel}: PRN=${n}, applied=${result.applied}, inactive=${result.inactive}`;
+    if (!silent) setStatusV76(msg);
+    try { window.swiftRenderPointDopGraphV65?.(); } catch {}
+    return { n, result, msg };
+  }
+
+  async function applyLocalHealthFastV76(options = {}) {
+    const silent = !!options.silent;
+    try {
+      if (!silent) setStatusV76("ローカルAlmanac Healthを即時読込中…");
+      const text = await fetchTextTimeoutV76(LOCAL_HEALTH_V76, 900);
+      const doc = JSON.parse(text);
+      const map = doc.health_by_prn || doc.health || {};
+      const out = applyHealthMapV76(map, `保存済Almanac反映 updated=${doc.updated_utc || "--"}`, silent);
+      if (!silent) {
+        setStatusV76(`${out.msg}\nsource=${doc.source_url || LOCAL_HEALTH_V76}`);
+      }
+      return { ok: true, doc, map, ...out };
+    } catch (e) {
+      if (!silent) setStatusV76("保存済Almanacは未反映: " + e.message);
+      return { ok: false, error: e.message };
+    }
+  }
+
+  async function fetchLiveHealthWithTimeoutV76(options = {}) {
+    const silent = !!options.silent;
+    const tries = [];
+    if (!silent) setStatusV76("Live Almanacを短時間で確認中…");
+
+    for (const item of LIVE_ALMANAC_URLS_V76) {
+      try {
+        const text = await fetchTextTimeoutV76(item.url, item.timeout);
+        const map = parseYumaHealthV76(text);
+        const n = Object.keys(map).length;
+        tries.push(`${item.label}: OK bytes=${text.length} PRN=${n}`);
+        if (n) {
+          const out = applyHealthMapV76(map, `Live Almanac反映 ${item.label}`, silent);
+          if (!silent) setStatusV76(`${out.msg}\nsource=${item.url}\n${tries.join("\n")}`);
+          return { ok: true, source: item.url, label: item.label, map, tries, ...out };
+        }
+      } catch (e) {
+        tries.push(`${item.label}: ${e.message}`);
+      }
+    }
+
+    const msg = "Live Almanacは短時間では取得できませんでした。保存済みキャッシュを使用します。\n" + tries.join("\n");
+    if (!silent) setStatusV76(msg);
+    return { ok: false, error: msg, tries };
+  }
+
+  async function refreshAlmanacNonBlockingV76() {
+    setStatusV76("Almanac: 保存済みを優先して即時反映します。Live取得は裏で短時間だけ試行します。");
+    const local = await applyLocalHealthFastV76({ silent: false });
+
+    // Fire live update in the background; do not block UI or GNSS/DOP graph.
+    setTimeout(async () => {
+      const live = await fetchLiveHealthWithTimeoutV76({ silent: true });
+      if (live.ok) {
+        setStatusV76(`バックグラウンドLive更新OK: PRN=${live.n}, applied=${live.result.applied}, inactive=${live.result.inactive}\nsource=${live.source}`, true);
+      } else if (!local.ok) {
+        setStatusV76("保存済みもLiveも取得できませんでした。\nActionsで Fetch GNSS TLE and Almanac を実行してください。", true);
+      } else {
+        setStatusV76("Live更新はスキップ/失敗。保存済みキャッシュを継続使用中。", true);
+      }
+    }, 80);
+
+    return local;
+  }
+
+  async function testAlmanacV76() {
+    const lines = [];
+    const local = await applyLocalHealthFastV76({ silent: true });
+    lines.push(`local health json: ${local.ok ? "OK" : "NG"} ${local.ok ? `PRN=${local.n}` : local.error}`);
+
+    try {
+      const text = await fetchTextTimeoutV76(LOCAL_YUMA_V76, 900);
+      const map = parseYumaHealthV76(text);
+      lines.push(`local yuma cache: OK bytes=${text.length} PRN=${Object.keys(map).length}`);
+    } catch (e) {
+      lines.push(`local yuma cache: NG ${e.message}`);
+    }
+
+    const live = await fetchLiveHealthWithTimeoutV76({ silent: true });
+    lines.push(`live short test: ${live.ok ? "OK" : "NG"}`);
+    if (live.tries) lines.push(...live.tries);
+    setStatusV76(lines.join("\n"));
+  }
+
+  function upgradePanelV76() {
+    const panel = q76("swiftAlmanacPanelV75");
+    if (!panel || panel.dataset.v76Ready) return;
+    panel.dataset.v76Ready = "1";
+    panel.classList.add("swift-v76-cache-first");
+
+    const title = panel.querySelector(".swift-v75-title");
+    if (title) {
+      title.innerHTML = `GPS Almanac Health <span class="swift-v76-badge">Cache first</span>`;
+    }
+    const sub = panel.querySelector(".swift-v75-sub");
+    if (sub) {
+      sub.innerHTML = `保存済みAlmanac Healthを即時反映し、Live取得はバックグラウンドで短時間だけ試します。UIを待たせません。`;
+    }
+
+    const row = panel.querySelector(".swift-v75-row");
+    if (row && !q76("swiftAlmanacCacheFirstBtnV76")) {
+      row.innerHTML = `
+        <button class="swift-v75-btn" id="swiftAlmanacCacheFirstBtnV76">保存済み優先で反映</button>
+        <button class="swift-v75-btn secondary" id="swiftAlmanacLiveShortBtnV76">Live短時間更新</button>
+        <button class="swift-v75-btn secondary" id="swiftAlmanacTestBtnV76">読込テスト</button>
+      `;
+      q76("swiftAlmanacCacheFirstBtnV76").onclick = refreshAlmanacNonBlockingV76;
+      q76("swiftAlmanacLiveShortBtnV76").onclick = () => fetchLiveHealthWithTimeoutV76({ silent: false });
+      q76("swiftAlmanacTestBtnV76").onclick = testAlmanacV76;
+    }
+
+    if (!q76("swiftAlmanacV76Note")) {
+      const note = document.createElement("div");
+      note.id = "swiftAlmanacV76Note";
+      note.className = "swift-v76-note";
+      note.textContent = "通常運用はGitHub Actionsで1日1回保存した gps_almanac_health.json を使います。";
+      panel.appendChild(note);
+    }
+  }
+
+  function patchGnssLoadButtonV76() {
+    const btn = q76("swiftGnssLoadBtnV66");
+    if (!btn || btn.dataset.v76AlmanacAsync) return;
+    btn.dataset.v76AlmanacAsync = "1";
+    btn.onclick = async function () {
+      setStatusV76("GNSS TLE読込中… Almanacは読込完了後に保存済みを非同期反映します。");
+      try {
+        if (typeof window.loadGnssDopData === "function") await window.loadGnssDopData();
+        else throw new Error("loadGnssDopDataが見つかりません。");
+      } catch (e) {
+        setStatusV76("GNSS TLE読込失敗: " + e.message);
+        return;
+      }
+      setTimeout(() => refreshAlmanacNonBlockingV76(), 0);
+    };
+  }
+
+  function patchOldGlobalsV76() {
+    window.swiftLoadLiveYumaHealthV75 = () => fetchLiveHealthWithTimeoutV76({ silent: false });
+    window.swiftLoadGpsYumaHealthV65 = () => fetchLiveHealthWithTimeoutV76({ silent: false });
+    window.swiftApplySavedAlmanacHealthV76 = () => applyLocalHealthFastV76({ silent: false });
+    window.swiftRefreshAlmanacNonBlockingV76 = refreshAlmanacNonBlockingV76;
+
+    const oldSaved = q76("swiftApplySavedAlmanacBtnV66");
+    if (oldSaved && !oldSaved.dataset.v76Patched) {
+      oldSaved.dataset.v76Patched = "1";
+      oldSaved.onclick = refreshAlmanacNonBlockingV76;
+    }
+  }
+
+  function bootV76() {
+    injectStyleV76();
+    for (const delay of [600, 1200, 2200, 3600]) {
+      setTimeout(() => {
+        upgradePanelV76();
+        patchOldGlobalsV76();
+        patchGnssLoadButtonV76();
+      }, delay);
+    }
+
+    // Fast attempt on page load: local cache only, silent. It will apply once GNSS list exists;
+    // if GNSS is not loaded yet, button patch will reapply after TLE load.
+    setTimeout(() => applyLocalHealthFastV76({ silent: true }), 2200);
+  }
+
+  window.swiftTestAlmanacV76 = testAlmanacV76;
+  readyV76(bootV76);
+})();
+
