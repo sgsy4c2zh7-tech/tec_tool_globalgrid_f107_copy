@@ -43,6 +43,9 @@ TLE_SOURCES = {
 }
 
 YUMA_URLS = [
+    # CelesTrak "Latest Yuma Almanac" link.
+    "https://celestrak.org/GPS/almanac/Yuma/almanac.yuma.txt",
+    # Older aliases kept as fallback.
     "https://celestrak.org/GPS/almanac/Yuma/current.al3",
     "https://celestrak.org/GPS/almanac/Yuma/current.txt",
     "https://celestrak.org/GPS/almanac/Yuma/current.alm",
@@ -65,18 +68,33 @@ def looks_like_tle(text: str) -> bool:
 
 
 def parse_yuma_health(text: str) -> dict[str, int]:
-    # Yuma blocks usually contain "ID: <PRN>" and "Health: <value>".
-    health: dict[str, int] = {}
-    blocks = re.split(r"\n\s*\n", text)
-    for b in blocks:
-        id_m = re.search(r"(?:ID|PRN)\s*:\s*(\d+)", b, flags=re.I)
-        h_m = re.search(r"Health\s*:\s*([0-9]+)", b, flags=re.I)
-        if not id_m or not h_m:
-            continue
-        prn = f"{int(id_m.group(1)):02d}"
-        health[prn] = int(h_m.group(1))
-    return health
+    """Parse Yuma Health fields robustly.
 
+    CelesTrak's latest Yuma text may be returned with or without blank lines
+    between PRN blocks, so do not rely on paragraph splitting only.
+    """
+    health: dict[str, int] = {}
+
+    # Most robust: pair each ID with the following Health before the next block.
+    for m in re.finditer(r"(?:ID|PRN)\s*:\s*(\d+)[\s\S]{0,350}?Health\s*:\s*([0-9]+)", text, flags=re.I):
+        prn = f"{int(m.group(1)):02d}"
+        health[prn] = int(m.group(2))
+
+    if health:
+        return health
+
+    # Fallback for heavily reflowed text: scan tokens and pair ID -> next Health.
+    tokens = list(re.finditer(r"(?:ID|PRN|Health)\s*:\s*([0-9]+)", text, flags=re.I))
+    last_prn: str | None = None
+    for m in tokens:
+        key = m.group(0).split(":", 1)[0].strip().lower()
+        val = int(m.group(1))
+        if key in ("id", "prn"):
+            last_prn = f"{val:02d}"
+        elif key == "health" and last_prn:
+            health[last_prn] = val
+            last_prn = None
+    return health
 
 def main() -> int:
     status = {"updated_utc": now_iso(), "tle": {}, "almanac": {}}
