@@ -56,7 +56,7 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def fetch_text(url: str, timeout: int = 60) -> str:
+def fetch_text(url: str, timeout: int = 25) -> str:
     req = Request(url, headers={"User-Agent": "SWIFT-TEC-GNSS-daily-fetch/1.0"})
     with urlopen(req, timeout=timeout) as res:
         return res.read().decode("utf-8", errors="replace")
