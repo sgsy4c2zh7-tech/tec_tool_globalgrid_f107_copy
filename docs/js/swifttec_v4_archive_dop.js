@@ -8445,3 +8445,558 @@
   readyV73(bootV73);
 })();
 
+
+/* =========================================================
+ * SWIFT-TEC v7.4 coordinate input for DOP graph
+ * + unified heatmap color/value editor.
+ * ========================================================= */
+(function () {
+  const DEFAULT_SCALES_V74 = {
+    tec: {
+      label: "TEC [TECU]",
+      unit: "TECU",
+      limits: [10, 30, 60, 120],
+      colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
+    },
+    gps: {
+      label: "L1電離圏誤差 [m]",
+      unit: "m",
+      limits: [5, 10, 20, 40],
+      colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
+    },
+    dop: {
+      label: "DOP",
+      unit: "",
+      limits: [2, 4, 8, 16],
+      colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
+    },
+    doptec: {
+      label: "DOP × L1誤差 [m]",
+      unit: "m",
+      limits: [5, 10, 20, 40],
+      colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
+    },
+    satcount: {
+      label: "可視衛星数",
+      unit: "機",
+      limits: [4, 6, 8, 16],
+      colors: ["#ff0000", "#ff9900", "#ffff00", "#00ff00"],
+    },
+  };
+
+  const PALETTES_V74 = {
+    classic: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
+    turbo: ["#30123b", "#37a8fa", "#72fe5f", "#e43d30"],
+    viridis: ["#440154", "#31688e", "#35b779", "#fde725"],
+    plasma: ["#0d0887", "#9c179e", "#ed7953", "#f0f921"],
+    blueRed: ["#1d4ed8", "#38bdf8", "#ffffff", "#dc2626"],
+    greenRed: ["#16a34a", "#bef264", "#facc15", "#dc2626"],
+    gray: ["#020617", "#64748b", "#cbd5e1", "#ffffff"],
+    night: ["#000014", "#0f9b8e", "#f4d35e", "#ee4266"],
+    monoBlue: ["#020617", "#1e3a8a", "#2563eb", "#e0f2fe"],
+    purpleGold: ["#1e103d", "#7e22ce", "#fde68a", "#f59e0b"],
+  };
+
+  let patchedValueToColorV74 = false;
+  let originalUpdateLegendV74 = null;
+
+  function readyV74(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q74(id) { return document.getElementById(id); }
+
+  function clampV74(v, a, b) {
+    v = Number(v);
+    if (!Number.isFinite(v)) return a;
+    return Math.min(b, Math.max(a, v));
+  }
+
+  function modeGroupV74() {
+    const mode = String(q74("mapModeSelect")?.value || "tec").toLowerCase();
+    if (mode === "gps" || mode === "l1") return "gps";
+    if (mode === "satcount" || mode === "count") return "satcount";
+    if (["gdop", "pdop", "hdop", "vdop", "tdop", "dop"].includes(mode)) return "dop";
+    if (["gdoptec", "pdoptec", "hdoptec", "vdoptec", "tdoptec", "doptec"].includes(mode)) return "doptec";
+    return "tec";
+  }
+
+  function loadScaleStoreV74() {
+    try {
+      const v = JSON.parse(localStorage.getItem("swiftUnifiedHeatmapScaleV74") || "{}");
+      return v && typeof v === "object" ? v : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveScaleStoreV74(store) {
+    localStorage.setItem("swiftUnifiedHeatmapScaleV74", JSON.stringify(store));
+  }
+
+  function scaleForGroupV74(group) {
+    const def = DEFAULT_SCALES_V74[group] || DEFAULT_SCALES_V74.tec;
+    const store = loadScaleStoreV74();
+    const s = store[group] || {};
+    const limits = Array.isArray(s.limits) ? s.limits.map(Number).filter(Number.isFinite).slice(0, 4) : [];
+    const colors = Array.isArray(s.colors) ? s.colors.map(String).slice(0, 4) : [];
+    return {
+      label: def.label,
+      unit: def.unit,
+      limits: limits.length === 4 ? limits : def.limits.slice(),
+      colors: colors.length === 4 ? colors : def.colors.slice(),
+    };
+  }
+
+  function setScaleForGroupV74(group, limits, colors) {
+    const def = DEFAULT_SCALES_V74[group] || DEFAULT_SCALES_V74.tec;
+    const l = limits.map(Number);
+    if (l.length !== 4 || l.some(v => !Number.isFinite(v))) throw new Error("数値は4つすべて入力してください。");
+    for (let i = 1; i < l.length; i++) {
+      if (l[i] <= l[i - 1]) throw new Error("数値は左から小さい順にしてください。");
+    }
+    const c = colors.map(String).slice(0, 4);
+    if (c.length !== 4 || c.some(x => !/^#[0-9a-f]{6}$/i.test(x))) throw new Error("色が不正です。");
+
+    const store = loadScaleStoreV74();
+    store[group] = { limits: l, colors: c, label: def.label, unit: def.unit };
+    saveScaleStoreV74(store);
+  }
+
+  function resetScaleForGroupV74(group) {
+    const store = loadScaleStoreV74();
+    delete store[group];
+    saveScaleStoreV74(store);
+  }
+
+  function hexToRgbV74(hex) {
+    let h = String(hex || "").replace("#", "").trim();
+    if (h.length === 3) h = h.split("").map(ch => ch + ch).join("");
+    if (h.length !== 6) return [255, 255, 255];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+
+  function rgbV74(r, g, b) {
+    return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
+  }
+
+  function lerpV74(a, b, t) { return a + (b - a) * t; }
+
+  function interpolateColorV74(c0, c1, t) {
+    const a = hexToRgbV74(c0);
+    const b = hexToRgbV74(c1);
+    return rgbV74(lerpV74(a[0], b[0], t), lerpV74(a[1], b[1], t), lerpV74(a[2], b[2], t));
+  }
+
+  function unifiedValueToColorV74(v) {
+    if (!Number.isFinite(Number(v))) return "rgba(0,0,0,0)";
+    const s = scaleForGroupV74(modeGroupV74());
+    const limits = s.limits;
+    const colors = s.colors;
+    const x = Number(v);
+
+    if (x <= limits[0]) return colors[0];
+    for (let i = 1; i < limits.length; i++) {
+      if (x <= limits[i]) {
+        const t = (x - limits[i - 1]) / Math.max(1e-9, limits[i] - limits[i - 1]);
+        return interpolateColorV74(colors[i - 1], colors[i], clampV74(t, 0, 1));
+      }
+    }
+    return colors[colors.length - 1];
+  }
+
+  function patchValueToColorV74() {
+    if (patchedValueToColorV74) return;
+    if (typeof valueToColor !== "function") return;
+    valueToColor = function (v, scale) {
+      return unifiedValueToColorV74(Number(v));
+    };
+    window.valueToColor = valueToColor;
+    patchedValueToColorV74 = true;
+  }
+
+  function patchLegendV74() {
+    if (originalUpdateLegendV74 || typeof updateLegend !== "function") return;
+    originalUpdateLegendV74 = updateLegend;
+    updateLegend = function () {
+      const ret = originalUpdateLegendV74.apply(this, arguments);
+      for (const delay of [30, 120, 260]) setTimeout(repaintLegendV74, delay);
+      return ret;
+    };
+    window.updateLegend = updateLegend;
+  }
+
+  function repaintLegendV74() {
+    const canvas = q74("legendBar");
+    if (!canvas) return;
+    const s = scaleForGroupV74(modeGroupV74());
+    const ctx = canvas.getContext("2d");
+    const minV = Number(s.limits[0]);
+    const maxV = Number(s.limits[s.limits.length - 1]);
+    for (let y = 0; y < canvas.height; y++) {
+      const v = maxV - (maxV - minV) * (y / Math.max(1, canvas.height - 1));
+      ctx.fillStyle = unifiedValueToColorV74(v);
+      ctx.fillRect(0, y, canvas.width, 1);
+    }
+    const labels = document.querySelector(".tec-legend-labels");
+    if (labels) labels.innerHTML = `<span>${s.limits[0]}</span><span>${s.limits[s.limits.length - 1]}</span>`;
+  }
+
+  function refreshHeatmapV74() {
+    patchValueToColorV74();
+    patchLegendV74();
+    try { if (typeof updateLegend === "function") updateLegend(); } catch {}
+    try { if (typeof requestDraw === "function") requestDraw(); } catch {}
+    for (const delay of [80, 180, 400]) {
+      setTimeout(() => {
+        try { repaintLegendV74(); } catch {}
+        try { if (typeof requestDraw === "function") requestDraw(); } catch {}
+      }, delay);
+    }
+  }
+
+  function injectStyleV74() {
+    if (q74("swiftV74Style")) return;
+    const st = document.createElement("style");
+    st.id = "swiftV74Style";
+    st.textContent = `
+      #swiftHeatmapPalettePanelV68,
+      #swiftHeatmapThresholdPanelV69,
+      #swiftLinkedColorScaleV71 {
+        display: none !important;
+      }
+      .swift-v74-card {
+        margin-top: 10px;
+        border: 1px solid #1f355a;
+        border-radius: 14px;
+        background: rgba(7, 14, 28, .98);
+        padding: 10px;
+      }
+      .swift-v74-title {
+        color: #eaf2ff;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      .swift-v74-sub {
+        color: #9fb0cc;
+        font-size: 10px;
+        line-height: 1.38;
+        margin-top: 3px;
+      }
+      .swift-v74-row {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .swift-v74-select,
+      .swift-v74-input {
+        background: #061020;
+        border: 1px solid #2a4774;
+        color: #eaf2ff;
+        border-radius: 9px;
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+      .swift-v74-num {
+        width: 76px;
+      }
+      .swift-v74-color {
+        width: 42px;
+        height: 30px;
+        padding: 2px;
+      }
+      .swift-v74-btn {
+        border-radius: 9px;
+        border: 1px solid #3b82f6;
+        background: #1d4ed8;
+        color: white;
+        padding: 6px 9px;
+        font-size: 11px;
+        font-weight: 750;
+        cursor: pointer;
+      }
+      .swift-v74-btn.secondary {
+        border-color: #334155;
+        background: #0f172a;
+      }
+      .swift-v74-scale-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .swift-v74-scale-cell {
+        border: 1px solid #1f355a;
+        background: #061020;
+        border-radius: 10px;
+        padding: 6px;
+      }
+      .swift-v74-cell-label {
+        color: #8ba0c2;
+        font-size: 9px;
+        margin-bottom: 4px;
+      }
+      .swift-v74-point-card {
+        margin-top: 8px;
+        border: 1px solid #1f355a;
+        border-radius: 10px;
+        background: #061020;
+        padding: 7px;
+      }
+      .swift-v74-point-input {
+        width: 92px;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function applyPaletteToInputsV74() {
+    const name = q74("swiftUnifiedPaletteV74")?.value || "classic";
+    const arr = (PALETTES_V74[name] || PALETTES_V74.classic).slice();
+    const rev = q74("swiftUnifiedReverseV74")?.checked;
+    const colors = rev ? arr.reverse() : arr;
+    for (let i = 0; i < 4; i++) {
+      const el = q74(`swiftUnifiedColor${i + 1}V74`);
+      if (el) el.value = colors[i] || colors[colors.length - 1] || "#ffffff";
+    }
+    updateUnifiedPreviewV74();
+  }
+
+  function loadGroupIntoInputsV74() {
+    const group = q74("swiftUnifiedGroupV74")?.value || modeGroupV74();
+    const s = scaleForGroupV74(group);
+    for (let i = 0; i < 4; i++) {
+      const n = q74(`swiftUnifiedLimit${i + 1}V74`);
+      const c = q74(`swiftUnifiedColor${i + 1}V74`);
+      if (n) n.value = s.limits[i];
+      if (c) c.value = s.colors[i];
+    }
+    const unit = q74("swiftUnifiedUnitV74");
+    if (unit) unit.textContent = s.unit || "";
+    updateUnifiedPreviewV74();
+  }
+
+  function updateUnifiedPreviewV74() {
+    const box = q74("swiftUnifiedPreviewV74");
+    if (!box) return;
+    const group = q74("swiftUnifiedGroupV74")?.value || modeGroupV74();
+    const unit = DEFAULT_SCALES_V74[group]?.unit || "";
+    box.innerHTML = "";
+    for (let i = 0; i < 4; i++) {
+      const lim = q74(`swiftUnifiedLimit${i + 1}V74`)?.value || "--";
+      const col = q74(`swiftUnifiedColor${i + 1}V74`)?.value || "#ffffff";
+      const div = document.createElement("div");
+      div.className = "swift-v74-scale-cell";
+      div.innerHTML = `
+        <div class="swift-v74-cell-label">色${i + 1}</div>
+        <div style="height:16px;border-radius:8px;background:${col};border:1px solid #20395d;"></div>
+        <div class="swift-v74-sub" style="text-align:center;margin-top:5px;">${lim} ${unit}</div>
+      `;
+      box.appendChild(div);
+    }
+  }
+
+  function applyUnifiedScaleV74() {
+    const group = q74("swiftUnifiedGroupV74")?.value || modeGroupV74();
+    const limits = [1, 2, 3, 4].map(i => Number(q74(`swiftUnifiedLimit${i}V74`)?.value));
+    const colors = [1, 2, 3, 4].map(i => String(q74(`swiftUnifiedColor${i}V74`)?.value || ""));
+    try {
+      setScaleForGroupV74(group, limits, colors);
+      updateUnifiedPreviewV74();
+      refreshHeatmapV74();
+      const st = q74("swiftUnifiedScaleStatusV74");
+      if (st) st.textContent = `反映済み: ${DEFAULT_SCALES_V74[group]?.label || group}`;
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function resetUnifiedScaleV74() {
+    const group = q74("swiftUnifiedGroupV74")?.value || modeGroupV74();
+    resetScaleForGroupV74(group);
+    loadGroupIntoInputsV74();
+    refreshHeatmapV74();
+    const st = q74("swiftUnifiedScaleStatusV74");
+    if (st) st.textContent = `初期値に戻しました: ${DEFAULT_SCALES_V74[group]?.label || group}`;
+  }
+
+  function syncGroupToModeV74() {
+    const sel = q74("swiftUnifiedGroupV74");
+    if (sel) sel.value = modeGroupV74();
+    loadGroupIntoInputsV74();
+  }
+
+  function ensureUnifiedScaleUiV74() {
+    const side = q74("swiftAccuracySide") || document.querySelector(".sidebar");
+    if (!side || q74("swiftUnifiedScalePanelV74")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "swiftUnifiedScalePanelV74";
+    panel.className = "swift-v74-card";
+    panel.innerHTML = `
+      <div class="swift-v74-title">ヒートマップ 色・数値設定</div>
+      <div class="swift-v74-sub">
+        色と数値を同じ場所で編集します。ここで設定した4点が、ヒートマップと凡例にそのまま反映されます。
+      </div>
+      <div class="swift-v74-row">
+        <select id="swiftUnifiedGroupV74" class="swift-v74-select">
+          ${Object.entries(DEFAULT_SCALES_V74).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("")}
+        </select>
+        <button class="swift-v74-btn secondary" id="swiftUnifiedCurrentModeV74">現在モード</button>
+      </div>
+      <div class="swift-v74-row">
+        <select id="swiftUnifiedPaletteV74" class="swift-v74-select">
+          <option value="classic">Classic</option>
+          <option value="turbo">Turbo</option>
+          <option value="viridis">Viridis</option>
+          <option value="plasma">Plasma</option>
+          <option value="blueRed">Blue → Red</option>
+          <option value="greenRed">Green → Red</option>
+          <option value="gray">Gray</option>
+          <option value="night">Night</option>
+          <option value="monoBlue">Mono blue</option>
+          <option value="purpleGold">Purple → Gold</option>
+        </select>
+        <label class="swift-v74-sub"><input type="checkbox" id="swiftUnifiedReverseV74"> 反転</label>
+        <button class="swift-v74-btn secondary" id="swiftUnifiedApplyPaletteV74">パレットを色に反映</button>
+      </div>
+      <div class="swift-v74-scale-grid">
+        ${[1, 2, 3, 4].map(i => `
+          <div class="swift-v74-scale-cell">
+            <div class="swift-v74-cell-label">色${i} / 数値${i}</div>
+            <input id="swiftUnifiedColor${i}V74" class="swift-v74-input swift-v74-color" type="color">
+            <input id="swiftUnifiedLimit${i}V74" class="swift-v74-input swift-v74-num" type="number" step="0.1">
+          </div>
+        `).join("")}
+      </div>
+      <div class="swift-v74-row">
+        <button class="swift-v74-btn" id="swiftUnifiedApplyV74">反映</button>
+        <button class="swift-v74-btn secondary" id="swiftUnifiedResetV74">初期値</button>
+        <span id="swiftUnifiedUnitV74" class="swift-v74-sub"></span>
+      </div>
+      <div id="swiftUnifiedPreviewV74" class="swift-v74-scale-grid"></div>
+      <div id="swiftUnifiedScaleStatusV74" class="swift-v74-sub">未反映</div>
+    `;
+    const after = q74("swiftHeatmapThresholdPanelV69") || q74("swiftHeatmapPalettePanelV68") || q74("swiftGnssVisiblePanelV66");
+    if (after && after.parentElement) after.insertAdjacentElement("afterend", panel);
+    else side.appendChild(panel);
+
+    q74("swiftUnifiedGroupV74")?.addEventListener("change", loadGroupIntoInputsV74);
+    q74("swiftUnifiedCurrentModeV74")?.addEventListener("click", syncGroupToModeV74);
+    q74("swiftUnifiedApplyPaletteV74")?.addEventListener("click", applyPaletteToInputsV74);
+    q74("swiftUnifiedApplyV74")?.addEventListener("click", applyUnifiedScaleV74);
+    q74("swiftUnifiedResetV74")?.addEventListener("click", resetUnifiedScaleV74);
+    q74("swiftUnifiedReverseV74")?.addEventListener("change", applyPaletteToInputsV74);
+    for (let i = 1; i <= 4; i++) {
+      q74(`swiftUnifiedLimit${i}V74`)?.addEventListener("input", updateUnifiedPreviewV74);
+      q74(`swiftUnifiedColor${i}V74`)?.addEventListener("input", updateUnifiedPreviewV74);
+    }
+    syncGroupToModeV74();
+  }
+
+  function parsePointTextV74(text) {
+    const m = String(text || "").match(/lat=([-\d.]+),\s*lon=([-\d.]+)/i);
+    if (!m) return null;
+    return { lat: Number(m[1]), lon: Number(m[2]) };
+  }
+
+  function updatePointInputsV74(lat, lon) {
+    const la = q74("swiftPointLatInputV74");
+    const lo = q74("swiftPointLonInputV74");
+    if (la && Number.isFinite(lat)) la.value = Number(lat).toFixed(4);
+    if (lo && Number.isFinite(lon)) lo.value = Number(lon).toFixed(4);
+  }
+
+  function applyLatLonPointV74() {
+    const lat = Number(q74("swiftPointLatInputV74")?.value);
+    let lon = Number(q74("swiftPointLonInputV74")?.value);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      alert("緯度は -90〜90 で入力してください。");
+      return;
+    }
+    if (!Number.isFinite(lon)) {
+      alert("経度を入力してください。");
+      return;
+    }
+    while (lon < -180) lon += 360;
+    while (lon > 180) lon -= 360;
+
+    const pointInfo = q74("pointInfo");
+    if (pointInfo) {
+      pointInfo.textContent = `Clicked: lat=${lat.toFixed(4)}, lon=${lon.toFixed(4)}`;
+    }
+    updatePointInputsV74(lat, lon);
+
+    const selected = q74("swiftPointDopSelectedV65");
+    if (selected) selected.textContent = `地点: lat=${lat.toFixed(4)}, lon=${lon.toFixed(4)} / グラフ更新中…`;
+
+    setTimeout(() => {
+      try { window.swiftRenderPointDopGraphV65?.(); } catch (e) { alert(e.message); }
+    }, 160);
+  }
+
+  function ensurePointLatLonUiV74() {
+    const panel = q74("swiftPointDopPanelV65");
+    if (!panel || q74("swiftPointLatInputV74")) return;
+    const row = document.createElement("div");
+    row.className = "swift-v65-row swift-v74-point-card";
+    row.innerHTML = `
+      <span class="swift-v65-sub">地点入力</span>
+      <input id="swiftPointLatInputV74" class="swift-v65-input swift-v74-point-input" type="number" step="0.0001" min="-90" max="90" placeholder="lat">
+      <input id="swiftPointLonInputV74" class="swift-v65-input swift-v74-point-input" type="number" step="0.0001" min="-180" max="180" placeholder="lon">
+      <button class="swift-v65-btn" id="swiftPointApplyLatLonV74">この緯度経度でグラフ</button>
+    `;
+    const status = q74("swiftPointDopSelectedV65");
+    if (status && status.parentElement) status.insertAdjacentElement("beforebegin", row);
+    else panel.appendChild(row);
+
+    q74("swiftPointApplyLatLonV74")?.addEventListener("click", applyLatLonPointV74);
+    q74("swiftPointLatInputV74")?.addEventListener("keydown", ev => { if (ev.key === "Enter") applyLatLonPointV74(); });
+    q74("swiftPointLonInputV74")?.addEventListener("keydown", ev => { if (ev.key === "Enter") applyLatLonPointV74(); });
+
+    const pointInfo = q74("pointInfo");
+    if (pointInfo) {
+      const sync = () => {
+        const p = parsePointTextV74(pointInfo.textContent || "");
+        if (p && Number.isFinite(p.lat) && Number.isFinite(p.lon)) updatePointInputsV74(p.lat, p.lon);
+      };
+      sync();
+      const mo = new MutationObserver(sync);
+      mo.observe(pointInfo, { childList: true, characterData: true, subtree: true });
+    }
+  }
+
+  function patchMapModeChangeV74() {
+    const sel = q74("mapModeSelect");
+    if (!sel || sel.dataset.v74Patched) return;
+    sel.dataset.v74Patched = "1";
+    sel.addEventListener("change", () => {
+      syncGroupToModeV74();
+      refreshHeatmapV74();
+    });
+  }
+
+  function bootV74() {
+    injectStyleV74();
+    patchValueToColorV74();
+    patchLegendV74();
+
+    for (const delay of [400, 900, 1600, 2600, 3800]) {
+      setTimeout(() => {
+        patchValueToColorV74();
+        patchLegendV74();
+        ensureUnifiedScaleUiV74();
+        ensurePointLatLonUiV74();
+        patchMapModeChangeV74();
+        refreshHeatmapV74();
+      }, delay);
+    }
+  }
+
+  window.swiftApplyLatLonPointV74 = applyLatLonPointV74;
+  window.swiftApplyUnifiedHeatmapScaleV74 = applyUnifiedScaleV74;
+  readyV74(bootV74);
+})();
+
