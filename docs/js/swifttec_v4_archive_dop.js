@@ -9000,3 +9000,271 @@
   readyV74(bootV74);
 })();
 
+
+/* =========================================================
+ * SWIFT-TEC v7.5 robust GPS Almanac loader
+ * Fixes CelesTrak latest Yuma URL and robust Health parser.
+ * ========================================================= */
+(function () {
+  const YUMA_URLS_V75 = [
+    "data/gnss/gps_yuma_current.alm",
+    "https://celestrak.org/GPS/almanac/Yuma/almanac.yuma.txt",
+    "https://celestrak.org/GPS/almanac/Yuma/current.al3",
+    "https://celestrak.org/GPS/almanac/Yuma/current.txt",
+    "https://celestrak.org/GPS/almanac/Yuma/current.alm",
+  ];
+
+  function readyV75(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q75(id) { return document.getElementById(id); }
+
+  function parseYumaHealthV75(text) {
+    const map = {};
+    const src = String(text || "");
+
+    // Robust pairing: ID/PRN followed by Health within the same PRN block.
+    const re = /(?:ID|PRN)\s*:\s*(\d+)[\s\S]{0,350}?Health\s*:\s*([0-9]+)/gi;
+    let m;
+    while ((m = re.exec(src)) !== null) {
+      const prn = String(Number(m[1])).padStart(2, "0");
+      map[prn] = Number(m[2]);
+    }
+    if (Object.keys(map).length) return map;
+
+    // Fallback: token stream.
+    const tok = /(?:ID|PRN|Health)\s*:\s*([0-9]+)/gi;
+    let lastPrn = null;
+    while ((m = tok.exec(src)) !== null) {
+      const label = m[0].split(":", 1)[0].trim().toLowerCase();
+      const val = Number(m[1]);
+      if (label === "id" || label === "prn") lastPrn = String(val).padStart(2, "0");
+      else if (label === "health" && lastPrn) {
+        map[lastPrn] = val;
+        lastPrn = null;
+      }
+    }
+    return map;
+  }
+
+  function injectStyleV75() {
+    if (q75("swiftAlmanacV75Style")) return;
+    const st = document.createElement("style");
+    st.id = "swiftAlmanacV75Style";
+    st.textContent = `
+      #swiftAlmanacPanelV75 {
+        margin-top: 10px;
+        border: 1px solid #1f355a;
+        border-radius: 14px;
+        background: rgba(7, 14, 28, .98);
+        padding: 10px;
+      }
+      .swift-v75-title {
+        color: #eaf2ff;
+        font-size: 13px;
+        font-weight: 900;
+      }
+      .swift-v75-sub {
+        color: #9fb0cc;
+        font-size: 10px;
+        line-height: 1.38;
+        margin-top: 3px;
+      }
+      .swift-v75-row {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      .swift-v75-btn {
+        border-radius: 9px;
+        border: 1px solid #3b82f6;
+        background: #1d4ed8;
+        color: white;
+        padding: 6px 9px;
+        font-size: 11px;
+        font-weight: 750;
+        cursor: pointer;
+      }
+      .swift-v75-btn.secondary {
+        border-color: #334155;
+        background: #0f172a;
+      }
+      #swiftAlmanacStatusV75 {
+        color: #c8d8f2;
+        font-size: 10px;
+        margin-top: 6px;
+        line-height: 1.35;
+        white-space: pre-wrap;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function setStatusV75(msg) {
+    const el = q75("swiftAlmanacStatusV75") || q75("swiftAlmanacStatusV65") || q75("swiftGnssVisibleStatusV66");
+    if (el) el.textContent = msg;
+  }
+
+  async function fetchTextFirstOkV75(urls) {
+    const tries = [];
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        const text = res.ok ? await res.text() : "";
+        tries.push(`${url} => ${res.status} bytes=${text.length}`);
+        if (res.ok && /Health\s*:/i.test(text) && /(?:ID|PRN)\s*:/i.test(text)) {
+          return { url, text, tries };
+        }
+      } catch (e) {
+        tries.push(`${url} => ${e.message}`);
+      }
+    }
+    throw new Error("Yuma Almanacを取得できません。\n" + tries.join("\n"));
+  }
+
+  async function loadSavedAlmanacHealthV75(showAlert = false) {
+    try {
+      setStatusV75("保存済Almanac Health読込中…");
+      const res = await fetch("data/gnss/gps_almanac_health.json", { cache: "no-store" });
+      if (!res.ok) throw new Error(`gps_almanac_health.json HTTP ${res.status}`);
+      const doc = await res.json();
+      const map = doc.health_by_prn || doc.health || {};
+      const n = Object.keys(map).length;
+      if (!n) throw new Error("health_by_prnが空です。Daily workflow側のYuma URL/解析を更新してください。");
+      const result = window.swiftApplyGnssPrnHealthMap?.(map) || { applied: 0, inactive: 0 };
+      let msg = `保存済Almanac反映: PRN=${n}, applied=${result.applied}, inactive=${result.inactive}\nupdated=${doc.updated_utc || "--"}\nsource=${doc.source_url || "--"}`;
+      if (result.applied === 0) msg += "\n注意: GNSS TLE読込後にもう一度反映してください。TLE名からPRNが取れない場合もあります。";
+      setStatusV75(msg);
+      return { doc, map, result };
+    } catch (e) {
+      const msg = "保存済Almanac読込失敗: " + e.message;
+      setStatusV75(msg);
+      if (showAlert) alert(msg);
+      return null;
+    }
+  }
+
+  async function loadLiveYumaHealthV75() {
+    try {
+      setStatusV75("Live/Local Yuma Almanac取得中…");
+      const got = await fetchTextFirstOkV75(YUMA_URLS_V75);
+      const map = parseYumaHealthV75(got.text);
+      const n = Object.keys(map).length;
+      if (!n) throw new Error("Yuma Almanacは取得できましたがHealthを解析できませんでした。");
+      const result = window.swiftApplyGnssPrnHealthMap?.(map) || { applied: 0, inactive: 0 };
+      let msg = `Live Yuma Almanac反映: PRN=${n}, applied=${result.applied}, inactive=${result.inactive}\nsource=${got.url}`;
+      if (result.applied === 0) msg += "\n注意: 先にGNSS TLE読込 / DOP準備を実行してください。";
+      setStatusV75(msg);
+      try { window.swiftRenderPointDopGraphV65?.(); } catch {}
+      return { map, result, source: got.url };
+    } catch (e) {
+      const msg = "Live Yuma Almanac反映失敗: " + e.message;
+      setStatusV75(msg);
+      alert(msg);
+      return null;
+    }
+  }
+
+  async function testAlmanacV75() {
+    const lines = [];
+    try {
+      const res = await fetch("data/gnss/gnss_fetch_status.json", { cache: "no-store" });
+      if (res.ok) {
+        const st = await res.json();
+        lines.push(`gnss_fetch_status: OK updated=${st.updated_utc || "--"}`);
+        lines.push(`almanac: ${st.almanac?.ok ? "OK" : "NG"} ${st.almanac?.url || st.almanac?.error || ""}`);
+      } else {
+        lines.push(`gnss_fetch_status: HTTP ${res.status}`);
+      }
+    } catch (e) {
+      lines.push(`gnss_fetch_status: ${e.message}`);
+    }
+
+    try {
+      const res = await fetch("data/gnss/gps_almanac_health.json", { cache: "no-store" });
+      if (res.ok) {
+        const doc = await res.json();
+        const map = doc.health_by_prn || doc.health || {};
+        const keys = Object.keys(map).sort();
+        lines.push(`gps_almanac_health.json: OK PRN=${keys.length}`);
+        lines.push(`first PRN: ${keys.slice(0, 8).map(k => `${k}:${map[k]}`).join(", ")}`);
+        lines.push(`source=${doc.source_url || "--"}`);
+      } else {
+        lines.push(`gps_almanac_health.json: HTTP ${res.status}`);
+      }
+    } catch (e) {
+      lines.push(`gps_almanac_health.json: ${e.message}`);
+    }
+
+    setStatusV75(lines.join("\n"));
+  }
+
+  function ensurePanelV75() {
+    const side = q75("swiftAccuracySide") || document.querySelector(".sidebar");
+    const gnssPanel = q75("swiftGnssVisiblePanelV66");
+    if (!side || q75("swiftAlmanacPanelV75")) return;
+
+    const panel = document.createElement("div");
+    panel.id = "swiftAlmanacPanelV75";
+    panel.innerHTML = `
+      <div class="swift-v75-title">GPS Almanac Health</div>
+      <div class="swift-v75-sub">
+        CelesTrak Latest Yuma AlmanacからHealthを取得し、GPS PRNのactive/inactiveに反映します。
+      </div>
+      <div class="swift-v75-row">
+        <button class="swift-v75-btn" id="swiftSavedAlmanacApplyBtnV75">保存済Almanac反映</button>
+        <button class="swift-v75-btn secondary" id="swiftLiveAlmanacApplyBtnV75">Live Yuma反映</button>
+        <button class="swift-v75-btn secondary" id="swiftAlmanacTestBtnV75">読込テスト</button>
+      </div>
+      <div id="swiftAlmanacStatusV75">Almanac未確認</div>
+    `;
+
+    if (gnssPanel && gnssPanel.parentElement) gnssPanel.insertAdjacentElement("afterend", panel);
+    else side.appendChild(panel);
+
+    q75("swiftSavedAlmanacApplyBtnV75").onclick = () => loadSavedAlmanacHealthV75(true);
+    q75("swiftLiveAlmanacApplyBtnV75").onclick = () => loadLiveYumaHealthV75();
+    q75("swiftAlmanacTestBtnV75").onclick = () => testAlmanacV75();
+  }
+
+  function patchOldButtonsV75() {
+    // Replace old live loader: previous current.al3/current.txt/current.alm aliases may not work.
+    window.swiftLoadGpsYumaHealthV65 = loadLiveYumaHealthV75;
+    window.swiftLoadSavedAlmanacHealthV75 = loadSavedAlmanacHealthV75;
+    window.swiftTestAlmanacV75 = testAlmanacV75;
+
+    const oldSaved = q75("swiftApplySavedAlmanacBtnV66");
+    if (oldSaved && !oldSaved.dataset.v75Patched) {
+      oldSaved.dataset.v75Patched = "1";
+      oldSaved.onclick = () => loadSavedAlmanacHealthV75(true);
+    }
+
+    const loadBtn = q75("swiftGnssLoadBtnV66");
+    if (loadBtn && !loadBtn.dataset.v75AlmanacPatched) {
+      loadBtn.dataset.v75AlmanacPatched = "1";
+      const old = loadBtn.onclick;
+      loadBtn.onclick = async function () {
+        if (typeof old === "function") await old.call(this);
+        await loadSavedAlmanacHealthV75(false);
+      };
+    }
+  }
+
+  function bootV75() {
+    injectStyleV75();
+    for (const delay of [500, 1000, 1800, 3200]) {
+      setTimeout(() => {
+        ensurePanelV75();
+        patchOldButtonsV75();
+      }, delay);
+    }
+  }
+
+  window.swiftParseYumaHealthV75 = parseYumaHealthV75;
+  window.swiftLoadLiveYumaHealthV75 = loadLiveYumaHealthV75;
+  readyV75(bootV75);
+})();
+
