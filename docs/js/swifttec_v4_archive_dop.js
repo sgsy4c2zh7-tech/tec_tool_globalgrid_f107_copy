@@ -9540,3 +9540,482 @@
   readyV76(bootV76);
 })();
 
+
+/* =========================================================
+ * SWIFT-TEC v7.7 Excel export with prebuilt charts
+ * Creates native Excel line charts in the exported XLSX.
+ * ========================================================= */
+(function () {
+  function readyV77(fn) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+  function q77(id) { return document.getElementById(id); }
+
+  function loadJsZipV77() {
+    return new Promise((resolve, reject) => {
+      if (window.JSZip) return resolve();
+      const urls = [
+        "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
+        "https://unpkg.com/jszip@3.10.1/dist/jszip.min.js",
+      ];
+      let i = 0;
+      const next = () => {
+        if (window.JSZip) return resolve();
+        if (i >= urls.length) return reject(new Error("JSZipの読み込みに失敗しました。"));
+        const s = document.createElement("script");
+        s.src = urls[i++];
+        s.async = true;
+        s.onload = () => window.JSZip ? resolve() : next();
+        s.onerror = next;
+        document.head.appendChild(s);
+      };
+      next();
+    });
+  }
+
+  function xmlV77(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function finiteV77(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : "";
+  }
+
+  function colNameV77(n) {
+    let s = "";
+    while (n > 0) {
+      const m = (n - 1) % 26;
+      s = String.fromCharCode(65 + m) + s;
+      n = Math.floor((n - 1) / 26);
+    }
+    return s;
+  }
+
+  function cellV77(row, col) {
+    return `${colNameV77(col)}${row}`;
+  }
+
+  function a1V77(sheet, c1, r1, c2, r2) {
+    const s = sheet.includes(" ") ? `'${sheet.replace(/'/g, "''")}'` : sheet;
+    return `${s}!$${colNameV77(c1)}$${r1}:$${colNameV77(c2)}$${r2}`;
+  }
+
+  function singleCellV77(sheet, c, r) {
+    const s = sheet.includes(" ") ? `'${sheet.replace(/'/g, "''")}'` : sheet;
+    return `${s}!$${colNameV77(c)}$${r}`;
+  }
+
+  function sheetXmlV77(rows) {
+    const body = rows.map((row, rIdx) => {
+      const r = rIdx + 1;
+      const cells = row.map((v, cIdx) => {
+        const ref = cellV77(r, cIdx + 1);
+        if (typeof v === "number" && Number.isFinite(v)) {
+          return `<c r="${ref}"><v>${v}</v></c>`;
+        }
+        if (v === "" || v == null) return `<c r="${ref}"/>`;
+        return `<c r="${ref}" t="inlineStr"><is><t>${xmlV77(v)}</t></is></c>`;
+      }).join("");
+      return `<row r="${r}">${cells}</row>`;
+    }).join("");
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetViews><sheetView workbookViewId="0"/></sheetViews>
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>
+    <col min="1" max="1" width="22" customWidth="1"/>
+    <col min="2" max="20" width="16" customWidth="1"/>
+  </cols>
+  <sheetData>${body}</sheetData>
+  <autoFilter ref="A1:${colNameV77(rows[0]?.length || 1)}${rows.length}"/>
+</worksheet>`;
+  }
+
+  function summaryXmlV77(series, rowCount) {
+    const rows = [
+      ["item", "value"],
+      ["export_type", "point_dop_charts_xlsx"],
+      ["metric_selected_on_ui", series.metric || ""],
+      ["step_min", series.step_min || ""],
+      ["start_utc", series.start_utc || ""],
+      ["end_utc", series.end_utc || ""],
+      ["selected_lat", finiteV77(series.rows?.[0]?.selected_lat)],
+      ["selected_lon", finiteV77(series.rows?.[0]?.selected_lon)],
+      ["grid_lat", finiteV77(series.cell?.lat)],
+      ["grid_lon", finiteV77(series.cell?.lon)],
+      ["gnss_total", finiteV77(series.gnss_total)],
+      ["gnss_active_selected", finiteV77(series.gnss_active_selected)],
+      ["elevation_mask_deg", finiteV77(series.elevation_mask_deg)],
+      ["data_rows", rowCount],
+      ["note", "Charts are native Excel line charts referencing the Data sheet."],
+    ];
+    return sheetXmlV77(rows);
+  }
+
+  function chartSheetXmlV77() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetViews><sheetView workbookViewId="0"/></sheetViews>
+  <sheetFormatPr defaultRowHeight="18"/>
+  <sheetData>
+    <row r="1"><c r="A1" t="inlineStr"><is><t>Graph</t></is></c></row>
+  </sheetData>
+  <drawing r:id="rId1"/>
+</worksheet>`;
+  }
+
+  function drawingXmlV77(chartName) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+  <xdr:twoCellAnchor>
+    <xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>
+    <xdr:to><xdr:col>16</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>31</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
+    <xdr:graphicFrame macro="">
+      <xdr:nvGraphicFramePr>
+        <xdr:cNvPr id="2" name="${xmlV77(chartName)}"/>
+        <xdr:cNvGraphicFramePr/>
+      </xdr:nvGraphicFramePr>
+      <xdr:xfrm>
+        <a:off x="0" y="0"/>
+        <a:ext cx="0" cy="0"/>
+      </xdr:xfrm>
+      <a:graphic>
+        <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">
+          <c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId1"/>
+        </a:graphicData>
+      </a:graphic>
+    </xdr:graphicFrame>
+    <xdr:clientData/>
+  </xdr:twoCellAnchor>
+</xdr:wsDr>`;
+  }
+
+  function drawingRelsXmlV77(chartIdx) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${chartIdx}.xml"/>
+</Relationships>`;
+  }
+
+  function sheetRelsXmlV77(drawingIdx) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${drawingIdx}.xml"/>
+</Relationships>`;
+  }
+
+  function chartXmlV77(title, yAxisTitle, seriesDefs, rowCount) {
+    const catRef = a1V77("Data", 1, 2, 1, rowCount + 1);
+    const serXml = seriesDefs.map((s, idx) => {
+      const col = s.col;
+      return `<c:ser>
+        <c:idx val="${idx}"/>
+        <c:order val="${idx}"/>
+        <c:tx><c:strRef><c:f>${xmlV77(singleCellV77("Data", col, 1))}</c:f></c:strRef></c:tx>
+        <c:marker><c:symbol val="none"/></c:marker>
+        <c:cat><c:strRef><c:f>${xmlV77(catRef)}</c:f></c:strRef></c:cat>
+        <c:val><c:numRef><c:f>${xmlV77(a1V77("Data", col, 2, col, rowCount + 1))}</c:f></c:numRef></c:val>
+        <c:smooth val="0"/>
+      </c:ser>`;
+    }).join("");
+
+    const ax1 = 100000 + Math.floor(Math.random() * 100000);
+    const ax2 = 200000 + Math.floor(Math.random() * 100000);
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <c:roundedCorners val="0"/>
+  <c:chart>
+    <c:title>
+      <c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="ja-JP" sz="1200"/><a:t>${xmlV77(title)}</a:t></a:r></a:p></c:rich></c:tx>
+      <c:layout/>
+    </c:title>
+    <c:plotArea>
+      <c:layout/>
+      <c:lineChart>
+        <c:grouping val="standard"/>
+        <c:varyColors val="0"/>
+        ${serXml}
+        <c:axId val="${ax1}"/>
+        <c:axId val="${ax2}"/>
+      </c:lineChart>
+      <c:catAx>
+        <c:axId val="${ax1}"/>
+        <c:scaling><c:orientation val="minMax"/></c:scaling>
+        <c:delete val="0"/>
+        <c:axPos val="b"/>
+        <c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>UTC Time</a:t></a:r></a:p></c:rich></c:tx></c:title>
+        <c:tickLblPos val="low"/>
+        <c:crossAx val="${ax2}"/>
+        <c:crosses val="autoZero"/>
+        <c:auto val="1"/>
+        <c:lblAlgn val="ctr"/>
+        <c:lblOffset val="100"/>
+      </c:catAx>
+      <c:valAx>
+        <c:axId val="${ax2}"/>
+        <c:scaling><c:orientation val="minMax"/></c:scaling>
+        <c:delete val="0"/>
+        <c:axPos val="l"/>
+        <c:majorGridlines/>
+        <c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${xmlV77(yAxisTitle)}</a:t></a:r></a:p></c:rich></c:tx></c:title>
+        <c:numFmt formatCode="General" sourceLinked="1"/>
+        <c:tickLblPos val="nextTo"/>
+        <c:crossAx val="${ax1}"/>
+        <c:crosses val="autoZero"/>
+        <c:crossBetween val="between"/>
+      </c:valAx>
+    </c:plotArea>
+    <c:legend>
+      <c:legendPos val="r"/>
+      <c:layout/>
+      <c:overlay val="0"/>
+    </c:legend>
+    <c:plotVisOnly val="1"/>
+    <c:dispBlanksAs val="gap"/>
+    <c:showDLblsOverMax val="0"/>
+  </c:chart>
+  <c:printSettings>
+    <c:headerFooter/>
+    <c:pageMargins b="0.75" l="0.7" r="0.7" t="0.75" header="0.3" footer="0.3"/>
+    <c:pageSetup/>
+  </c:printSettings>
+</c:chartSpace>`;
+  }
+
+  function workbookXmlV77(sheets) {
+    const sheetXml = sheets.map((s, idx) => `<sheet name="${xmlV77(s.name)}" sheetId="${idx + 1}" r:id="rId${idx + 1}"/>`).join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <workbookPr/>
+  <sheets>${sheetXml}</sheets>
+</workbook>`;
+  }
+
+  function workbookRelsXmlV77(sheets) {
+    const rels = sheets.map((s, idx) => `<Relationship Id="rId${idx + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${idx + 1}.xml"/>`).join("");
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${rels}
+  <Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+  }
+
+  function rootRelsXmlV77() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+  }
+
+  function stylesXmlV77() {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1"><font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/></font></fonts>
+  <fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+  }
+
+  function contentTypesXmlV77(sheetCount, chartCount) {
+    let overrides = `
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>`;
+    for (let i = 1; i <= sheetCount; i++) overrides += `\n  <Override PartName="/xl/worksheets/sheet${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`;
+    for (let i = 1; i <= chartCount; i++) {
+      overrides += `\n  <Override PartName="/xl/drawings/drawing${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`;
+      overrides += `\n  <Override PartName="/xl/charts/chart${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`;
+    }
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  ${overrides}
+</Types>`;
+  }
+
+  function dataRowsV77(series) {
+    const headers = [
+      "time_utc",
+      "l1_error_m",
+      "gdop",
+      "pdop",
+      "hdop",
+      "vdop",
+      "tdop",
+      "gdop_x_l1_m",
+      "pdop_x_l1_m",
+      "hdop_x_l1_m",
+      "vdop_x_l1_m",
+      "tdop_x_l1_m",
+      "visible_sat_count",
+      "tec_tecu",
+      "selected_lat",
+      "selected_lon",
+      "grid_lat",
+      "grid_lon",
+    ];
+    const rows = [headers];
+    for (const r of series.rows || []) {
+      rows.push([
+        r.time || "",
+        finiteV77(r.l1),
+        finiteV77(r.gdop),
+        finiteV77(r.pdop),
+        finiteV77(r.hdop),
+        finiteV77(r.vdop),
+        finiteV77(r.tdop),
+        finiteV77(r.gdoptec),
+        finiteV77(r.pdoptec),
+        finiteV77(r.hdoptec),
+        finiteV77(r.vdoptec),
+        finiteV77(r.tdoptec),
+        finiteV77(r.count),
+        finiteV77(r.tec),
+        finiteV77(r.selected_lat),
+        finiteV77(r.selected_lon),
+        finiteV77(r.lat),
+        finiteV77(r.lon),
+      ]);
+    }
+    return rows;
+  }
+
+  async function exportPointDopExcelWithChartsV77() {
+    if (!window.swiftPointDopLastSeriesV65 && window.swiftRenderPointDopGraphV65) {
+      window.swiftRenderPointDopGraphV65();
+      await new Promise(r => setTimeout(r, 150));
+    }
+
+    const series = window.swiftPointDopLastSeriesV65;
+    if (!series || !Array.isArray(series.rows) || !series.rows.length) {
+      alert("出力するグラフデータがありません。緯度経度を選択して「グラフ更新」を押してください。");
+      return;
+    }
+
+    await loadJsZipV77();
+
+    const rows = dataRowsV77(series);
+    const rowCount = rows.length - 1;
+    const charts = [
+      { name: "Chart_DOP_All", title: "DOP time series", y: "DOP", series: [
+        { col: 3 }, { col: 4 }, { col: 5 }, { col: 6 }, { col: 7 },
+      ]},
+      { name: "Chart_L1_Error", title: "L1 positioning error from TEC", y: "L1 error [m]", series: [
+        { col: 2 },
+      ]},
+      { name: "Chart_DOPxL1_All", title: "DOP × L1 positioning error", y: "DOP × L1 error [m]", series: [
+        { col: 8 }, { col: 9 }, { col: 10 }, { col: 11 }, { col: 12 },
+      ]},
+      { name: "GDOP", title: "GDOP", y: "GDOP", series: [{ col: 3 }] },
+      { name: "PDOP", title: "PDOP", y: "PDOP", series: [{ col: 4 }] },
+      { name: "HDOP", title: "HDOP", y: "HDOP", series: [{ col: 5 }] },
+      { name: "VDOP", title: "VDOP", y: "VDOP", series: [{ col: 6 }] },
+      { name: "TDOP", title: "TDOP", y: "TDOP", series: [{ col: 7 }] },
+      { name: "GDOPxL1", title: "GDOP × L1 error", y: "GDOP × L1 error [m]", series: [{ col: 8 }] },
+      { name: "PDOPxL1", title: "PDOP × L1 error", y: "PDOP × L1 error [m]", series: [{ col: 9 }] },
+      { name: "HDOPxL1", title: "HDOP × L1 error", y: "HDOP × L1 error [m]", series: [{ col: 10 }] },
+      { name: "VDOPxL1", title: "VDOP × L1 error", y: "VDOP × L1 error [m]", series: [{ col: 11 }] },
+      { name: "TDOPxL1", title: "TDOP × L1 error", y: "TDOP × L1 error [m]", series: [{ col: 12 }] },
+      { name: "SatCount", title: "Visible satellite count", y: "Sat count", series: [{ col: 13 }] },
+    ];
+
+    const sheets = [
+      { name: "Summary", type: "summary" },
+      { name: "Data", type: "data" },
+      ...charts.map(c => ({ name: c.name, type: "chart" })),
+    ];
+
+    const zip = new JSZip();
+
+    zip.file("[Content_Types].xml", contentTypesXmlV77(sheets.length, charts.length));
+    zip.folder("_rels").file(".rels", rootRelsXmlV77());
+    zip.folder("xl").file("workbook.xml", workbookXmlV77(sheets));
+    zip.folder("xl").file("styles.xml", stylesXmlV77());
+    zip.folder("xl").folder("_rels").file("workbook.xml.rels", workbookRelsXmlV77(sheets));
+
+    const ws = zip.folder("xl").folder("worksheets");
+    const wsRels = zip.folder("xl").folder("worksheets").folder("_rels");
+    const drawings = zip.folder("xl").folder("drawings");
+    const drawRels = zip.folder("xl").folder("drawings").folder("_rels");
+    const chartsFolder = zip.folder("xl").folder("charts");
+
+    ws.file("sheet1.xml", summaryXmlV77(series, rowCount));
+    ws.file("sheet2.xml", sheetXmlV77(rows));
+
+    charts.forEach((c, idx) => {
+      const sheetIdx = idx + 3;
+      const chartIdx = idx + 1;
+      ws.file(`sheet${sheetIdx}.xml`, chartSheetXmlV77());
+      wsRels.file(`sheet${sheetIdx}.xml.rels`, sheetRelsXmlV77(chartIdx));
+      drawings.file(`drawing${chartIdx}.xml`, drawingXmlV77(c.title));
+      drawRels.file(`drawing${chartIdx}.xml.rels`, drawingRelsXmlV77(chartIdx));
+      chartsFolder.file(`chart${chartIdx}.xml`, chartXmlV77(c.title, c.y, c.series, rowCount));
+    });
+
+    const blob = await zip.generateAsync({
+      type: "blob",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      compression: "DEFLATE",
+    });
+
+    const lat = Number(series.rows[0]?.selected_lat || 0).toFixed(2);
+    const lon = Number(series.rows[0]?.selected_lon || 0).toFixed(2);
+    const fname = `swifttec_point_dop_charts_${lat}_${lon}.xlsx`;
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 1000);
+  }
+
+  function patchExportButtonsV77() {
+    const panel = q77("swiftPointDopPanelV65");
+    if (!panel) return;
+
+    const oldBtn = q77("swiftPointDopExcelBtnV66");
+    if (oldBtn && !oldBtn.dataset.v77Patched) {
+      oldBtn.dataset.v77Patched = "1";
+      oldBtn.textContent = "Excel出力";
+      oldBtn.title = "従来のデータ表Excel";
+    }
+
+    if (q77("swiftPointDopExcelChartBtnV77")) return;
+    const row = panel.querySelector(".swift-v65-row");
+    if (!row) return;
+
+    const btn = document.createElement("button");
+    btn.id = "swiftPointDopExcelChartBtnV77";
+    btn.className = "swift-v65-btn";
+    btn.type = "button";
+    btn.textContent = "Excel出力（グラフ付）";
+    btn.title = "Dataシートと各DOP/L1測位誤差のExcelネイティブグラフを出力";
+    btn.onclick = exportPointDopExcelWithChartsV77;
+    row.appendChild(btn);
+  }
+
+  function bootV77() {
+    for (const delay of [600, 1200, 2200, 3600]) {
+      setTimeout(patchExportButtonsV77, delay);
+    }
+  }
+
+  window.swiftExportPointDopExcelWithChartsV77 = exportPointDopExcelWithChartsV77;
+  readyV77(bootV77);
+})();
+
