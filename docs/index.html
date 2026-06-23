@@ -2810,5 +2810,590 @@ SStorm倍率（rStorm）は Mukhtarov風（季節×緯度×Kp）＋tail：
   </script>
 
   <script src="js/swifttec_v4_archive_dop.js"></script>
+
+
+<script>
+/* SWIFT-TEC v7.9 HTML-only patch: archive TEC robust loader */
+(function () {
+  const TEC_INDEX = "data/tec/index.json";
+  const STEP_MIN = 30;
+  const TARGET_N = 48;
+
+  function ready(fn){
+    if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+    else setTimeout(fn, 0);
+  }
+
+  function q(id){ return document.getElementById(id); }
+
+  function iso(t){
+    return t instanceof Date && !isNaN(t)
+      ? t.toISOString().replace(".000Z","Z")
+      : "--";
+  }
+
+  function status(msg, level="info"){
+    const el =
+      q("swiftArchiveTecFixStatusV79") ||
+      q("forecastTecApiStatus") ||
+      q("runInfo");
+
+    if(el){
+      el.textContent = msg || "";
+      el.dataset.level = level;
+    }
+
+    try {
+      if(typeof logInfo === "function" && msg) logInfo(msg);
+    } catch(e) {}
+  }
+
+  function style(){
+    if(q("swiftArchiveTecFixStyleV79")) return;
+
+    const st = document.createElement("style");
+    st.id = "swiftArchiveTecFixStyleV79";
+    st.textContent = `
+      #swiftArchiveTecFixPanelV79{
+        margin-top:10px;
+        border:1px solid #2563eb;
+        border-radius:14px;
+        background:rgba(7,14,28,.98);
+        padding:10px;
+      }
+      .swift-v79-title{
+        color:#eaf2ff;
+        font-size:13px;
+        font-weight:900;
+      }
+      .swift-v79-sub{
+        color:#9fb0cc;
+        font-size:10px;
+        line-height:1.38;
+        margin-top:3px;
+      }
+      .swift-v79-row{
+        display:flex;
+        gap:7px;
+        align-items:center;
+        flex-wrap:wrap;
+        margin-top:8px;
+      }
+      .swift-v79-btn{
+        border-radius:9px;
+        border:1px solid #3b82f6;
+        background:#1d4ed8;
+        color:white;
+        padding:6px 9px;
+        font-size:11px;
+        font-weight:750;
+        cursor:pointer;
+      }
+      .swift-v79-btn.secondary{
+        border-color:#334155;
+        background:#0f172a;
+      }
+      #swiftArchiveTecFixStatusV79{
+        margin-top:7px;
+        border:1px solid #1f355a;
+        border-radius:10px;
+        background:#020617;
+        color:#c8d8f2;
+        padding:7px;
+        font-size:10px;
+        line-height:1.36;
+        white-space:pre-wrap;
+        max-height:220px;
+        overflow:auto;
+      }
+      #swiftArchiveTecFixStatusV79[data-level="warn"]{
+        border-color:#f59e0b;
+        color:#fde68a;
+      }
+      #swiftArchiveTecFixStatusV79[data-level="error"]{
+        border-color:#ef4444;
+        color:#fecaca;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function fileUrl(file){
+    let f = String(file || "").trim();
+    if(!f) return "";
+    if(/^https?:\/\//i.test(f)) return f;
+
+    f = f.replace(/^\/+/, "");
+
+    if(f.startsWith("docs/data/tec/")){
+      f = f.slice("docs/data/tec/".length);
+    }
+
+    if(f.startsWith("data/tec/")){
+      f = f.slice("data/tec/".length);
+    }
+
+    return "data/tec/" + f;
+  }
+
+  async function readJsonMaybeGz(url){
+    const res = await fetch(url, { cache:"no-store" });
+
+    if(!res.ok){
+      throw new Error(`HTTP ${res.status}: ${url}`);
+    }
+
+    if(!url.endsWith(".gz")){
+      return await res.json();
+    }
+
+    const buf = await res.arrayBuffer();
+
+    if(!("DecompressionStream" in window)){
+      throw new Error("gzip展開未対応: json.gzをブラウザで読めません");
+    }
+
+    const ds = new DecompressionStream("gzip");
+    const stream = new Blob([buf]).stream().pipeThrough(ds);
+    const text = await new Response(stream).text();
+
+    return JSON.parse(text);
+  }
+
+  function entriesFromIndex(index){
+    return (Array.isArray(index && index.frames) ? index.frames : [])
+      .map(f => {
+        const t = new Date(f.time_utc || f.time || "");
+        const file = f.file || f.path || f.name || f.href || "";
+
+        if(!file || isNaN(t)) return null;
+
+        return {
+          time: t,
+          file,
+          raw: f,
+          url: fileUrl(file)
+        };
+      })
+      .filter(Boolean)
+      .sort((a,b) => a.time - b.time);
+  }
+
+  function normalizeFrame(obj, entry){
+    let latArr =
+      obj.lat_arr ||
+      obj.latArr ||
+      obj.lats ||
+      obj.latitudes ||
+      [];
+
+    let lonArr =
+      obj.lon_arr ||
+      obj.lonArr ||
+      obj.lons ||
+      obj.longitudes ||
+      [];
+
+    let grid =
+      obj.grid ||
+      obj.tec_grid ||
+      obj.tecGrid ||
+      obj.values ||
+      obj.data ||
+      [];
+
+    if((!grid || !grid.length) && obj.frame){
+      latArr = obj.frame.lat_arr || obj.frame.latArr || latArr;
+      lonArr = obj.frame.lon_arr || obj.frame.lonArr || lonArr;
+      grid = obj.frame.grid || obj.frame.values || grid;
+    }
+
+    const nLat = obj.n_lat || obj.nLat || latArr.length;
+    const nLon = obj.n_lon || obj.nLon || lonArr.length;
+
+    if(!Array.isArray(latArr) || !latArr.length){
+      throw new Error("lat_arrなし");
+    }
+
+    if(!Array.isArray(lonArr) || !lonArr.length){
+      throw new Error("lon_arrなし");
+    }
+
+    if(!Array.isArray(grid) || !grid.length){
+      throw new Error("gridなし");
+    }
+
+    if(!Array.isArray(grid[0]) && grid.length === nLat * nLon){
+      const flat = grid;
+      grid = [];
+
+      for(let i=0; i<nLat; i++){
+        grid.push(flat.slice(i*nLon, (i+1)*nLon));
+      }
+    }
+
+    if(!Array.isArray(grid[0])){
+      throw new Error("grid形状不正");
+    }
+
+    return {
+      time: new Date(obj.time_utc || obj.time || entry.time),
+      file: entry.file,
+      url: entry.url,
+      frame: {
+        latArr: latArr.map(Number),
+        lonArr: lonArr.map(Number),
+        nLat: Number(nLat),
+        nLon: Number(nLon),
+        grid,
+        validTime: entry.time
+      }
+    };
+  }
+
+  async function loadEntry(entry){
+    const obj = await readJsonMaybeGz(entry.url);
+    return normalizeFrame(obj, entry);
+  }
+
+  function targetSlots(endTime){
+    const end = new Date(Date.UTC(
+      endTime.getUTCFullYear(),
+      endTime.getUTCMonth(),
+      endTime.getUTCDate(),
+      endTime.getUTCHours(),
+      Math.floor(endTime.getUTCMinutes() / STEP_MIN) * STEP_MIN,
+      0
+    ));
+
+    const start = new Date(
+      end.getTime() - (TARGET_N - 1) * STEP_MIN * 60000
+    );
+
+    return Array.from(
+      { length: TARGET_N },
+      (_,k) => new Date(start.getTime() + k * STEP_MIN * 60000)
+    );
+  }
+
+  function pick(loaded, slot){
+    let best = null;
+    let bestDiff = Infinity;
+
+    for(const f of loaded){
+      const d = Math.abs(f.time - slot);
+
+      if(d < bestDiff){
+        best = f;
+        bestDiff = d;
+      }
+    }
+
+    if(best && bestDiff <= 90 * 60000){
+      return { pick: best, method: "nearest" };
+    }
+
+    const prev = loaded
+      .filter(x => x.time <= slot)
+      .sort((a,b) => b.time - a.time)[0];
+
+    if(prev){
+      return { pick: prev, method: "hold_previous" };
+    }
+
+    const next = loaded
+      .filter(x => x.time > slot)
+      .sort((a,b) => a.time - b.time)[0];
+
+    if(next){
+      return { pick: next, method: "hold_next" };
+    }
+
+    return {
+      pick: loaded[loaded.length - 1],
+      method: "fallback_latest"
+    };
+  }
+
+  async function loadArchiveTec(runAfter=false){
+    try{
+      status("蓄積TECを堅牢読込中… index→実ファイル確認→欠損skip");
+
+      const index = await readJsonMaybeGz(TEC_INDEX);
+      const entries = entriesFromIndex(index);
+
+      if(!entries.length){
+        throw new Error("index.jsonに有効なframeがありません");
+      }
+
+      const newest = entries.slice().reverse().slice(0, 140);
+      const loaded = [];
+      const skipped = [];
+
+      for(const e of newest){
+        try{
+          loaded.push(await loadEntry(e));
+
+          if(loaded.length >= TARGET_N){
+            break;
+          }
+        }catch(err){
+          skipped.push(`${e.file}: ${err.message}`);
+        }
+      }
+
+      loaded.sort((a,b) => a.time - b.time);
+
+      if(loaded.length < 2){
+        throw new Error(
+          `読めるTECが2枚未満 index=${entries.length}, readable=${loaded.length}, skipped=${skipped.length}`
+        );
+      }
+
+      const validEnd = loaded[loaded.length - 1].time;
+
+      const methods = {
+        nearest: 0,
+        hold_previous: 0,
+        hold_next: 0,
+        fallback_latest: 0
+      };
+
+      const items = targetSlots(validEnd).map(t => {
+        const got = pick(loaded, t);
+        methods[got.method] = (methods[got.method] || 0) + 1;
+
+        return {
+          frame: {
+            latArr: got.pick.frame.latArr,
+            lonArr: got.pick.frame.lonArr,
+            nLat: got.pick.frame.nLat,
+            nLon: got.pick.frame.nLon,
+            grid: got.pick.frame.grid,
+            validTime: t
+          },
+          time: t,
+          file: got.pick.file + (
+            got.method === "nearest" ? "" : ` [${got.method}]`
+          )
+        };
+      });
+
+      gNoaaDayFrames = items.map(x => x.frame);
+      gNoaaDayTimes = items.map(x => x.time);
+      gNoaaDayFiles = items.map(x => x.file);
+      gNoaaDayKey = validEnd.toISOString().slice(0,10);
+
+      const tecSel = q("tecSourceSelect");
+      if(tecSel) tecSel.value = "noaa";
+
+      const apiSel = q("forecastTecApiSourceSelect");
+      if(apiSel) apiSel.value = "archive_data_30m";
+
+      const pill = q("forecastTecReadyPill");
+      if(pill){
+        pill.textContent = `TEC入力: 蓄積堅牢読込 / ${items.length}枚`;
+      }
+
+      try{
+        if(typeof renderNoaa12Table === "function") renderNoaa12Table();
+      }catch(e){}
+
+      try{
+        if(typeof fillForecastStartCandidates === "function") fillForecastStartCandidates();
+      }catch(e){}
+
+      const ageH = (Date.now() - validEnd.getTime()) / 3600000;
+
+      status(
+        `蓄積TEC堅牢読込OK\n` +
+        `index=${entries.length}, readable=${loaded.length}, skipped=${skipped.length}\n` +
+        `予報Base最終=${iso(validEnd)} / 最新から${ageH.toFixed(1)}h前\n` +
+        `slot nearest=${methods.nearest}, hold_prev=${methods.hold_previous}, hold_next=${methods.hold_next}\n` +
+        (skipped.length ? `skip例:\n${skipped.slice(0,5).join("\n")}` : "skipなし"),
+        ageH > 12 ? "warn" : "info"
+      );
+
+      if(runAfter && typeof runForecast === "function"){
+        await runForecast();
+      }
+
+      return {
+        ok: true,
+        items,
+        loaded,
+        skipped,
+        methods
+      };
+
+    }catch(e){
+      status(
+        `蓄積TEC堅牢読込NG: ${e.message}\n\n` +
+        `NOAA直取得は出るのに蓄積で出ない主因:\n` +
+        `・index.jsonにはあるが実ファイル404\n` +
+        `・json.gzをブラウザが展開できない\n` +
+        `・最新24hの一部欠損で旧処理がabort\n` +
+        `・lat/lon/grid形式違い`,
+        "error"
+      );
+
+      throw e;
+    }
+  }
+
+  function patchKpHold(){
+    if(window.__swiftKpHoldV79 || typeof buildForecastKpSeriesFrom3DayText !== "function"){
+      return;
+    }
+
+    window.__swiftKpHoldV79 = true;
+
+    const old = buildForecastKpSeriesFrom3DayText;
+
+    buildForecastKpSeriesFrom3DayText = function(txt, startUtc, nSteps, dtMin, mode="auto"){
+      let out = old(txt, startUtc, nSteps, dtMin, mode) || [];
+
+      if(!out.length){
+        return out;
+      }
+
+      const need = Number(nSteps) + 1;
+
+      let prev = Number.isFinite(Number(out[0] && out[0].kp))
+        ? Number(out[0].kp)
+        : 3.0;
+
+      for(let i=0; i<need; i++){
+        if(!out[i]){
+          out[i] = {
+            t: new Date(startUtc.getTime() + i * dtMin * 60000),
+            kp: prev
+          };
+        }
+
+        const kp = Number(out[i].kp);
+
+        if(Number.isFinite(kp)){
+          prev = kp;
+        }else{
+          out[i].kp = prev;
+        }
+
+        if(!(out[i].t instanceof Date) || isNaN(out[i].t)){
+          out[i].t = new Date(startUtc.getTime() + i * dtMin * 60000);
+        }
+      }
+
+      return out.slice(0, need);
+    };
+  }
+
+  function patchArchive(){
+    try{
+      loadForecastTecFromArchiveDataApi30m = () => loadArchiveTec(false);
+    }catch(e){}
+
+    try{
+      const oldSelected = loadForecastTecFromSelectedApi;
+
+      loadForecastTecFromSelectedApi = async function(runAfter=false){
+        const mode = q("forecastTecApiSourceSelect") && q("forecastTecApiSourceSelect").value || "";
+
+        if(mode === "archive_data_30m"){
+          return loadArchiveTec(runAfter);
+        }
+
+        return oldSelected(runAfter);
+      };
+    }catch(e){}
+
+    window.loadForecastTecFromArchiveDataApi30m = () => loadArchiveTec(false);
+
+    if(!window.__swiftRunForecastArchiveV79 && typeof runForecast === "function"){
+      window.__swiftRunForecastArchiveV79 = true;
+
+      const oldRun = runForecast;
+
+      runForecast = async function(){
+        const src = q("tecSourceSelect") && q("tecSourceSelect").value || "noaa";
+        const mode = q("forecastTecApiSourceSelect") && q("forecastTecApiSourceSelect").value || "";
+        const auto = !!(q("forecastTecAutoFetch") && q("forecastTecAutoFetch").checked);
+
+        if(src === "noaa" && auto && mode === "archive_data_30m"){
+          try{
+            await loadArchiveTec(false);
+
+            const autoEl = q("forecastTecAutoFetch");
+            const oldChecked = autoEl ? autoEl.checked : false;
+
+            if(autoEl) autoEl.checked = false;
+            const ret = await oldRun.apply(this, arguments);
+            if(autoEl) autoEl.checked = oldChecked;
+
+            return ret;
+          }catch(e){
+            status("予報計算停止: " + e.message, "error");
+            return;
+          }
+        }
+
+        return oldRun.apply(this, arguments);
+      };
+
+      window.runForecast = runForecast;
+    }
+  }
+
+  function panel(){
+    if(q("swiftArchiveTecFixPanelV79")) return;
+
+    const card = q("forecastTecApiCard");
+    const side =
+      q("swiftAccuracySide") ||
+      document.querySelector(".sidebar") ||
+      document.body;
+
+    const p = document.createElement("div");
+    p.id = "swiftArchiveTecFixPanelV79";
+
+    p.innerHTML =
+      `<div class="swift-v79-title">蓄積TEC 読込診断・堅牢化</div>` +
+      `<div class="swift-v79-sub">NOAA直取得は出るが蓄積から出ない場合用。index内の欠損ファイルをskipし、最後に読めたTECから予報します。</div>` +
+      `<div class="swift-v79-row">` +
+      `<button class="swift-v79-btn" id="swiftArchiveTecLoadBtnV79">蓄積TEC堅牢読込</button>` +
+      `<button class="swift-v79-btn secondary" id="swiftArchiveTecRunBtnV79">蓄積TEC堅牢読込→予報</button>` +
+      `</div>` +
+      `<div id="swiftArchiveTecFixStatusV79">未診断</div>`;
+
+    if(card && card.parentElement){
+      card.insertAdjacentElement("afterend", p);
+    }else{
+      side.appendChild(p);
+    }
+
+    q("swiftArchiveTecLoadBtnV79").onclick = () => loadArchiveTec(false);
+    q("swiftArchiveTecRunBtnV79").onclick = () => loadArchiveTec(true);
+  }
+
+  function boot(){
+    style();
+    patchKpHold();
+    patchArchive();
+
+    [400, 1000, 1800, 3000].forEach(d => {
+      setTimeout(() => {
+        panel();
+        patchKpHold();
+        patchArchive();
+      }, d);
+    });
+  }
+
+  window.swiftArchiveTecRobustLoadV79 = loadArchiveTec;
+
+  ready(boot);
+})();
+</script>
+
 </body>
 </html>
