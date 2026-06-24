@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Archive NOAA forecast Kp and score operational TEC hit rate by lead day.
 
-v7.8 changes:
+v7.9 changes:
 - Pulls a longer Kp actual history first from SWPC json/planetary_k_index_1m.json.
 - Uses SWPC noaa-planetary-k-index-forecast.json when available, with text forecast fallback.
-- Cold-start fills the first score window with a clearly-labelled Kp-history backfill so the UI is not stuck at N=0.
-  This backfill is for initial display only; subsequent real forecast archives remain separated by source.
+- Cold-start Kp-history backfill is rebuilt every run so stale cold-start entries cannot leave the score at N=0.
+- Adds score_diagnostics and reason fields to show why N=0 remains.
 
 Outputs:
 - docs/data/ai/kp_forecast_archive.json
@@ -262,30 +262,45 @@ def save_archive(doc: dict) -> None:
 
 
 def add_coldstart_forecasts(doc: dict, actual_kp: list[tuple[datetime, float]], days: int = COLDSTART_DAYS) -> int:
-    """Create clearly-labelled initial slots from Kp history.
+    """Rebuild clearly-labelled initial slots from Kp history every run.
 
-    This is not a reconstruction of historical SWPC forecasts. It only prevents a new install from
-    showing N=0 while real forecast issues start accumulating from GitHub Actions.
+    This is not a reconstruction of historical SWPC forecasts. It prevents a new install from
+    staying at N=0 while real forecast issues start accumulating from GitHub Actions.
     """
     if not ENABLE_COLDSTART or not actual_kp:
+        doc["cold_start_backfill"] = {"enabled": False, "reason": "disabled or no actual Kp"}
         return 0
-    existing_cold = sum(1 for f in doc.get("forecasts", []) if f.get("source_type") == "cold_start_actual_kp_history")
-    if existing_cold > 0:
-        return 0
+
+    # Remove stale cold-start entries first.  v7.8 skipped rebuilding when one old cold-start
+    # issue existed, which could leave the score at N=0 forever if that old entry did not overlap
+    # the available TEC archive.
+    real_forecasts = [
+        f for f in doc.get("forecasts", [])
+        if f.get("source_type") != "cold_start_actual_kp_history"
+    ]
+    doc["forecasts"] = real_forecasts
 
     now = now_utc()
     cutoff = now - timedelta(days=days)
     kp_rows = [(t, kp) for t, kp in actual_kp if cutoff <= t <= now - timedelta(hours=3)]
     if not kp_rows:
+        doc["cold_start_backfill"] = {"enabled": True, "days": days, "issue_count_added": 0, "reason": "actual Kp rows did not overlap cold-start window"}
         return 0
 
-    by_issue: dict[str, dict] = {}
     # One synthetic issue per 00Z day; each issue contains targets at +1..+4 days.
     first_issue_day = (kp_rows[0][0] - timedelta(days=4)).date()
     last_issue_day = (kp_rows[-1][0] - timedelta(days=1)).date()
+    existing_real = {f.get("issue_utc", "")[:13] for f in real_forecasts}
+    added = 0
+
     issue_day = first_issue_day
     while issue_day <= last_issue_day:
         issue = datetime(issue_day.year, issue_day.month, issue_day.day, tzinfo=UTC)
+        # Do not replace a real forecast issue with a pseudo issue at the same hour.
+        if iso(issue)[:13] in existing_real:
+            issue_day = issue_day + timedelta(days=1)
+            continue
+
         slots = []
         for t, kp in kp_rows:
             lead_hours = (t - issue).total_seconds() / 3600.0
@@ -300,29 +315,25 @@ def add_coldstart_forecasts(doc: dict, actual_kp: list[tuple[datetime, float]], 
                         "forecast_source": "cold_start_actual_kp_history",
                     })
         if slots:
-            by_issue[iso(issue)] = {
+            doc.setdefault("forecasts", []).append({
                 "issue_utc": iso(issue),
                 "source_type": "cold_start_actual_kp_history",
                 "source_url": KP_ACTUAL_URLS[0],
                 "horizon_note": "Cold-start backfill uses historical actual Kp as a temporary pseudo-forecast. Real operational forecast scoring uses subsequently archived predicted Kp.",
                 "slots": slots,
-            }
+            })
+            added += 1
         issue_day = issue_day + timedelta(days=1)
 
-    existing = {f.get("issue_utc", "")[:13] for f in doc.get("forecasts", [])}
-    added = 0
-    for key, f in by_issue.items():
-        if key[:13] not in existing:
-            doc.setdefault("forecasts", []).append(f)
-            added += 1
-    if added:
-        doc["cold_start_backfill"] = {
-            "enabled": True,
-            "days": days,
-            "issue_count_added": added,
-            "note": "Initial fill only; source is actual Kp history, not historical issued forecasts.",
-        }
+    doc["cold_start_backfill"] = {
+        "enabled": True,
+        "days": days,
+        "issue_count_added": added,
+        "kp_rows_in_window": len(kp_rows),
+        "note": "Initial fill only; source is actual Kp history, not historical issued forecasts.",
+    }
     return added
+
 
 
 def load_json_maybe_gz(path: Path):
@@ -432,22 +443,64 @@ def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]], actual
     metas = load_frame_meta()
     coeff_doc = load_coeff_doc()
     updated = iso(now_utc())
+    diagnostics = {
+        "tec_frame_count": len(metas),
+        "forecast_issue_count": len(doc.get("forecasts", [])),
+        "actual_kp_count": len(actual_kp),
+        "coefficients_available": bool(coeff_doc),
+        "skip_counts": {},
+        "seen_slots_by_lead": {},
+        "used_slots_by_lead": {},
+    }
+
+    def bump(name: str, lead: int | None = None, n: int = 1):
+        diagnostics["skip_counts"][name] = diagnostics["skip_counts"].get(name, 0) + n
+        if lead in (1, 2, 3, 4):
+            key = str(lead)
+            diagnostics.setdefault(f"{name}_by_lead", {})
+            diagnostics[f"{name}_by_lead"][key] = diagnostics[f"{name}_by_lead"].get(key, 0) + n
+
     if not metas:
-        return {"version": "swifttec-operational-hit-rate-v2", "updated_utc": updated, "reason": "no TEC archive", "by_lead_day": {}}
+        return {
+            "version": "swifttec-operational-hit-rate-v3",
+            "updated_utc": updated,
+            "reason": "TEC archiveがないため採点できません",
+            "score_diagnostics": diagnostics,
+            "by_lead_day": {},
+        }
     if not coeff_doc:
-        return {"version": "swifttec-operational-hit-rate-v2", "updated_utc": updated, "reason": "no kp_grid_coefficients.json", "by_lead_day": {}}
+        return {
+            "version": "swifttec-operational-hit-rate-v3",
+            "updated_utc": updated,
+            "reason": "kp_grid_coefficients.json がないため採点できません",
+            "score_diagnostics": diagnostics,
+            "by_lead_day": {},
+        }
     if not actual_kp:
-        return {"version": "swifttec-operational-hit-rate-v2", "updated_utc": updated, "reason": "no actual Kp", "by_lead_day": {}}
+        return {
+            "version": "swifttec-operational-hit-rate-v3",
+            "updated_utc": updated,
+            "reason": "Kp実測履歴がないため採点できません",
+            "score_diagnostics": diagnostics,
+            "by_lead_day": {},
+        }
 
     first = load_json_maybe_gz(metas[0]["path"])
     lat_arr, lon_arr, _ = flatten_grid(first)
     n_lat, n_lon = len(lat_arr), len(lon_arr)
     if not n_lat or not n_lon:
-        return {"version": "swifttec-operational-hit-rate-v2", "updated_utc": updated, "reason": "empty TEC grid", "by_lead_day": {}}
+        return {
+            "version": "swifttec-operational-hit-rate-v3",
+            "updated_utc": updated,
+            "reason": "TEC格子が空のため採点できません",
+            "score_diagnostics": diagnostics,
+            "by_lead_day": {},
+        }
 
     step = max(1, int(math.ceil((n_lat * n_lon) / MAX_CELL_SAMPLES_PER_FRAME)))
     errors_by_lead: dict[int, list[float]] = defaultdict(list)
     slot_count_by_lead: dict[int, int] = defaultdict(int)
+    seen_slots_by_lead: dict[int, int] = defaultdict(int)
     used_source_by_lead: dict[int, Counter] = defaultdict(Counter)
 
     cutoff = now_utc() - timedelta(days=SCORE_DAYS_BACK)
@@ -459,24 +512,40 @@ def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]], actual
         issue_source = forecast.get("source_type") or forecast.get("source_url") or "unknown"
         for slot in forecast.get("slots", []):
             t = parse_time(slot.get("time_utc"))
-            if not t or t < cutoff:
+            if not t:
+                bump("slot_time_parse_failed")
                 continue
             lead = int(slot.get("lead_day") or math.ceil(max(0, (t - issue).total_seconds()) / 86400.0))
             if lead not in (1, 2, 3, 4):
+                bump("lead_out_of_range")
+                continue
+            seen_slots_by_lead[lead] += 1
+            if t < cutoff:
+                bump("target_before_score_window", lead)
+                continue
+            if t > now_utc() + timedelta(hours=1):
+                bump("target_in_future_no_actual_tec_yet", lead)
                 continue
 
             try:
                 kp_f = float(slot.get("kp_forecast"))
             except Exception:
+                bump("kp_forecast_parse_failed", lead)
                 continue
 
             base_time = t - timedelta(days=lead)
             meta_f = nearest_meta(metas, t)
             meta_b = nearest_meta(metas, base_time)
-            if not meta_f or not meta_b:
+            if not meta_f:
+                bump("target_tec_frame_missing", lead)
                 continue
+            if not meta_b:
+                bump("base_tec_frame_missing", lead)
+                continue
+
             kp_b = kp_at(base_time, actual_kp)
             if kp_b is None:
+                bump("base_kp_missing", lead)
                 continue
 
             try:
@@ -485,13 +554,16 @@ def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]], actual
                 _, _, vals_f = flatten_grid(frame_f)
                 _, _, vals_b = flatten_grid(frame_b)
             except Exception:
+                bump("tec_frame_load_error", lead)
                 continue
             if len(vals_f) != n_lat * n_lon or len(vals_b) != n_lat * n_lon:
+                bump("tec_grid_size_mismatch", lead)
                 continue
 
             month = t.month
             slot_count_by_lead[lead] += 1
             used_source_by_lead[lead][slot.get("forecast_source") or issue_source] += 1
+            before = len(errors_by_lead[lead])
             for idx in range(0, n_lat * n_lon, step):
                 vf = vals_f[idx]
                 vb = vals_b[idx]
@@ -501,31 +573,59 @@ def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]], actual
                 cf = coeff_for_cell(coeff_doc, month, i, j)
                 forecast_tec = vb - predict(cf, kp_b) + predict(cf, kp_f)
                 errors_by_lead[lead].append(vf - forecast_tec)
+            if len(errors_by_lead[lead]) == before:
+                bump("no_finite_tec_cells", lead)
 
     by_lead = {}
     cold_used = False
+    total_samples = 0
     for lead in (1, 2, 3, 4):
         errs = errors_by_lead.get(lead, [])
+        total_samples += len(errs)
         sources = dict(used_source_by_lead.get(lead, Counter()))
         if any("cold_start" in k for k in sources):
             cold_used = True
+        th = threshold_summary(errs)
         by_lead[str(lead)] = {
             "lead_day": lead,
             "slot_count": int(slot_count_by_lead.get(lead, 0)),
+            "seen_slot_count": int(seen_slots_by_lead.get(lead, 0)),
             "forecast_sources": sources,
-            "thresholds": threshold_summary(errs),
-            **threshold_summary(errs).get("5", {}),
+            "thresholds": th,
+            **th.get("5", {}),
         }
 
+    diagnostics["seen_slots_by_lead"] = {str(k): int(v) for k, v in seen_slots_by_lead.items()}
+    diagnostics["used_slots_by_lead"] = {str(k): int(v) for k, v in slot_count_by_lead.items()}
+    diagnostics["total_error_samples"] = total_samples
+
     source_counts = Counter()
+    cold_issue_count = 0
     for f in doc.get("forecasts", []):
-        source_counts[f.get("source_type") or f.get("source_url") or "unknown"] += 1
+        src = f.get("source_type") or f.get("source_url") or "unknown"
+        source_counts[src] += 1
+        if "cold_start" in str(src):
+            cold_issue_count += 1
+
+    reason = None
+    if total_samples == 0:
+        sc = diagnostics["skip_counts"]
+        if sc.get("target_tec_frame_missing") or sc.get("base_tec_frame_missing"):
+            reason = "TEC実測アーカイブとKp予報時刻がまだ一致していないため N=0"
+        elif sc.get("target_in_future_no_actual_tec_yet"):
+            reason = "予報対象時刻がまだ未来で、実測TECがないため N=0"
+        elif not any(seen_slots_by_lead.values()):
+            reason = "採点対象のKp予報スロットがないため N=0"
+        else:
+            reason = "採点対象はありますが、TEC/Kp/格子の照合で有効サンプルが0です"
 
     return {
-        "version": "swifttec-operational-hit-rate-v2",
+        "version": "swifttec-operational-hit-rate-v3",
         "updated_utc": updated,
         "definition": "Operational hit rate uses archived forecast Kp. If cold_start_actual_kp_history is present, the initial display includes a labelled Kp-history pseudo forecast until real forecast archives accumulate.",
+        "reason": reason,
         "forecast_issue_count": len(doc.get("forecasts", [])),
+        "cold_start_issue_count": cold_issue_count,
         "score_days_back": SCORE_DAYS_BACK,
         "actual_kp_source_url": actual_source_url,
         "actual_kp_count": len(actual_kp),
@@ -533,8 +633,10 @@ def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]], actual
         "cold_start_backfill_used_in_score": cold_used,
         "cold_start_note": "cold_start_actual_kp_history uses actual historical Kp and should be treated as initial/reference display, not a true past forecast reconstruction.",
         "max_cell_samples_per_frame": MAX_CELL_SAMPLES_PER_FRAME,
+        "score_diagnostics": diagnostics,
         "by_lead_day": by_lead,
     }
+
 
 
 def fetch_forecast_slots(issue: datetime) -> tuple[list[dict], str, str]:
