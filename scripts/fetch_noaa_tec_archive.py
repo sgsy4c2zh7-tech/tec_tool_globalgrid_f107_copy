@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch NOAA SWPC GloTEC GeoJSON frames at 30-minute target slots and maintain a 30-day archive.
+"""Fetch/backfill NOAA SWPC GloTEC GeoJSON frames at 30-minute target slots and maintain a 30-day archive.
 
 Output layout:
   docs/data/tec/index.json
@@ -27,9 +27,9 @@ OUT_ROOT = Path(os.environ.get("SWIFTTEC_TEC_ROOT", "docs/data/tec"))
 KEEP_DAYS = int(os.environ.get("SWIFTTEC_KEEP_DAYS", "30"))
 TARGET_LAT_STEP = float(os.environ.get("SWIFTTEC_LAT_STEP", "2.0"))
 TARGET_LON_STEP = float(os.environ.get("SWIFTTEC_LON_STEP", "5.0"))
-LOOKBACK_HOURS = int(os.environ.get("SWIFTTEC_LOOKBACK_HOURS", "6"))
+LOOKBACK_HOURS = int(os.environ.get("SWIFTTEC_LOOKBACK_HOURS", "120"))
 TARGET_INTERVAL_MIN = int(os.environ.get("SWIFTTEC_TARGET_INTERVAL_MIN", "30"))
-MAX_PER_RUN = int(os.environ.get("SWIFTTEC_MAX_PER_RUN", "24"))
+MAX_PER_RUN = int(os.environ.get("SWIFTTEC_MAX_PER_RUN", "240"))
 MAX_DIFF_MIN = int(os.environ.get("SWIFTTEC_MAX_DIFF_MIN", "20"))
 UTC = timezone.utc
 
@@ -252,7 +252,7 @@ def rebuild_index(now: datetime) -> dict:
             except Exception:
                 pass
     return {
-        "version": "swifttec-tec-archive-v2-noaa30min",
+        "version": "swifttec-tec-archive-v3-noaa30min-backfill",
         "updated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "keep_days": KEEP_DAYS,
         "lat_step": TARGET_LAT_STEP,
