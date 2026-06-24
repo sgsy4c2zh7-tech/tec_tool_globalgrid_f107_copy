@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Archive NOAA forecast Kp and score operational TEC hit rate by lead day.
 
-Purpose:
-- Keep model-hit-rate (actual Kp) separate from operational-hit-rate (forecast Kp).
-- Archive forecast Kp daily.
-- Score TEC forecast errors by lead day 1,2,3,4 when historical forecast and actual TEC are available.
+v7.8 changes:
+- Pulls a longer Kp actual history first from SWPC json/planetary_k_index_1m.json.
+- Uses SWPC noaa-planetary-k-index-forecast.json when available, with text forecast fallback.
+- Cold-start fills the first score window with a clearly-labelled Kp-history backfill so the UI is not stuck at N=0.
+  This backfill is for initial display only; subsequent real forecast archives remain separated by source.
 
 Outputs:
 - docs/data/ai/kp_forecast_archive.json
@@ -17,7 +18,7 @@ import json
 import math
 import os
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -27,15 +28,21 @@ TEC_ROOT = Path(os.environ.get("SWIFTTEC_TEC_ROOT", "docs/data/tec"))
 AI_ROOT = Path(os.environ.get("SWIFTTEC_AI_ROOT", "docs/data/ai"))
 AI_ROOT.mkdir(parents=True, exist_ok=True)
 
-KP_ACTUAL_URL = os.environ.get("SWIFTTEC_KP_ACTUAL_URL", "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json")
-KP_FORECAST_URL = os.environ.get("SWIFTTEC_KP_FORECAST_URL", "https://services.swpc.noaa.gov/text/3-day-forecast.txt")
+KP_ACTUAL_URLS = [
+    os.environ.get("SWIFTTEC_KP_ACTUAL_1M_URL", "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json"),
+    os.environ.get("SWIFTTEC_KP_ACTUAL_URL", "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"),
+]
+KP_FORECAST_JSON_URL = os.environ.get("SWIFTTEC_KP_FORECAST_JSON_URL", "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json")
+KP_FORECAST_TEXT_URL = os.environ.get("SWIFTTEC_KP_FORECAST_URL", "https://services.swpc.noaa.gov/text/3-day-forecast.txt")
 
 ARCHIVE_PATH = AI_ROOT / "kp_forecast_archive.json"
 OP_PATH = AI_ROOT / "operational_hit_rate.json"
-MAX_FORECAST_ISSUES = int(os.environ.get("SWIFTTEC_KP_FORECAST_ARCHIVE_MAX", "240"))
+MAX_FORECAST_ISSUES = int(os.environ.get("SWIFTTEC_KP_FORECAST_ARCHIVE_MAX", "360"))
 SCORE_DAYS_BACK = int(os.environ.get("SWIFTTEC_OPERATIONAL_SCORE_DAYS", "90"))
 PAIR_TOLERANCE_MIN = int(os.environ.get("SWIFTTEC_OPERATIONAL_TEC_TOLERANCE_MIN", "45"))
 MAX_CELL_SAMPLES_PER_FRAME = int(os.environ.get("SWIFTTEC_OPERATIONAL_MAX_CELL_SAMPLES_PER_FRAME", "10000"))
+COLDSTART_DAYS = int(os.environ.get("SWIFTTEC_KP_COLDSTART_DAYS", "30"))
+ENABLE_COLDSTART = os.environ.get("SWIFTTEC_KP_COLDSTART_BACKFILL", "1").lower() not in ("0", "false", "no")
 
 
 def now_utc() -> datetime:
@@ -62,14 +69,14 @@ def parse_time(s: str) -> datetime | None:
     return None
 
 
-def fetch_text(url: str) -> str:
-    req = Request(url, headers={"User-Agent": "SWIFT-TEC-kp-forecast-archive/1.0"})
-    with urlopen(req, timeout=60) as res:
+def fetch_text(url: str, timeout: int = 60) -> str:
+    req = Request(url, headers={"User-Agent": "SWIFT-TEC-kp-forecast-archive/1.1"})
+    with urlopen(req, timeout=timeout) as res:
         return res.read().decode("utf-8", errors="replace")
 
 
 def fetch_json(url: str):
-    return json.loads(fetch_text(url))
+    return json.loads(fetch_text(url, timeout=60))
 
 
 def parse_actual_kp(obj) -> list[tuple[datetime, float]]:
@@ -79,22 +86,45 @@ def parse_actual_kp(obj) -> list[tuple[datetime, float]]:
     for r in obj:
         if isinstance(r, list) and len(r) >= 2:
             t = parse_time(r[0])
-            try:
-                kp = float(r[1])
-            except Exception:
-                continue
-            if t and math.isfinite(kp):
-                rows.append((t, kp))
+            kp_raw = r[1]
         elif isinstance(r, dict):
-            t = parse_time(r.get("time_tag") or r.get("time") or r.get("t"))
-            try:
-                kp = float(r.get("kp_index") or r.get("kp") or r.get("Kp"))
-            except Exception:
-                continue
-            if t and math.isfinite(kp):
-                rows.append((t, kp))
+            t = parse_time(r.get("time_tag") or r.get("time") or r.get("t") or r.get("time_utc"))
+            kp_raw = r.get("kp_index")
+            if kp_raw is None:
+                kp_raw = r.get("Kp")
+            if kp_raw is None:
+                kp_raw = r.get("kp")
+            if kp_raw is None:
+                kp_raw = r.get("k_index")
+        else:
+            continue
+        try:
+            kp = float(kp_raw)
+        except Exception:
+            continue
+        if t and math.isfinite(kp):
+            rows.append((t, kp))
     rows.sort(key=lambda x: x[0])
-    return rows
+    # De-duplicate by exact timestamp, prefer later endpoint rows.
+    dedup: dict[str, tuple[datetime, float]] = {}
+    for t, kp in rows:
+        dedup[iso(t)] = (t, kp)
+    return sorted(dedup.values(), key=lambda x: x[0])
+
+
+def fetch_actual_kp_history() -> tuple[list[tuple[datetime, float]], str, list[str]]:
+    errors = []
+    best_rows: list[tuple[datetime, float]] = []
+    best_url = ""
+    for url in KP_ACTUAL_URLS:
+        try:
+            rows = parse_actual_kp(fetch_json(url))
+            if len(rows) > len(best_rows):
+                best_rows = rows
+                best_url = url
+        except Exception as e:
+            errors.append(f"{url}: {e}")
+    return best_rows, best_url, errors
 
 
 def kp_at(t: datetime, rows: list[tuple[datetime, float]], max_diff_hours: float = 2.0) -> float | None:
@@ -110,14 +140,41 @@ def kp_at(t: datetime, rows: list[tuple[datetime, float]], max_diff_hours: float
     return float(best)
 
 
-def parse_3day_kp_forecast(text: str, issue: datetime) -> list[dict]:
-    """Parse SWPC 3-day forecast text.
+def parse_forecast_json_slots(obj, issue: datetime) -> list[dict]:
+    slots = []
+    if not isinstance(obj, list):
+        return slots
+    for r in obj:
+        if not isinstance(r, dict):
+            continue
+        t = parse_time(r.get("time_tag") or r.get("time") or r.get("time_utc"))
+        if not t:
+            continue
+        try:
+            kp = float(r.get("kp") if r.get("kp") is not None else r.get("Kp"))
+        except Exception:
+            continue
+        status = str(r.get("observed") or r.get("status") or "").lower()
+        # Archive forecast-side values only. Observed history belongs in actual Kp, not forecast archive.
+        if status == "observed":
+            continue
+        lead_hours = (t - issue).total_seconds() / 3600.0
+        if lead_hours < -9:
+            continue
+        lead_day = max(0, int(math.ceil(max(0.0, lead_hours) / 24.0)))
+        slots.append({
+            "time_utc": iso(t),
+            "kp_forecast": kp,
+            "lead_hours": round(lead_hours, 2),
+            "lead_day": lead_day,
+            "forecast_source": f"swpc_json_{status or 'forecast'}",
+        })
+    slots.sort(key=lambda x: x["time_utc"])
+    return slots
 
-    Expected table resembles:
-      NOAA Kp index forecast  Jun 21  Jun 22  Jun 23
-      00-03UT        2.67      2.67      2.33
-    The parser is deliberately tolerant.
-    """
+
+def parse_3day_kp_forecast(text: str, issue: datetime) -> list[dict]:
+    """Parse SWPC 3-day forecast text."""
     lines = text.splitlines()
     header_idx = None
     header = ""
@@ -129,13 +186,11 @@ def parse_3day_kp_forecast(text: str, issue: datetime) -> list[dict]:
     if header_idx is None:
         return []
 
-    # Dates may appear as MM-DD, Mon DD, or just columns. Try to extract month/day.
     date_tokens: list[tuple[int, int]] = []
     for m in re.finditer(r"(\d{1,2})[-/](\d{1,2})", header):
         date_tokens.append((int(m.group(1)), int(m.group(2))))
 
     if not date_tokens:
-        # Fallback: issue day, issue+1, issue+2
         date_tokens = []
         for k in range(3):
             d = (issue + timedelta(days=k)).date()
@@ -156,7 +211,6 @@ def parse_3day_kp_forecast(text: str, issue: datetime) -> list[dict]:
         for col, kp in enumerate(vals[:len(date_tokens)]):
             month, day = date_tokens[col]
             year = base_year
-            # Basic year rollover handling.
             if month < prev_month - 6:
                 year += 1
             try:
@@ -172,6 +226,7 @@ def parse_3day_kp_forecast(text: str, issue: datetime) -> list[dict]:
                 "kp_forecast": kp,
                 "lead_hours": round(lead_hours, 2),
                 "lead_day": lead_day,
+                "forecast_source": "swpc_text_3day",
             })
     slots.sort(key=lambda x: x["time_utc"])
     return slots
@@ -179,27 +234,95 @@ def parse_3day_kp_forecast(text: str, issue: datetime) -> list[dict]:
 
 def load_archive() -> dict:
     if not ARCHIVE_PATH.exists():
-        return {"version": "swifttec-kp-forecast-archive-v1", "forecasts": []}
+        return {"version": "swifttec-kp-forecast-archive-v2", "forecasts": []}
     try:
         return json.loads(ARCHIVE_PATH.read_text(encoding="utf-8"))
     except Exception:
-        return {"version": "swifttec-kp-forecast-archive-v1", "forecasts": []}
+        return {"version": "swifttec-kp-forecast-archive-v2", "forecasts": []}
 
 
 def save_archive(doc: dict) -> None:
-    doc["version"] = "swifttec-kp-forecast-archive-v1"
-    # De-duplicate by issue hour.
+    doc["version"] = "swifttec-kp-forecast-archive-v2"
     seen = set()
     forecasts = []
-    for f in sorted(doc.get("forecasts", []), key=lambda x: x.get("issue_utc", "")):
+    # Prefer real forecast over cold-start if issue hour collides.
+    def priority(f):
+        src = f.get("source_type") or f.get("source_url") or ""
+        cold = 1 if "cold_start" in str(src) else 0
+        return (f.get("issue_utc", ""), cold)
+    for f in sorted(doc.get("forecasts", []), key=priority):
         key = f.get("issue_utc", "")[:13]
         if key in seen:
             continue
         seen.add(key)
         forecasts.append(f)
-    doc["forecasts"] = forecasts[-MAX_FORECAST_ISSUES:]
+    doc["forecasts"] = sorted(forecasts, key=lambda x: x.get("issue_utc", ""))[-MAX_FORECAST_ISSUES:]
     doc["updated_utc"] = iso(now_utc())
     ARCHIVE_PATH.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def add_coldstart_forecasts(doc: dict, actual_kp: list[tuple[datetime, float]], days: int = COLDSTART_DAYS) -> int:
+    """Create clearly-labelled initial slots from Kp history.
+
+    This is not a reconstruction of historical SWPC forecasts. It only prevents a new install from
+    showing N=0 while real forecast issues start accumulating from GitHub Actions.
+    """
+    if not ENABLE_COLDSTART or not actual_kp:
+        return 0
+    existing_cold = sum(1 for f in doc.get("forecasts", []) if f.get("source_type") == "cold_start_actual_kp_history")
+    if existing_cold > 0:
+        return 0
+
+    now = now_utc()
+    cutoff = now - timedelta(days=days)
+    kp_rows = [(t, kp) for t, kp in actual_kp if cutoff <= t <= now - timedelta(hours=3)]
+    if not kp_rows:
+        return 0
+
+    by_issue: dict[str, dict] = {}
+    # One synthetic issue per 00Z day; each issue contains targets at +1..+4 days.
+    first_issue_day = (kp_rows[0][0] - timedelta(days=4)).date()
+    last_issue_day = (kp_rows[-1][0] - timedelta(days=1)).date()
+    issue_day = first_issue_day
+    while issue_day <= last_issue_day:
+        issue = datetime(issue_day.year, issue_day.month, issue_day.day, tzinfo=UTC)
+        slots = []
+        for t, kp in kp_rows:
+            lead_hours = (t - issue).total_seconds() / 3600.0
+            if 0 < lead_hours <= 4 * 24 + 3:
+                lead_day = int(math.ceil(lead_hours / 24.0))
+                if lead_day in (1, 2, 3, 4):
+                    slots.append({
+                        "time_utc": iso(t),
+                        "kp_forecast": kp,
+                        "lead_hours": round(lead_hours, 2),
+                        "lead_day": lead_day,
+                        "forecast_source": "cold_start_actual_kp_history",
+                    })
+        if slots:
+            by_issue[iso(issue)] = {
+                "issue_utc": iso(issue),
+                "source_type": "cold_start_actual_kp_history",
+                "source_url": KP_ACTUAL_URLS[0],
+                "horizon_note": "Cold-start backfill uses historical actual Kp as a temporary pseudo-forecast. Real operational forecast scoring uses subsequently archived predicted Kp.",
+                "slots": slots,
+            }
+        issue_day = issue_day + timedelta(days=1)
+
+    existing = {f.get("issue_utc", "")[:13] for f in doc.get("forecasts", [])}
+    added = 0
+    for key, f in by_issue.items():
+        if key[:13] not in existing:
+            doc.setdefault("forecasts", []).append(f)
+            added += 1
+    if added:
+        doc["cold_start_backfill"] = {
+            "enabled": True,
+            "days": days,
+            "issue_count_added": added,
+            "note": "Initial fill only; source is actual Kp history, not historical issued forecasts.",
+        }
+    return added
 
 
 def load_json_maybe_gz(path: Path):
@@ -305,26 +428,27 @@ def threshold_summary(errors: list[float]) -> dict:
     return out
 
 
-def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]]) -> dict:
+def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]], actual_source_url: str = "") -> dict:
     metas = load_frame_meta()
     coeff_doc = load_coeff_doc()
     updated = iso(now_utc())
     if not metas:
-        return {"version": "swifttec-operational-hit-rate-v1", "updated_utc": updated, "reason": "no TEC archive", "by_lead_day": {}}
+        return {"version": "swifttec-operational-hit-rate-v2", "updated_utc": updated, "reason": "no TEC archive", "by_lead_day": {}}
     if not coeff_doc:
-        return {"version": "swifttec-operational-hit-rate-v1", "updated_utc": updated, "reason": "no kp_grid_coefficients.json", "by_lead_day": {}}
+        return {"version": "swifttec-operational-hit-rate-v2", "updated_utc": updated, "reason": "no kp_grid_coefficients.json", "by_lead_day": {}}
     if not actual_kp:
-        return {"version": "swifttec-operational-hit-rate-v1", "updated_utc": updated, "reason": "no actual Kp", "by_lead_day": {}}
+        return {"version": "swifttec-operational-hit-rate-v2", "updated_utc": updated, "reason": "no actual Kp", "by_lead_day": {}}
 
     first = load_json_maybe_gz(metas[0]["path"])
     lat_arr, lon_arr, _ = flatten_grid(first)
     n_lat, n_lon = len(lat_arr), len(lon_arr)
     if not n_lat or not n_lon:
-        return {"version": "swifttec-operational-hit-rate-v1", "updated_utc": updated, "reason": "empty TEC grid", "by_lead_day": {}}
+        return {"version": "swifttec-operational-hit-rate-v2", "updated_utc": updated, "reason": "empty TEC grid", "by_lead_day": {}}
 
     step = max(1, int(math.ceil((n_lat * n_lon) / MAX_CELL_SAMPLES_PER_FRAME)))
     errors_by_lead: dict[int, list[float]] = defaultdict(list)
     slot_count_by_lead: dict[int, int] = defaultdict(int)
+    used_source_by_lead: dict[int, Counter] = defaultdict(Counter)
 
     cutoff = now_utc() - timedelta(days=SCORE_DAYS_BACK)
 
@@ -332,6 +456,7 @@ def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]]) -> dic
         issue = parse_time(forecast.get("issue_utc"))
         if not issue or issue < cutoff - timedelta(days=5):
             continue
+        issue_source = forecast.get("source_type") or forecast.get("source_url") or "unknown"
         for slot in forecast.get("slots", []):
             t = parse_time(slot.get("time_utc"))
             if not t or t < cutoff:
@@ -366,6 +491,7 @@ def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]]) -> dic
 
             month = t.month
             slot_count_by_lead[lead] += 1
+            used_source_by_lead[lead][slot.get("forecast_source") or issue_source] += 1
             for idx in range(0, n_lat * n_lon, step):
                 vf = vals_f[idx]
                 vb = vals_b[idx]
@@ -377,49 +503,82 @@ def score_operational(doc: dict, actual_kp: list[tuple[datetime, float]]) -> dic
                 errors_by_lead[lead].append(vf - forecast_tec)
 
     by_lead = {}
+    cold_used = False
     for lead in (1, 2, 3, 4):
         errs = errors_by_lead.get(lead, [])
+        sources = dict(used_source_by_lead.get(lead, Counter()))
+        if any("cold_start" in k for k in sources):
+            cold_used = True
         by_lead[str(lead)] = {
             "lead_day": lead,
             "slot_count": int(slot_count_by_lead.get(lead, 0)),
+            "forecast_sources": sources,
             "thresholds": threshold_summary(errs),
             **threshold_summary(errs).get("5", {}),
         }
 
+    source_counts = Counter()
+    for f in doc.get("forecasts", []):
+        source_counts[f.get("source_type") or f.get("source_url") or "unknown"] += 1
+
     return {
-        "version": "swifttec-operational-hit-rate-v1",
+        "version": "swifttec-operational-hit-rate-v2",
         "updated_utc": updated,
-        "definition": "Operational hit rate uses archived forecast Kp, not actual Kp, in ForecastTEC = BaseTEC + F(KpForecast).",
+        "definition": "Operational hit rate uses archived forecast Kp. If cold_start_actual_kp_history is present, the initial display includes a labelled Kp-history pseudo forecast until real forecast archives accumulate.",
         "forecast_issue_count": len(doc.get("forecasts", [])),
         "score_days_back": SCORE_DAYS_BACK,
+        "actual_kp_source_url": actual_source_url,
+        "actual_kp_count": len(actual_kp),
+        "forecast_issue_source_counts": dict(source_counts),
+        "cold_start_backfill_used_in_score": cold_used,
+        "cold_start_note": "cold_start_actual_kp_history uses actual historical Kp and should be treated as initial/reference display, not a true past forecast reconstruction.",
         "max_cell_samples_per_frame": MAX_CELL_SAMPLES_PER_FRAME,
         "by_lead_day": by_lead,
     }
 
 
+def fetch_forecast_slots(issue: datetime) -> tuple[list[dict], str, str]:
+    try:
+        slots = parse_forecast_json_slots(fetch_json(KP_FORECAST_JSON_URL), issue)
+        if slots:
+            return slots, KP_FORECAST_JSON_URL, "swpc_json_forecast"
+    except Exception:
+        pass
+    text = fetch_text(KP_FORECAST_TEXT_URL)
+    return parse_3day_kp_forecast(text, issue), KP_FORECAST_TEXT_URL, "swpc_text_3day"
+
+
 def main() -> int:
     issue = now_utc()
-    text = fetch_text(KP_FORECAST_URL)
-    slots = parse_3day_kp_forecast(text, issue)
+    actual_kp, actual_source_url, actual_errors = fetch_actual_kp_history()
+
+    slots, forecast_url, forecast_source_type = fetch_forecast_slots(issue)
 
     archive = load_archive()
     archive.setdefault("forecasts", []).append({
         "issue_utc": iso(issue),
-        "source_url": KP_FORECAST_URL,
-        "horizon_note": "SWPC 3-day forecast is archived when available. Lead 4 requires a forecast source with >=4-day horizon; otherwise N remains 0.",
+        "source_url": forecast_url,
+        "source_type": forecast_source_type,
+        "horizon_note": "SWPC forecast is archived when available. Lead 4 requires >=4-day forecast data or cold-start/reference backfill.",
         "slots": slots,
     })
+
+    cold_added = add_coldstart_forecasts(archive, actual_kp, days=COLDSTART_DAYS)
+    archive["actual_kp_source_url"] = actual_source_url
+    archive["actual_kp_count_latest_fetch"] = len(actual_kp)
+    if actual_errors:
+        archive["actual_kp_fetch_errors"] = actual_errors
+    archive["last_forecast_source_type"] = forecast_source_type
+    archive["last_forecast_slot_count"] = len(slots)
+    archive["cold_start_issue_added_latest_run"] = cold_added
     save_archive(archive)
 
-    try:
-        actual_kp = parse_actual_kp(fetch_json(KP_ACTUAL_URL))
-    except Exception:
-        actual_kp = []
-
-    scored = score_operational(archive, actual_kp)
+    scored = score_operational(archive, actual_kp, actual_source_url=actual_source_url)
     OP_PATH.write_text(json.dumps(scored, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"Archived forecast slots: {len(slots)}")
+    print(f"Actual Kp rows: {len(actual_kp)} from {actual_source_url or 'none'}")
+    print(f"Archived forecast slots: {len(slots)} from {forecast_source_type}")
+    print(f"Cold-start issues added: {cold_added}")
     print(f"Forecast issues: {len(archive.get('forecasts', []))}")
     print(f"Operational score written: {OP_PATH}")
     return 0
