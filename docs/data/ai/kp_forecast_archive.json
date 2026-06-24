@@ -1,11 +1,2561 @@
 {
-  "version": "swifttec-kp-forecast-archive-v1",
+  "version": "swifttec-kp-forecast-archive-v2",
   "forecasts": [
+    {
+      "issue_utc": "2026-06-21T00:00:00Z",
+      "source_type": "cold_start_actual_kp_history",
+      "source_url": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
+      "horizon_note": "Cold-start backfill uses historical actual Kp as a temporary pseudo-forecast. Real operational forecast scoring uses subsequently archived predicted Kp.",
+      "slots": [
+        {
+          "time_utc": "2026-06-24T05:17:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.28,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:18:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.3,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:19:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.32,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:20:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.33,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:21:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.35,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:22:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.37,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:23:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.38,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:24:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.4,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:25:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.42,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:26:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.43,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:27:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.45,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:28:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.47,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:29:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.48,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:30:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.5,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:31:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.52,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:32:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.53,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:33:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.55,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:34:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.57,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:35:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.58,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:36:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.6,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:37:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.62,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:38:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.63,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:39:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.65,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:40:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.67,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:41:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.68,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:42:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.7,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:43:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.72,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:44:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.73,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:45:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.75,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:46:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.77,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:47:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.78,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:48:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.8,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:49:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.82,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:50:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.83,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:51:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.85,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:52:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.87,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:53:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.88,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:54:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.9,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:55:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.92,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:56:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.93,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:57:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.95,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:58:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.97,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:59:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 77.98,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:00:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.0,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:01:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.02,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:02:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.03,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:03:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.05,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:04:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.07,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:05:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.08,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:06:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.1,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:07:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.12,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:08:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.13,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:09:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.15,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:10:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.17,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:11:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.18,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:12:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.2,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:13:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.22,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:14:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.23,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:15:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.25,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:16:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.27,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:17:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.28,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:18:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.3,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:19:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.32,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:20:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.33,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:21:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.35,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:22:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.37,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:23:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.38,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:24:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 78.4,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:25:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.42,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:26:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.43,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:27:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.45,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:28:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.47,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:29:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.48,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:30:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.5,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:31:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.52,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:32:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.53,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:33:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.55,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:34:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.57,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:35:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.58,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:36:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.6,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:37:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.62,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:38:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.63,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:39:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.65,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:40:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.67,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:41:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 78.68,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:42:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.7,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:43:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.72,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:44:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.73,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:45:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.75,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:46:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.77,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:47:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.78,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:48:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.8,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:49:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.82,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:50:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.83,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:51:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.85,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:52:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.87,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:53:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.88,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:54:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.9,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:55:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.92,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:56:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.93,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:57:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.95,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:58:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.97,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:59:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 78.98,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:00:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.0,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:01:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.02,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:02:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.03,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:03:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.05,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:04:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.07,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:05:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.08,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:06:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.1,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:07:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.12,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:08:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.13,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:09:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.15,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:10:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.17,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:11:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.18,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:12:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.2,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:13:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.22,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:14:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.23,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:15:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.25,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:16:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.27,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:17:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.28,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:18:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.3,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:19:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.32,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:20:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.33,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:21:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.35,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:22:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.37,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:23:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.38,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:24:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.4,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:25:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.42,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:26:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.43,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:27:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.45,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:28:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.47,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:29:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.48,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:30:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.5,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:31:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.52,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:32:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.53,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:33:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.55,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:34:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.57,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:35:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.58,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:36:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.6,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:37:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.62,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:38:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.63,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:39:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.65,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:40:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.67,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:41:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.68,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:42:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.7,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:43:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.72,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:44:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.73,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:45:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.75,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:46:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.77,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:47:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.78,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:48:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.8,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:49:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.82,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:50:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.83,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:51:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.85,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:52:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.87,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:53:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.88,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:54:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.9,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:55:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.92,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:56:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.93,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:57:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.95,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:58:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.97,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:59:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 79.98,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:00:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.0,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:01:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.02,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:02:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.03,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:03:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.05,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:04:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.07,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:05:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.08,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:06:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.1,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:07:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.12,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:08:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.13,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:09:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.15,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:10:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.17,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:11:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.18,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:12:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.2,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:13:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.22,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:14:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.23,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:15:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.25,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:16:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.27,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:17:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 80.28,
+          "lead_day": 4,
+          "forecast_source": "cold_start_actual_kp_history"
+        }
+      ]
+    },
     {
       "issue_utc": "2026-06-21T08:55:39Z",
       "source_url": "https://services.swpc.noaa.gov/text/3-day-forecast.txt",
       "horizon_note": "SWPC 3-day forecast is archived when available. Lead 4 requires a forecast source with >=4-day horizon; otherwise N remains 0.",
       "slots": []
+    },
+    {
+      "issue_utc": "2026-06-22T00:00:00Z",
+      "source_type": "cold_start_actual_kp_history",
+      "source_url": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
+      "horizon_note": "Cold-start backfill uses historical actual Kp as a temporary pseudo-forecast. Real operational forecast scoring uses subsequently archived predicted Kp.",
+      "slots": [
+        {
+          "time_utc": "2026-06-24T05:17:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.28,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:18:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.3,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:19:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.32,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:20:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.33,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:21:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.35,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:22:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.37,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:23:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.38,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:24:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.4,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:25:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.42,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:26:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.43,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:27:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.45,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:28:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.47,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:29:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.48,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:30:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.5,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:31:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.52,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:32:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.53,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:33:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.55,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:34:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.57,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:35:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.58,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:36:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.6,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:37:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.62,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:38:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.63,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:39:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.65,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:40:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.67,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:41:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.68,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:42:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.7,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:43:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.72,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:44:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.73,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:45:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.75,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:46:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.77,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:47:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.78,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:48:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.8,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:49:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.82,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:50:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.83,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:51:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.85,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:52:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.87,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:53:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.88,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:54:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.9,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:55:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.92,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:56:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.93,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:57:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.95,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:58:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.97,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:59:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 53.98,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:00:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.0,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:01:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.02,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:02:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.03,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:03:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.05,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:04:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.07,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:05:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.08,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:06:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.1,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:07:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.12,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:08:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.13,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:09:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.15,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:10:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.17,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:11:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.18,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:12:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.2,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:13:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.22,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:14:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.23,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:15:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.25,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:16:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.27,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:17:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.28,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:18:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.3,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:19:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.32,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:20:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.33,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:21:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.35,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:22:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.37,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:23:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.38,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:24:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 54.4,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:25:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.42,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:26:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.43,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:27:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.45,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:28:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.47,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:29:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.48,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:30:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.5,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:31:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.52,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:32:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.53,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:33:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.55,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:34:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.57,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:35:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.58,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:36:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.6,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:37:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.62,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:38:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.63,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:39:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.65,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:40:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.67,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:41:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 54.68,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:42:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.7,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:43:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.72,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:44:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.73,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:45:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.75,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:46:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.77,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:47:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.78,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:48:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.8,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:49:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.82,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:50:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.83,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:51:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.85,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:52:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.87,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:53:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.88,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:54:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.9,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:55:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.92,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:56:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.93,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:57:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.95,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:58:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.97,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:59:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 54.98,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:00:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.0,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:01:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.02,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:02:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.03,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:03:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.05,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:04:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.07,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:05:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.08,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:06:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.1,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:07:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.12,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:08:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.13,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:09:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.15,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:10:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.17,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:11:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.18,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:12:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.2,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:13:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.22,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:14:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.23,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:15:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.25,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:16:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.27,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:17:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.28,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:18:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.3,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:19:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.32,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:20:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.33,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:21:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.35,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:22:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.37,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:23:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.38,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:24:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.4,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:25:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.42,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:26:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.43,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:27:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.45,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:28:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.47,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:29:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.48,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:30:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.5,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:31:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.52,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:32:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.53,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:33:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.55,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:34:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.57,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:35:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.58,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:36:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.6,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:37:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.62,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:38:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.63,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:39:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.65,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:40:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.67,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:41:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.68,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:42:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.7,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:43:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.72,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:44:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.73,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:45:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.75,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:46:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.77,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:47:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.78,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:48:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.8,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:49:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.82,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:50:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.83,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:51:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.85,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:52:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.87,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:53:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.88,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:54:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.9,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:55:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.92,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:56:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.93,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:57:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.95,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:58:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.97,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:59:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 55.98,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:00:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.0,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:01:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.02,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:02:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.03,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:03:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.05,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:04:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.07,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:05:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.08,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:06:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.1,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:07:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.12,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:08:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.13,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:09:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.15,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:10:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.17,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:11:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.18,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:12:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.2,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:13:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.22,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:14:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.23,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:15:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.25,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:16:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.27,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:17:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 56.28,
+          "lead_day": 3,
+          "forecast_source": "cold_start_actual_kp_history"
+        }
+      ]
     },
     {
       "issue_utc": "2026-06-22T02:12:22Z",
@@ -20,6 +2570,1281 @@
       "slots": []
     },
     {
+      "issue_utc": "2026-06-23T00:00:00Z",
+      "source_type": "cold_start_actual_kp_history",
+      "source_url": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
+      "horizon_note": "Cold-start backfill uses historical actual Kp as a temporary pseudo-forecast. Real operational forecast scoring uses subsequently archived predicted Kp.",
+      "slots": [
+        {
+          "time_utc": "2026-06-24T05:17:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.28,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:18:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.3,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:19:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.32,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:20:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.33,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:21:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.35,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:22:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.37,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:23:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.38,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:24:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.4,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:25:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.42,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:26:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.43,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:27:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.45,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:28:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.47,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:29:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.48,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:30:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.5,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:31:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.52,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:32:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.53,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:33:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.55,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:34:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.57,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:35:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.58,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:36:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.6,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:37:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.62,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:38:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.63,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:39:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.65,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:40:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.67,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:41:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.68,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:42:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.7,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:43:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.72,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:44:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.73,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:45:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.75,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:46:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.77,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:47:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.78,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:48:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.8,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:49:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.82,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:50:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.83,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:51:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.85,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:52:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.87,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:53:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.88,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:54:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.9,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:55:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.92,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:56:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.93,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:57:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.95,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:58:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.97,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T05:59:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 29.98,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:00:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.0,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:01:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.02,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:02:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.03,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:03:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.05,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:04:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.07,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:05:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.08,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:06:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.1,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:07:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.12,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:08:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.13,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:09:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.15,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:10:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.17,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:11:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.18,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:12:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.2,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:13:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.22,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:14:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.23,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:15:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.25,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:16:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.27,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:17:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.28,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:18:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.3,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:19:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.32,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:20:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.33,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:21:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.35,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:22:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.37,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:23:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.38,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:24:00Z",
+          "kp_forecast": 0.0,
+          "lead_hours": 30.4,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:25:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.42,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:26:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.43,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:27:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.45,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:28:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.47,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:29:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.48,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:30:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.5,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:31:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.52,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:32:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.53,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:33:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.55,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:34:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.57,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:35:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.58,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:36:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.6,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:37:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.62,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:38:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.63,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:39:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.65,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:40:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.67,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:41:00Z",
+          "kp_forecast": 1.0,
+          "lead_hours": 30.68,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:42:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.7,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:43:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.72,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:44:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.73,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:45:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.75,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:46:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.77,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:47:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.78,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:48:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.8,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:49:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.82,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:50:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.83,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:51:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.85,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:52:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.87,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:53:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.88,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:54:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.9,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:55:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.92,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:56:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.93,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:57:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.95,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:58:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.97,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T06:59:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 30.98,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:00:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.0,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:01:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.02,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:02:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.03,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:03:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.05,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:04:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.07,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:05:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.08,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:06:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.1,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:07:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.12,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:08:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.13,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:09:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.15,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:10:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.17,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:11:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.18,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:12:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.2,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:13:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.22,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:14:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.23,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:15:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.25,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:16:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.27,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:17:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.28,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:18:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.3,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:19:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.32,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:20:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.33,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:21:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.35,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:22:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.37,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:23:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.38,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:24:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.4,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:25:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.42,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:26:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.43,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:27:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.45,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:28:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.47,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:29:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.48,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:30:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.5,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:31:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.52,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:32:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.53,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:33:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.55,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:34:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.57,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:35:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.58,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:36:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.6,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:37:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.62,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:38:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.63,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:39:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.65,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:40:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.67,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:41:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.68,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:42:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.7,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:43:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.72,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:44:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.73,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:45:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.75,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:46:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.77,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:47:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.78,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:48:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.8,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:49:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.82,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:50:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.83,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:51:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.85,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:52:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.87,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:53:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.88,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:54:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.9,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:55:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.92,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:56:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.93,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:57:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.95,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:58:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.97,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T07:59:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 31.98,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:00:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.0,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:01:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.02,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:02:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.03,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:03:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.05,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:04:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.07,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:05:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.08,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:06:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.1,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:07:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.12,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:08:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.13,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:09:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.15,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:10:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.17,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:11:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.18,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:12:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.2,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:13:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.22,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:14:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.23,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:15:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.25,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:16:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.27,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        },
+        {
+          "time_utc": "2026-06-24T08:17:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 32.28,
+          "lead_day": 2,
+          "forecast_source": "cold_start_actual_kp_history"
+        }
+      ]
+    },
+    {
       "issue_utc": "2026-06-23T08:02:56Z",
       "source_url": "https://services.swpc.noaa.gov/text/3-day-forecast.txt",
       "horizon_note": "SWPC 3-day forecast is archived when available. Lead 4 requires a forecast source with >=4-day horizon; otherwise N remains 0.",
@@ -30,7 +3855,180 @@
       "source_url": "https://services.swpc.noaa.gov/text/3-day-forecast.txt",
       "horizon_note": "SWPC 3-day forecast is archived when available. Lead 4 requires a forecast source with >=4-day horizon; otherwise N remains 0.",
       "slots": []
+    },
+    {
+      "issue_utc": "2026-06-24T11:17:46Z",
+      "source_url": "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json",
+      "source_type": "swpc_json_forecast",
+      "horizon_note": "SWPC forecast is archived when available. Lead 4 requires >=4-day forecast data or cold-start/reference backfill.",
+      "slots": [
+        {
+          "time_utc": "2026-06-24T09:00:00Z",
+          "kp_forecast": 1.67,
+          "lead_hours": -2.3,
+          "lead_day": 0,
+          "forecast_source": "swpc_json_estimated"
+        },
+        {
+          "time_utc": "2026-06-24T12:00:00Z",
+          "kp_forecast": 2.67,
+          "lead_hours": 0.7,
+          "lead_day": 1,
+          "forecast_source": "swpc_json_estimated"
+        },
+        {
+          "time_utc": "2026-06-24T15:00:00Z",
+          "kp_forecast": 2.67,
+          "lead_hours": 3.7,
+          "lead_day": 1,
+          "forecast_source": "swpc_json_estimated"
+        },
+        {
+          "time_utc": "2026-06-24T18:00:00Z",
+          "kp_forecast": 3.67,
+          "lead_hours": 6.7,
+          "lead_day": 1,
+          "forecast_source": "swpc_json_estimated"
+        },
+        {
+          "time_utc": "2026-06-24T21:00:00Z",
+          "kp_forecast": 3.67,
+          "lead_hours": 9.7,
+          "lead_day": 1,
+          "forecast_source": "swpc_json_estimated"
+        },
+        {
+          "time_utc": "2026-06-25T00:00:00Z",
+          "kp_forecast": 3.67,
+          "lead_hours": 12.7,
+          "lead_day": 1,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-25T03:00:00Z",
+          "kp_forecast": 4.0,
+          "lead_hours": 15.7,
+          "lead_day": 1,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-25T06:00:00Z",
+          "kp_forecast": 2.67,
+          "lead_hours": 18.7,
+          "lead_day": 1,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-25T09:00:00Z",
+          "kp_forecast": 2.67,
+          "lead_hours": 21.7,
+          "lead_day": 1,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-25T12:00:00Z",
+          "kp_forecast": 1.67,
+          "lead_hours": 24.7,
+          "lead_day": 2,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-25T15:00:00Z",
+          "kp_forecast": 1.67,
+          "lead_hours": 27.7,
+          "lead_day": 2,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-25T18:00:00Z",
+          "kp_forecast": 2.67,
+          "lead_hours": 30.7,
+          "lead_day": 2,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-25T21:00:00Z",
+          "kp_forecast": 3.67,
+          "lead_hours": 33.7,
+          "lead_day": 2,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-26T00:00:00Z",
+          "kp_forecast": 3.33,
+          "lead_hours": 36.7,
+          "lead_day": 2,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-26T03:00:00Z",
+          "kp_forecast": 3.0,
+          "lead_hours": 39.7,
+          "lead_day": 2,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-26T06:00:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 42.7,
+          "lead_day": 2,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-26T09:00:00Z",
+          "kp_forecast": 2.0,
+          "lead_hours": 45.7,
+          "lead_day": 2,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-26T12:00:00Z",
+          "kp_forecast": 3.0,
+          "lead_hours": 48.7,
+          "lead_day": 3,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-26T15:00:00Z",
+          "kp_forecast": 3.33,
+          "lead_hours": 51.7,
+          "lead_day": 3,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-26T18:00:00Z",
+          "kp_forecast": 3.33,
+          "lead_hours": 54.7,
+          "lead_day": 3,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-26T21:00:00Z",
+          "kp_forecast": 3.33,
+          "lead_hours": 57.7,
+          "lead_day": 3,
+          "forecast_source": "swpc_json_predicted"
+        },
+        {
+          "time_utc": "2026-06-27T00:00:00Z",
+          "kp_forecast": 3.0,
+          "lead_hours": 60.7,
+          "lead_day": 3,
+          "forecast_source": "swpc_json_predicted"
+        }
+      ]
     }
   ],
-  "updated_utc": "2026-06-24T07:58:45Z"
+  "updated_utc": "2026-06-24T11:17:46Z",
+  "cold_start_backfill": {
+    "enabled": true,
+    "days": 30,
+    "issue_count_added": 3,
+    "note": "Initial fill only; source is actual Kp history, not historical issued forecasts."
+  },
+  "actual_kp_source_url": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
+  "actual_kp_count_latest_fetch": 358,
+  "last_forecast_source_type": "swpc_json_forecast",
+  "last_forecast_slot_count": 22,
+  "cold_start_issue_added_latest_run": 3
 }
