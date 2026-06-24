@@ -21,7 +21,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
 
-NOAA_GLOTEC_INDEX_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt.json"
+NOAA_GLOTEC_INDEX_JSON_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt.json"
+NOAA_GLOTEC_INDEX_HTML_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt/"
 NOAA_GLOTEC_BASE_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt/"
 OUT_ROOT = Path(os.environ.get("SWIFTTEC_TEC_ROOT", "docs/data/tec"))
 KEEP_DAYS = int(os.environ.get("SWIFTTEC_KEEP_DAYS", "30"))
@@ -73,6 +74,58 @@ def normalize_index(obj) -> list[str]:
         if ".geojson" in p.lower():
             paths.append(p)
     return paths
+
+
+def normalize_html_index(text: str) -> list[str]:
+    """Parse Apache/Nginx-style directory index HTML for .geojson links.
+
+    NOAA's `.json` companion endpoint can be empty, while the directory index
+    itself lists the files.  This keeps the workflow from failing with
+    "No .geojson entries found" when the JSON endpoint is not populated.
+    """
+    paths: list[str] = []
+
+    for m in re.finditer(r'href=["\']([^"\']+?\.geojson)["\']', text, flags=re.I):
+        paths.append(m.group(1))
+
+    # Fallback for already-rendered or stripped HTML where href markup is lost.
+    for m in re.finditer(r'(glotec_[A-Za-z0-9_\-]+T\d{6}Z\.geojson)', text, flags=re.I):
+        paths.append(m.group(1))
+
+    seen = set()
+    out: list[str] = []
+    for p in paths:
+        p = p.strip()
+        if not p or p in seen:
+            continue
+        seen.add(p)
+        out.append(p)
+    return out
+
+
+def load_glotec_index_paths() -> tuple[list[str], str]:
+    errors: list[str] = []
+
+    try:
+        print(f"Trying NOAA GloTEC JSON index: {NOAA_GLOTEC_INDEX_JSON_URL}")
+        paths = normalize_index(http_json(NOAA_GLOTEC_INDEX_JSON_URL))
+        if paths:
+            return paths, NOAA_GLOTEC_INDEX_JSON_URL
+        errors.append("JSON index returned no .geojson entries")
+    except Exception as exc:
+        errors.append(f"JSON index failed: {exc}")
+
+    try:
+        print(f"Trying NOAA GloTEC HTML index: {NOAA_GLOTEC_INDEX_HTML_URL}")
+        html = http_text(NOAA_GLOTEC_INDEX_HTML_URL)
+        paths = normalize_html_index(html)
+        if paths:
+            return paths, NOAA_GLOTEC_INDEX_HTML_URL
+        errors.append("HTML index returned no .geojson entries")
+    except Exception as exc:
+        errors.append(f"HTML index failed: {exc}")
+
+    raise RuntimeError("No .geojson entries found in NOAA GloTEC index. " + " / ".join(errors))
 
 
 def basename(path: str) -> str:
@@ -252,7 +305,7 @@ def rebuild_index(now: datetime) -> dict:
             except Exception:
                 pass
     return {
-        "version": "swifttec-tec-archive-v3-noaa30min-backfill",
+        "version": "swifttec-tec-archive-v4-noaa30min-html-index-fix",
         "updated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "keep_days": KEEP_DAYS,
         "lat_step": TARGET_LAT_STEP,
@@ -265,10 +318,8 @@ def rebuild_index(now: datetime) -> dict:
 def main() -> int:
     now = datetime.now(UTC).replace(microsecond=0)
     OUT_ROOT.mkdir(parents=True, exist_ok=True)
-    print(f"Fetching NOAA GloTEC index: {NOAA_GLOTEC_INDEX_URL}")
-    paths = normalize_index(http_json(NOAA_GLOTEC_INDEX_URL))
-    if not paths:
-        raise RuntimeError("No .geojson entries found in NOAA GloTEC index")
+    paths, index_source = load_glotec_index_paths()
+    print(f"NOAA GloTEC index entries: {len(paths)} from {index_source}")
     entries = []
     for p in paths:
         fn = basename(p)
