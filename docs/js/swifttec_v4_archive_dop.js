@@ -8247,7 +8247,12 @@
       const res = await fetch("data/ai/operational_hit_rate.json", { cache: "no-store" });
       if (!res.ok) throw new Error(`operational_hit_rate.json がありません: HTTP ${res.status}`);
       operationalHitDataV73 = await res.json();
-      if (status) status.textContent = `updated=${operationalHitDataV73.updated_utc || "--"} / issue=${operationalHitDataV73.forecast_issue_count || 0}`;
+      if (status) {
+        const cold = operationalHitDataV73.cold_start_backfill_used_in_score ? " / 初回Kp履歴補完あり" : "";
+        const akp = operationalHitDataV73.actual_kp_count ? ` / actualKp=${operationalHitDataV73.actual_kp_count}` : "";
+        const reason = operationalHitDataV73.reason ? ` / ${operationalHitDataV73.reason}` : "";
+        status.textContent = `updated=${operationalHitDataV73.updated_utc || "--"} / issue=${operationalHitDataV73.forecast_issue_count || 0}${akp}${cold}${reason}`;
+      }
     } catch (e) {
       operationalHitDataV73 = null;
       if (status) status.textContent = "未作成: Fetch Kp Forecast Archive and Score を実行してください。";
@@ -8384,9 +8389,9 @@
     panel.id = "swiftOperationalHitPanelV73";
     panel.className = "swift-v73-card";
     panel.innerHTML = `
-      <div class="swift-v73-title">運用的中率（予報Kp使用）</div>
+      <div class="swift-v73-title">運用的中率（予報Kp使用／初回Kp履歴補完）</div>
       <div class="swift-v73-sub">
-        実測Kpで見るモデル的中率とは別に、保存済みの予報Kpを使った実運用の的中率を1〜4日後別に表示します。
+        実測Kpで見るモデル的中率とは別に、保存済みの予報Kpを使った実運用の的中率を1〜4日後別に表示します。初回はN=0回避のため過去Kp履歴で暫定補完し、以後はActionsで蓄積した予報Kpに置き換わります。
       </div>
       <div class="swift-v73-row">
         <span class="swift-v73-sub">誤差しきい値</span>
