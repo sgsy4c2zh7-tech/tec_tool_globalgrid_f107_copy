@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Backfill NOAA TEC archive first
+      - name: Backfill NOAA TEC archive first with HTML-index fallback
         env:
           SWIFTTEC_LOOKBACK_HOURS: "120"
           SWIFTTEC_MAX_PER_RUN: "240"
