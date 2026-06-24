@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Archive NOAA forecast Kp and score operational TEC hit rate by lead day.
 
-v8.0 changes:
+v8.1 changes:
 - Pulls a longer Kp actual history first from SWPC json/planetary_k_index_1m.json.
 - Uses SWPC noaa-planetary-k-index-forecast.json when available, with text forecast fallback.
 - Cold-start Kp-history backfill is rebuilt every run so stale cold-start entries cannot leave the score at N=0.
-- Scores by TEC frame time first, so 30-minute TEC frames and 3-hour Kp slots no longer leave N=0.
+- Scores by TEC frame time first, and the workflow now backfills the TEC archive before scoring.
 
 Outputs:
 - docs/data/ai/kp_forecast_archive.json
