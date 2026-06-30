@@ -1,36 +1,35 @@
 {
-  "updated_utc": "2026-06-29T07:09:11Z",
+  "updated_utc": "2026-06-30T06:34:59Z",
   "tle": {
     "gps_latest.tle": {
-      "ok": true,
+      "ok": false,
       "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle",
-      "bytes": 5376
+      "error": "The read operation timed out"
     },
     "galileo_latest.tle": {
-      "ok": true,
+      "ok": false,
       "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=galileo&FORMAT=tle",
-      "bytes": 5376
+      "error": "The read operation timed out"
     },
     "glonass_latest.tle": {
-      "ok": true,
+      "ok": false,
       "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=glo-ops&FORMAT=tle",
-      "bytes": 4704
+      "error": "The read operation timed out"
     },
     "beidou_latest.tle": {
-      "ok": true,
+      "ok": false,
       "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=beidou&FORMAT=tle",
-      "bytes": 8904
+      "error": "The read operation timed out"
     },
     "qzss_latest.tle": {
       "ok": false,
       "url": "https://celestrak.org/NORAD/elements/gp.php?GROUP=qzss&FORMAT=tle",
-      "error": "downloaded text does not look like TLE"
+      "error": "The read operation timed out"
     }
   },
   "almanac": {
-    "ok": true,
-    "url": "https://celestrak.org/GPS/almanac/Yuma/almanac.yuma.txt",
-    "health_count": 32
+    "ok": false,
+    "error": "No Yuma almanac fetched"
   },
   "satellite_js": {
     "ok": true,
