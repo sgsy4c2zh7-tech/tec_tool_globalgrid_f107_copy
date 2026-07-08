@@ -1,16 +1,16 @@
 {
   "version": "swifttec-operational-hit-rate-v4",
-  "updated_utc": "2026-07-07T08:00:02Z",
+  "updated_utc": "2026-07-08T07:05:28Z",
   "definition": "Operational hit rate uses archived forecast Kp when available. During cold start, a labelled actual-Kp reference fills the panel until real forecast archives accumulate.",
   "reason": "TEC実測アーカイブがlead日数分まだ不足しているため N=0",
-  "forecast_issue_count": 23,
+  "forecast_issue_count": 24,
   "cold_start_issue_count": 3,
   "score_days_back": 90,
   "actual_kp_source_url": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
   "actual_kp_count": 358,
   "forecast_issue_source_counts": {
     "https://services.swpc.noaa.gov/text/3-day-forecast.txt": 5,
-    "swpc_json_forecast": 15,
+    "swpc_json_forecast": 16,
     "cold_start_actual_kp_history": 3
   },
   "cold_start_backfill_used_in_score": false,
@@ -18,21 +18,21 @@
   "max_cell_samples_per_frame": 10000,
   "score_diagnostics": {
     "scoring_mode": "tec_frame_driven_v8",
-    "tec_frame_count": 1251,
-    "forecast_issue_count": 23,
+    "tec_frame_count": 1297,
+    "forecast_issue_count": 24,
     "actual_kp_count": 358,
     "coefficients_available": true,
     "pair_tolerance_min": 45,
     "forecast_kp_match_tolerance_min": 120,
     "skip_counts": {
       "base_tec_frame_missing": 295,
-      "base_kp_missing": 4709
+      "base_kp_missing": 4893
     },
     "seen_tec_targets_by_lead": {
-      "1": 1251,
-      "2": 1251,
-      "3": 1251,
-      "4": 1251
+      "1": 1297,
+      "2": 1297,
+      "3": 1297,
+      "4": 1297
     },
     "used_tec_targets_by_lead": {},
     "base_tec_frame_missing_by_lead": {
@@ -42,25 +42,25 @@
       "4": 141
     },
     "base_kp_missing_by_lead": {
-      "1": 1236,
-      "2": 1205,
-      "3": 1158,
-      "4": 1110
+      "1": 1282,
+      "2": 1251,
+      "3": 1204,
+      "4": 1156
     },
     "total_error_samples": 0,
-    "target_tec_frame_count_in_score_window": 1251,
+    "target_tec_frame_count_in_score_window": 1297,
     "forecast_slots_by_lead": {
-      "1": 120,
-      "2": 303,
-      "3": 266,
-      "4": 183
+      "1": 128,
+      "2": 309,
+      "3": 270,
+      "4": 181
     }
   },
   "by_lead_day": {
     "1": {
       "lead_day": 1,
       "slot_count": 0,
-      "seen_slot_count": 1251,
+      "seen_slot_count": 1297,
       "forecast_sources": {},
       "thresholds": {
         "5": {
@@ -96,7 +96,7 @@
     "2": {
       "lead_day": 2,
       "slot_count": 0,
-      "seen_slot_count": 1251,
+      "seen_slot_count": 1297,
       "forecast_sources": {},
       "thresholds": {
         "5": {
@@ -132,7 +132,7 @@
     "3": {
       "lead_day": 3,
       "slot_count": 0,
-      "seen_slot_count": 1251,
+      "seen_slot_count": 1297,
       "forecast_sources": {},
       "thresholds": {
         "5": {
@@ -168,7 +168,7 @@
     "4": {
       "lead_day": 4,
       "slot_count": 0,
-      "seen_slot_count": 1251,
+      "seen_slot_count": 1297,
       "forecast_sources": {},
       "thresholds": {
         "5": {
