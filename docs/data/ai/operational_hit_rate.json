@@ -1,16 +1,16 @@
 {
   "version": "swifttec-operational-hit-rate-v4",
-  "updated_utc": "2026-07-10T07:59:29Z",
+  "updated_utc": "2026-07-11T06:36:34Z",
   "definition": "Operational hit rate uses archived forecast Kp when available. During cold start, a labelled actual-Kp reference fills the panel until real forecast archives accumulate.",
   "reason": "TEC実測アーカイブがlead日数分まだ不足しているため N=0",
-  "forecast_issue_count": 26,
+  "forecast_issue_count": 27,
   "cold_start_issue_count": 3,
   "score_days_back": 90,
   "actual_kp_source_url": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
-  "actual_kp_count": 359,
+  "actual_kp_count": 358,
   "forecast_issue_source_counts": {
     "https://services.swpc.noaa.gov/text/3-day-forecast.txt": 5,
-    "swpc_json_forecast": 18,
+    "swpc_json_forecast": 19,
     "cold_start_actual_kp_history": 3
   },
   "cold_start_backfill_used_in_score": false,
@@ -18,49 +18,49 @@
   "max_cell_samples_per_frame": 10000,
   "score_diagnostics": {
     "scoring_mode": "tec_frame_driven_v8",
-    "tec_frame_count": 1390,
-    "forecast_issue_count": 26,
-    "actual_kp_count": 359,
+    "tec_frame_count": 1424,
+    "forecast_issue_count": 27,
+    "actual_kp_count": 358,
     "coefficients_available": true,
     "pair_tolerance_min": 45,
     "forecast_kp_match_tolerance_min": 120,
     "skip_counts": {
-      "base_tec_frame_missing": 339,
+      "base_tec_frame_missing": 475,
       "base_kp_missing": 5217
     },
     "seen_tec_targets_by_lead": {
-      "1": 1389,
-      "2": 1389,
-      "3": 1389,
-      "4": 1389
+      "1": 1423,
+      "2": 1423,
+      "3": 1423,
+      "4": 1423
     },
     "used_tec_targets_by_lead": {},
     "base_tec_frame_missing_by_lead": {
-      "1": 15,
-      "2": 60,
-      "3": 108,
-      "4": 156
+      "1": 47,
+      "2": 95,
+      "3": 143,
+      "4": 190
     },
     "base_kp_missing_by_lead": {
-      "1": 1374,
-      "2": 1329,
-      "3": 1281,
+      "1": 1376,
+      "2": 1328,
+      "3": 1280,
       "4": 1233
     },
     "total_error_samples": 0,
-    "target_tec_frame_count_in_score_window": 1389,
+    "target_tec_frame_count_in_score_window": 1423,
     "forecast_slots_by_lead": {
-      "1": 144,
-      "2": 326,
-      "3": 283,
-      "4": 182
+      "1": 152,
+      "2": 333,
+      "3": 288,
+      "4": 181
     }
   },
   "by_lead_day": {
     "1": {
       "lead_day": 1,
       "slot_count": 0,
-      "seen_slot_count": 1389,
+      "seen_slot_count": 1423,
       "forecast_sources": {},
       "thresholds": {
         "5": {
@@ -96,7 +96,7 @@
     "2": {
       "lead_day": 2,
       "slot_count": 0,
-      "seen_slot_count": 1389,
+      "seen_slot_count": 1423,
       "forecast_sources": {},
       "thresholds": {
         "5": {
@@ -132,7 +132,7 @@
     "3": {
       "lead_day": 3,
       "slot_count": 0,
-      "seen_slot_count": 1389,
+      "seen_slot_count": 1423,
       "forecast_sources": {},
       "thresholds": {
         "5": {
@@ -168,7 +168,7 @@
     "4": {
       "lead_day": 4,
       "slot_count": 0,
-      "seen_slot_count": 1389,
+      "seen_slot_count": 1423,
       "forecast_sources": {},
       "thresholds": {
         "5": {
