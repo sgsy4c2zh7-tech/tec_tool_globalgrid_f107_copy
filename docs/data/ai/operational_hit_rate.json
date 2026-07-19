@@ -1,16 +1,16 @@
 {
   "version": "swifttec-operational-hit-rate-v4",
-  "updated_utc": "2026-07-18T06:29:52Z",
+  "updated_utc": "2026-07-19T07:06:40Z",
   "definition": "Operational hit rate uses archived forecast Kp when available. During cold start, a labelled actual-Kp reference fills the panel until real forecast archives accumulate.",
   "reason": "TEC実測アーカイブがlead日数分まだ不足しているため N=0",
-  "forecast_issue_count": 34,
+  "forecast_issue_count": 35,
   "cold_start_issue_count": 3,
   "score_days_back": 90,
   "actual_kp_source_url": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
   "actual_kp_count": 358,
   "forecast_issue_source_counts": {
     "https://services.swpc.noaa.gov/text/3-day-forecast.txt": 5,
-    "swpc_json_forecast": 26,
+    "swpc_json_forecast": 27,
     "cold_start_actual_kp_history": 3
   },
   "cold_start_backfill_used_in_score": false,
@@ -19,7 +19,7 @@
   "score_diagnostics": {
     "scoring_mode": "tec_frame_driven_v8",
     "tec_frame_count": 1440,
-    "forecast_issue_count": 34,
+    "forecast_issue_count": 35,
     "actual_kp_count": 358,
     "coefficients_available": true,
     "pair_tolerance_min": 45,
@@ -50,10 +50,10 @@
     "total_error_samples": 0,
     "target_tec_frame_count_in_score_window": 1439,
     "forecast_slots_by_lead": {
-      "1": 208,
-      "2": 388,
-      "3": 329,
-      "4": 180
+      "1": 216,
+      "2": 397,
+      "3": 336,
+      "4": 181
     }
   },
   "by_lead_day": {
