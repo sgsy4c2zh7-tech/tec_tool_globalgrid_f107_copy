@@ -3493,13 +3493,27 @@
     }));
   }
 
+  function metricsSourceV52() {
+    const v = String(q52("swiftV52MetricsSource")?.value || "noaa").toLowerCase();
+    return v === "isee" ? "isee" : "noaa";
+  }
+
+  async function setMetricsSourceV52(source) {
+    const v = String(source || "noaa").toLowerCase() === "isee" ? "isee" : "noaa";
+    const sel = q52("swiftV52MetricsSource");
+    if (sel) sel.value = v;
+    try { localStorage.setItem("swift_v52_metrics_source", v); } catch {}
+    lastMetricsSourceV52 = v;
+    await loadV52Data();
+  }
+
   async function loadV52Data() {
-    const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
-    const isIsee = source === "isee_japan_highres";
+    const metricsSource = metricsSourceV52();
+    const isIsee = metricsSource === "isee";
     const base = isIsee ? "data/ai/isee_japan/" : AI_BASE;
     const tecIndexUrl = isIsee ? "data/isee_tec/index.json" : "data/tec/index.json";
 
-    setV52Status(isIsee ? "ISEE Japan AI学習・検証結果を読み込み中…" : "AI学習結果を読み込み中…");
+    setV52Status(isIsee ? "ISEE Japan AI学習・実測検証結果を読み込み中…" : "NOAA / Global AI学習・検証結果を読み込み中…");
     const results = await Promise.allSettled([
       fetchJson52(base + "kp_performance.json"),
       fetchJson52(base + "kp_coefficients.json"),
@@ -3554,15 +3568,6 @@
 
     try { localStorage.setItem("swift_v52_tec_source", source); } catch {}
 
-    if (lastMetricsSourceV52 !== source) {
-      lastMetricsSourceV52 = source;
-      setTimeout(() => {
-        loadV52Data().catch(e => {
-          console.warn("source metrics reload failed", e);
-          try { window.swiftLoadFailureAnalysis?.(true); } catch {}
-        });
-      }, 0);
-    }
   }
 
   async function v52LoadTec() {
@@ -3938,10 +3943,16 @@
     panel.innerHTML = `
       <div class="swift-v52-chart-head">
         <div>
-          <div class="swift-v52-title">的中率モニター</div>
+          <div class="swift-v52-title">的中率モニター <span style="font-size:10px;color:#93c5fd;">NOAA / ISEE 切替</span></div>
           <div class="swift-v52-sub" id="swiftV52HistoryNote">全格子で学習し、18地域に集約した的中率を過去2年分表示します。</div>
         </div>
         <div class="swift-v52-head-actions">
+          <span style="font-size:10px;color:#9fb0cc;align-self:center;">検証表示</span>
+          <select id="swiftV52MetricsSource" class="swift-v52-select" style="width:130px;"
+                  onchange="window.swiftV52SetMetricsSource(this.value)">
+            <option value="noaa" selected>NOAA / Global</option>
+            <option value="isee">ISEE Japan</option>
+          </select>
           <select id="swiftV52Span" class="swift-v52-select" style="width:118px;" onchange="window.swiftV52RenderAll()">
             <option value="90">90日</option>
             <option value="365">1年</option>
@@ -4022,7 +4033,13 @@
       try {
         const savedSource = localStorage.getItem("swift_v52_tec_source");
         if (savedSource && q52("swiftV52TecSource")) q52("swiftV52TecSource").value = savedSource;
+
+        const savedMetrics = localStorage.getItem("swift_v52_metrics_source");
+        if (savedMetrics && q52("swiftV52MetricsSource")) {
+          q52("swiftV52MetricsSource").value = savedMetrics === "isee" ? "isee" : "noaa";
+        }
       } catch {}
+      lastMetricsSourceV52 = metricsSourceV52();
       syncV52ForecastControls();
       loadV52Data().catch(e => {
         console.warn(e);
@@ -4037,6 +4054,7 @@
   }
 
   window.swiftV52LoadData = loadV52Data;
+  window.swiftV52SetMetricsSource = setMetricsSourceV52;
   window.swiftV52LoadTec = v52LoadTec;
   window.swiftV52RunForecast = v52RunForecast;
   window.swiftV52SyncForecastControls = syncV52ForecastControls;
@@ -5501,9 +5519,8 @@
     return Number.isFinite(n) ? n.toFixed(d) : "--";
   }
   function isIseeV62() {
-    const compact = String(q62("swiftV52TecSource")?.value || "");
-    if (compact) return compact === "isee_japan_highres";
-    return String(q62("tecSourceSelect")?.value || "").toLowerCase() === "isee";
+    // v8.17: accuracy/verification display is independent from forecast TEC source.
+    return String(q62("swiftV52MetricsSource")?.value || "noaa").toLowerCase() === "isee";
   }
   function sourceInfoV62() {
     return isIseeV62()
