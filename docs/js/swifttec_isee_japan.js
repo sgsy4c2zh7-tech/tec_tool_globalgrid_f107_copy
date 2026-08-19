@@ -134,16 +134,26 @@
     return h * 60 + m;
   }
 
-  function nearestBaseSlot(slots, t) {
+  function resolveBaseSlot(slots, t) {
     const target = t.getUTCHours() * 60 + t.getUTCMinutes();
+    let exact = null;
     let best = null, bestD = Infinity;
+
     for (const s of slots || []) {
       const mm = minuteOfDayFromHHMM(s.slot_utc_hhmm);
+      if (mm === target) exact = s;
       let d = Math.abs(mm - target);
       d = Math.min(d, 1440 - d);
       if (d < bestD) { bestD = d; best = s; }
     }
-    return best;
+
+    if (exact) return { entry: exact, diffMin: 0 };
+
+    // ISEE Base is normally 5-minute slots.  A 30-minute forecast target
+    // should therefore have an exact slot.  Permit only a small gap instead
+    // of silently mapping many hours to the same 23:xx frame.
+    if (best && bestD <= 10) return { entry: best, diffMin: bestD };
+    return { entry: null, diffMin: bestD };
   }
 
   async function loadBaseIndex() {
@@ -280,6 +290,56 @@
     return {min:n?min:NaN,max:n?max:NaN,mean:n?sum/n:NaN,n};
   }
 
+  function weightedBaseKpFromDoc(baseDoc) {
+    const rows = Array.isArray(baseDoc?.used_days) ? baseDoc.used_days : [];
+    let sw = 0, sk = 0, n = 0;
+    for (const r of rows) {
+      const kp = Number(r?.kp);
+      const w = Number(r?.weight);
+      if (!Number.isFinite(kp)) continue;
+      const ww = Number.isFinite(w) && w > 0 ? w : 1;
+      sk += kp * ww;
+      sw += ww;
+      n++;
+    }
+    return {
+      kp: sw > 0 ? sk / sw : NaN,
+      n,
+    };
+  }
+
+  function validateBaseSlotCoverage(slots) {
+    const unique = new Set((slots || []).map(x => String(x.slot_utc_hhmm || "").padStart(4,"0")));
+    const count = unique.size;
+
+    // Full ISEE native day = 288 five-minute slots.
+    // For our 30-minute forecast, at least the 48 half-hour points must exist.
+    let halfHourCount = 0;
+    for (let h=0; h<24; h++) {
+      for (const m of (0,30)) {
+        const key = String(h).padStart(2,"0") + String(m).padStart(2,"0");
+        if (unique.has(key)) halfHourCount++;
+      }
+    }
+
+    return { count, halfHourCount };
+  }
+
+  function maxAbsGridDiff(a, b) {
+    let mx = 0, n = 0, sum = 0;
+    const nr = Math.min(a?.length || 0, b?.length || 0);
+    for (let i=0; i<nr; i++) {
+      const nc = Math.min(a?.[i]?.length || 0, b?.[i]?.length || 0);
+      for (let j=0; j<nc; j++) {
+        const x = Number(a[i][j]), y = Number(b[i][j]);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        const d = Math.abs(x-y);
+        mx = Math.max(mx,d); sum += d; n++;
+      }
+    }
+    return { max: mx, mean: n ? sum/n : NaN, n };
+  }
+
   async function run10DayBaseForecast() {
     status("ISEE 10日Base VTEC・Japan AI係数を読み込み中…");
 
@@ -289,6 +349,17 @@
     ]);
 
     const slots = baseIndex.slots || [];
+    const coverage = validateBaseSlotCoverage(slots);
+
+    if (coverage.halfHourCount < 40) {
+      throw new Error(
+        `ISEE 10日Baseの時刻スロット不足: ${coverage.count}/288 (5分), ` +
+        `${coverage.halfHourCount}/48 (30分)。` +
+        `現在のBaseが1時間分などしか無いため、同じ格子を別時刻へ使い回してヒートマップが止まって見えます。` +
+        `Update ISEE Japan VTEC and AI を実行して、少なくとも24時間分のISEE frameを取得してください。`
+      );
+    }
+
     const startUtc = roundedNowUtc30();
     const kpSeries = makeForecastKpSeries(startUtc);
     const nSteps = Math.round(FORECAST_HOURS * 60 / FORECAST_STEP_MIN);
@@ -309,8 +380,15 @@
 
     for (let s=0; s<=nSteps; s++) {
       const t = new Date(startUtc.getTime() + s*FORECAST_STEP_MIN*60000);
-      const slotEntry = nearestBaseSlot(slots, t);
-      if (!slotEntry) throw new Error("10日BaseのUTC時刻slotが見つかりません。");
+      const resolved = resolveBaseSlot(slots, t);
+      const slotEntry = resolved.entry;
+      if (!slotEntry) {
+        throw new Error(
+          `10日BaseのUTC ${String(t.getUTCHours()).padStart(2,"0")}:` +
+          `${String(t.getUTCMinutes()).padStart(2,"0")} slotがありません。` +
+          `最寄りでも${Number.isFinite(resolved.diffMin) ? resolved.diffMin.toFixed(0) : "--"}分離れています。`
+        );
+      }
 
       const baseDoc = await loadBaseSlot(slotEntry);
       const baseGrid = baseDoc.grid || [];
@@ -328,6 +406,11 @@
         minDaysUsed = Math.min(minDaysUsed, daysUsed);
         maxDaysUsed = Math.max(maxDaysUsed, daysUsed);
       }
+
+      // Display-only KpB:
+      // weighted mean of the historical Kp values that were removed from the
+      // 10-day Base VTEC. It is NOT re-used in the forecast equation.
+      const baseKpInfo = weightedBaseKpFromDoc(baseDoc);
 
       const kpF = Number(kpSeries[s]?.kp);
       const mg = monthGrid(coeffDoc, t.getUTCMonth()+1);
@@ -374,10 +457,25 @@
         grid:outGrid,
         gridMeta,
         sourceFile:`ISEE Base10 ${slotEntry.slot_utc_hhmm}Z`,
+        baseKpDisplay: baseKpInfo.kp,
+        baseDaysUsed: daysUsed,
+        baseSlotUtc: String(slotEntry.slot_utc_hhmm || ""),
       });
     }
 
     if (!frames.length) throw new Error("ISEE 10日Base予報フレームを生成できませんでした。");
+
+    // Verify that the produced map itself changes over time.
+    // Compare +0h, +6h, +12h and +24h when available.
+    const probeIdx = [0, 12, 24, 48].filter(i => i < frames.length);
+    let variationMax = 0;
+    let variationMeanMax = 0;
+    for (let k=1; k<probeIdx.length; k++) {
+      const d = maxAbsGridDiff(frames[probeIdx[0]].grid, frames[probeIdx[k]].grid);
+      if (Number.isFinite(d.max)) variationMax = Math.max(variationMax, d.max);
+      if (Number.isFinite(d.mean)) variationMeanMax = Math.max(variationMeanMax, d.mean);
+    }
+
     if (typeof window.swiftInstallIsee10DayBaseForecast !== "function") {
       throw new Error("swifttec_v4_archive_dop.js がv8.10ではありません。");
     }
@@ -398,12 +496,16 @@
     if (useAi && activeCoeffCells === 0) {
       status(
         `⚠ Japan予報は生成しましたが、Japan AI係数が全格子0です。` +
-        `KpF=${kpTxt} / Base=${daysTxt} / AI学習が進むまで同一UTC時刻の日別値はほぼ同じになります。`
+        `KpF=${kpTxt} / Base=${daysTxt} / Base時刻=${coverage.halfHourCount}/48 / ` +
+        `地図変化 max=${variationMax.toFixed(2)} TECU。`
       );
     } else {
       status(
         `Japan予報OK: Base=${daysTxt} / KpF=${kpTxt} / ` +
-        `AI有効格子=${activeCoeffCells} / Kp補正=${deltaSpan} / +0〜+4日 / VTEC [TECU]`
+        `AI有効格子=${activeCoeffCells} / Kp補正=${deltaSpan} / ` +
+        `Base時刻=${coverage.halfHourCount}/48 / ` +
+        `地図変化 max=${variationMax.toFixed(2)} TECU, mean=${variationMeanMax.toFixed(2)} / ` +
+        `+0〜+4日 / VTEC [TECU]`
       );
     }
     return frames;
