@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>SWIFT-TEC v8.2 – Accuracy First Grid AI Dashboard + Point Readout + Model Rule AI + Point Coordinate Input + Unified Heatmap Scale (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
+  <title>SWIFT-TEC v8.7 – Accuracy First Grid AI Dashboard + Point Readout + Model Rule AI + Point Coordinate Input + Unified Heatmap Scale (Leaflet版, 4日予報・加算＋Base抽出 / NOAA:2時間×12枚)</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -374,7 +374,7 @@
       <div class="card">
         <div class="card-header">
           <h2>0. 入力TECソース</h2>
-          <span>BoM / NOAA / ISEE Japan</span>
+          <span>BoM / NOAA</span>
         </div>
         <div class="row">
           <div style="flex:1;">
@@ -392,16 +392,6 @@
           <button class="secondary" onclick="fetchNoaaGloTecPrevDay12_2hour(true)">取得して保存（概要のみ）</button>
         </div>
         <div class="small" id="noaaTecStatus"></div>
-
-        <div id="iseeJapanControls" style="margin-top:8px; padding:7px; border:1px solid #334155; border-radius:7px;">
-          <div class="row" style="margin-bottom:4px;">
-            <span class="pill">🇯🇵 Japan High-Res TEC</span>
-            <button type="button" onclick="swiftIseeLoadLatest(false)">ISEE最新を読込</button>
-            <button type="button" class="secondary" onclick="swiftIseeLoadLatest(true)">読込して日本表示</button>
-          </div>
-          <div class="small" id="iseeTecStatus">ISEEデータ未読込</div>
-          <div class="small">予報式は既存のまま。ISEE選択時は日本高解像度の格子別・月別Kp AI係数へ自動切替します。</div>
-        </div>
 
         <div class="small" style="margin-top:6px;">
           <div class="row" style="gap:8px;">
@@ -2238,7 +2228,7 @@ Mar 11       Mar 12       Mar 13
         const frames = window.swiftIseeFrames || [];
         const times = window.swiftIseeTimes || [];
         if (!frames.length) {
-          throw new Error("ISEE Japan High-Res TECが未取得です。「ISEE最新を読込」を押してください。");
+          throw new Error("ISEE Japan High-Res TECが未取得です。左側の『ISEE読込』を押してください。");
         }
         return { source:"isee", frames, times, gridMeta: frames[0] };
       } else {
@@ -2369,8 +2359,6 @@ Mar 11       Mar 12       Mar 13
           let inputFrame = null;
           if (input.source === "noaa") {
             inputFrame = noaaTecTodFrameAt(tecTod, t);
-          } else if (input.source === "isee") {
-            inputFrame = pickBomFrameByUtcTod(input.frames, input.times, t);
           } else {
             inputFrame = pickBomFrameByUtcTod(input.frames, input.times, t);
           }
