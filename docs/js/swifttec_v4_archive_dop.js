@@ -46,6 +46,7 @@
   let tecSmoothCache = new Map();
   let selectionVersion = 0;
   let isee10DayBaseForecastActive = false;
+  let iseeBaseKpDisplaySeries = []; // display only; never used to re-subtract Kp from Base10
 
   let kpAiCoefficients = null;
   let kpAiPerformance = null;
@@ -850,7 +851,7 @@
 
   function setDisplayedFrames(frames, sourceLabel) {
     if (!frames.length) throw new Error("表示できるTECフレームがありません。期間を変えてください。");
-    if (!String(sourceLabel || "").includes("ISEE Base10 Forecast")) {
+    if (!String(sourceLabel || "").includes("ISEE Mean Forecast")) {
       isee10DayBaseForecastActive = false;
     }
     const meta = frames[0].gridMeta;
@@ -883,7 +884,12 @@
         time: t,
         grid: f.grid,
         gridMeta: gm,
-        sourceFile: f.sourceFile || "ISEE Base10 Forecast",
+        sourceFile: f.sourceFile || "ISEE Mean Forecast",
+        // v8.13: preserve display-only Base10 metadata.
+        // v8.12 accidentally dropped these fields here, so KpB UI fell back to 3.00.
+        baseKpDisplay: Number(f.baseKpDisplay ?? f.base_kp_display ?? NaN),
+        baseDaysUsed: Number(f.baseDaysUsed ?? f.base_days_used ?? NaN),
+        baseSlotUtc: f.baseSlotUtc || f.base_slot_utc || "",
       };
     });
 
@@ -896,14 +902,18 @@
       }));
     }
 
-    // Base10 is already Kp-removed. Keep KpB display neutral instead of
-    // subtracting another historical Kp term.
+    // Base10 is already Kp-removed.
+    // Calculation-side KpB stays neutral (=3) so no historical Kp term is
+    // subtracted a second time.  UI-side KpB is stored separately as the
+    // weighted historical Kp actually used to create each Base10 slot.
     if (normalized.length) {
       gBaseKpSeries = normalized.map(f => ({ t: f.time, kp: 3.0 }));
       try { gBaseKpTod = buildTodSeriesFromTimeSeries(gBaseKpSeries, "kp", 30); } catch {}
+
+      iseeBaseKpDisplaySeries = []; // ISEE v8.14: no Base Kp by design
     }
 
-    setDisplayedFrames(normalized, "ISEE Base10 Forecast");
+    setDisplayedFrames(normalized, "ISEE Mean Forecast");
     isee10DayBaseForecastActive = true; // setDisplayedFrames preserves it, explicit for safety.
 
     gForecastStart = normalized[0].time;
@@ -921,13 +931,14 @@
 
     try { updateKpLabels?.(); } catch {}
     setV4Status(
-      `ISEE Base10 Forecast: ${normalized.length} frames / VTEC [TECU] / ` +
+      `ISEE Mean Forecast: ${normalized.length} frames / VTEC [TECU] / ` +
       `${isoNoMs(normalized[0].time)} 〜 ${isoNoMs(normalized[normalized.length-1].time)}`
     );
   };
 
   window.swiftClearIsee10DayBaseForecastMode = function () {
     isee10DayBaseForecastActive = false;
+    iseeBaseKpDisplaySeries = [];
   };
 
   async function loadTecArchiveRange() {
@@ -2636,6 +2647,11 @@
   window.setForecastTecApiMode = setForecastTecApiMode;
   window.loadKpAiData = loadKpAiData;
   window.renderKpAiPanel = renderKpAiPanel;
+  window.swiftGetKpAiPerformanceData = function (source) {
+    return String(source || "noaa").toLowerCase() === "isee"
+      ? iseeKpAiPerformance
+      : kpAiPerformance;
+  };
   window.playArchiveMovie = playArchiveMovie;
   window.stopArchiveMovie = stopArchiveMovie;
 
@@ -3142,6 +3158,7 @@
   let histV52 = null;
   let tecIndexV52 = null;
   let selectedRegionV52 = "R01";
+  let lastMetricsSourceV52 = null;
 
   function readyV52(fn) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
@@ -3481,21 +3498,51 @@
     }));
   }
 
+  function metricsSourceV52() {
+    const v = String(q52("swiftV52MetricsSource")?.value || "noaa").toLowerCase();
+    return v === "isee" ? "isee" : "noaa";
+  }
+
+  async function setMetricsSourceV52(source) {
+    const v = String(source || "noaa").toLowerCase() === "isee" ? "isee" : "noaa";
+    const sel = q52("swiftV52MetricsSource");
+    if (sel) sel.value = v;
+    try { localStorage.setItem("swift_v52_metrics_source", v); } catch {}
+    lastMetricsSourceV52 = v;
+    await loadV52Data();
+  }
+
   async function loadV52Data() {
-    setV52Status("AI学習結果を読み込み中…");
+    const metricsSource = metricsSourceV52();
+    const isIsee = metricsSource === "isee";
+    const base = isIsee ? "data/ai/isee_japan/" : AI_BASE;
+    const tecIndexUrl = isIsee ? "data/isee_tec/index.json" : "data/tec/index.json";
+
+    setV52Status(isIsee ? "ISEE Japan AI学習・実測検証結果を読み込み中…" : "NOAA / Global AI学習・検証結果を読み込み中…");
     const results = await Promise.allSettled([
-      fetchJson52(AI_BASE + "kp_performance.json"),
-      fetchJson52(AI_BASE + "kp_coefficients.json"),
-      fetchJson52(AI_BASE + "kp_learning_history.json"),
-      fetchJson52("data/tec/index.json"),
+      fetchJson52(base + "kp_performance.json"),
+      fetchJson52(base + "kp_coefficients.json"),
+      fetchJson52(base + "kp_learning_history.json"),
+      fetchJson52(tecIndexUrl),
     ]);
     perfV52 = results[0].status === "fulfilled" ? results[0].value : null;
     coeffV52 = results[1].status === "fulfilled" ? results[1].value : null;
     histV52 = results[2].status === "fulfilled" ? results[2].value : null;
     tecIndexV52 = results[3].status === "fulfilled" ? results[3].value : null;
+
+    const note = q52("swiftV52HistoryNote");
+    if (note) {
+      note.textContent = isIsee
+        ? "ISEE Japan高解像度VTECの学習結果。下の実測検証では時間別平均予報と実測ISEEのずれをKp別に表示します。"
+        : "全格子で学習し、18地域に集約した的中率を過去2年分表示します。";
+    }
+
     try { await window.loadKpAiData?.(false); } catch {}
     renderV52All();
-    setV52Status(perfV52 ? "AI学習結果を読み込みました。" : "AI学習結果なし。Actionsで Train Kp AI Corrector を実行してください。");
+    try { await window.swiftLoadFailureAnalysis?.(true); } catch {}
+    setV52Status(perfV52
+      ? (isIsee ? "ISEE Japan AI学習・実測検証結果を読み込みました。" : "AI学習結果を読み込みました。")
+      : (isIsee ? "ISEE Japan AI学習結果がまだありません。日次ISEE Actionを実行してください。" : "AI学習結果なし。Actionsで Train Kp AI Corrector を実行してください。"));
   }
 
   function syncV52ForecastControls() {
@@ -3525,6 +3572,7 @@
     if (legacyClip) legacyClip.value = clip;
 
     try { localStorage.setItem("swift_v52_tec_source", source); } catch {}
+
   }
 
   async function v52LoadTec() {
@@ -3551,9 +3599,9 @@
       const legacyTecSource = q52("tecSourceSelect");
       if (legacyTecSource) legacyTecSource.value = "isee";
 
-      setV52Status("ISEE 10日Base VTEC + 予報Kp + Japan格子別AIで4日予報を計算中…");
-      await window.swiftIseeRun10DayBaseForecast?.();
-      setV52Status("ISEE Japan 10日Base予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。");
+      setV52Status("ISEE時間別平均VTEC + 予報Kp + Japan格子別AIで4日予報を計算中…");
+      await (window.swiftIseeRunMeanForecast || window.swiftIseeRun10DayBaseForecast)?.();
+      setV52Status("ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。");
       return;
     } else {
       if (auto) auto.checked = true;
@@ -3851,7 +3899,7 @@
             <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(true)">🇯🇵 日本表示</button>
           </div>
           <div id="swiftV52IseeNote" class="swift-v52-sub" style="display:none;margin-top:4px;">
-            日本高解像度 VTEC [TECU] / 30日保存 / 10日Base + 予報Kp + Japan格子別AI
+            日本高解像度 VTEC [TECU] / 30日保存 / 時間別平均 + 予報Kp + Japan格子別AI
           </div>
         </div>
         <div class="swift-v52-row">
@@ -3900,10 +3948,16 @@
     panel.innerHTML = `
       <div class="swift-v52-chart-head">
         <div>
-          <div class="swift-v52-title">的中率モニター</div>
+          <div class="swift-v52-title">的中率モニター <span style="font-size:10px;color:#93c5fd;">NOAA / ISEE 切替</span></div>
           <div class="swift-v52-sub" id="swiftV52HistoryNote">全格子で学習し、18地域に集約した的中率を過去2年分表示します。</div>
         </div>
         <div class="swift-v52-head-actions">
+          <span style="font-size:10px;color:#9fb0cc;align-self:center;">検証表示</span>
+          <select id="swiftV52MetricsSource" class="swift-v52-select" style="width:130px;"
+                  onchange="window.swiftV52SetMetricsSource(this.value)">
+            <option value="noaa" selected>NOAA / Global</option>
+            <option value="isee">ISEE Japan</option>
+          </select>
           <select id="swiftV52Span" class="swift-v52-select" style="width:118px;" onchange="window.swiftV52RenderAll()">
             <option value="90">90日</option>
             <option value="365">1年</option>
@@ -3984,7 +4038,13 @@
       try {
         const savedSource = localStorage.getItem("swift_v52_tec_source");
         if (savedSource && q52("swiftV52TecSource")) q52("swiftV52TecSource").value = savedSource;
+
+        const savedMetrics = localStorage.getItem("swift_v52_metrics_source");
+        if (savedMetrics && q52("swiftV52MetricsSource")) {
+          q52("swiftV52MetricsSource").value = savedMetrics === "isee" ? "isee" : "noaa";
+        }
       } catch {}
+      lastMetricsSourceV52 = metricsSourceV52();
       syncV52ForecastControls();
       loadV52Data().catch(e => {
         console.warn(e);
@@ -3999,6 +4059,7 @@
   }
 
   window.swiftV52LoadData = loadV52Data;
+  window.swiftV52SetMetricsSource = setMetricsSourceV52;
   window.swiftV52LoadTec = v52LoadTec;
   window.swiftV52RunForecast = v52RunForecast;
   window.swiftV52SyncForecastControls = syncV52ForecastControls;
@@ -4549,6 +4610,15 @@
 
   function kpBaseAtV56(t) {
     try {
+      // ISEE Base10 forecast:
+      // show the weighted historical Kp used to build Base10.
+      // This is DISPLAY ONLY. Forecast calculation uses the already
+      // Kp-removed Base10 grid and does not subtract this Kp again.
+      if (isee10DayBaseForecastActive) {
+        // ISEE v8.14 has no Base/KpB concept.
+        return NaN;
+      }
+
       const v = todValueAt(gBaseKpTod, t);
       return finite56(v) ? Number(v) : NaN;
     } catch {
@@ -4572,6 +4642,8 @@
     const set = (id, val) => { const el = q56(id); if (el) el.textContent = val; };
     set("swiftV56KpF", fmt56(kpF));
     set("swiftV56KpB", fmt56(kpB));
+    const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-box")?.querySelector(".swift-v56-kp-label");
+    if (kpBLabel) kpBLabel.textContent = isee10DayBaseForecastActive ? "KpB（ISEEでは未使用）" : "KpB Base";
     set("swiftV56KpTime", iso56(t));
     const next = nextKpChangeV56(t);
     set("swiftV56KpNext", next ? `${iso56(next.t)} / KpF=${fmt56(next.kp)}` : "--");
@@ -4607,16 +4679,54 @@
     updateKpPanelV56(t, kpF, kpB);
   }
 
-  async function fetchBaseKpIfBlankV56() {
-    // The old behavior uses KpF as KpB when Base Kp is blank, so both labels become identical.
-    // Fetch actual NOAA 1-day K-index before forecasting to make KpB an independent base input.
+  function isIseeForecastV56() {
+    const compact = String(q56("swiftV52TecSource")?.value || "");
+    if (compact) return compact === "isee_japan_highres";
+    return String(q56("tecSourceSelect")?.value || "").toLowerCase() === "isee";
+  }
+
+  function hasValidBaseKpV56() {
     const ta = q56("baseKpJson");
-    if (ta && String(ta.value || "").trim().length > 8) return;
-    if (typeof window.fetchNoaaPlanetaryKIndex1DayToBase === "function") {
-      const status = q56("swiftV52Status");
-      if (status) status.textContent = "Base用Kp（NOAA K-index 1日分）を取得中…";
-      await window.fetchNoaaPlanetaryKIndex1DayToBase();
+    const raw = String(ta?.value || "").trim();
+    if (raw.length <= 8) return false;
+    try {
+      if (typeof parseNoaaPlanetaryKIndexJson === "function") {
+        const rows = parseNoaaPlanetaryKIndexJson(raw);
+        return Array.isArray(rows) && rows.length > 0;
+      }
+    } catch {}
+    return raw.startsWith("[");
+  }
+
+  async function fetchBaseKpIfBlankV56() {
+    // v8.22:
+    // NOAA normally uses observed Base Kp.
+    // ISEE Japan intentionally has no Base/KpB.
+    // If NOAA Base Kp fetch fails, return false and let the forecast continue
+    // with the emergency fallback handled in index.html.
+    if (isIseeForecastV56()) return true;
+    if (hasValidBaseKpV56()) return true;
+
+    const status = q56("swiftV52Status");
+    if (typeof window.fetchNoaaPlanetaryKIndex1DayToBase !== "function") {
+      if (status) status.textContent = "警告: Base Kp取得関数なし。KpF代用でNOAA予報を継続します。";
+      return false;
     }
+
+    try {
+      if (status) status.textContent = "NOAA Base Kp（ローカルキャッシュ優先）を取得中…";
+      await window.fetchNoaaPlanetaryKIndex1DayToBase();
+    } catch (e) {
+      console.warn("NOAA Base Kp fetch failed:", e);
+      if (status) status.textContent = "警告: Base Kp取得失敗。KpF代用でNOAA予報を継続します。";
+      return false;
+    }
+
+    if (!hasValidBaseKpV56()) {
+      if (status) status.textContent = "警告: Base Kp未取得。KpF代用でNOAA予報を継続します。";
+      return false;
+    }
+    return true;
   }
 
   function installKpPanelV56() {
@@ -4668,11 +4778,16 @@
     if (!originalSwiftV52RunForecastV56 && typeof window.swiftV52RunForecast === "function") {
       originalSwiftV52RunForecastV56 = window.swiftV52RunForecast;
       window.swiftV52RunForecast = async function () {
-        try {
-          await fetchBaseKpIfBlankV56();
-        } catch (e) {
-          console.warn("Base Kp auto fetch failed:", e);
+        // ISEE: no Base Kp.
+        // NOAA: try to get observed Base Kp, but do not stop the forecast if it fails.
+        if (!isIseeForecastV56()) {
+          try {
+            await fetchBaseKpIfBlankV56();
+          } catch (e) {
+            console.warn("NOAA Base Kp prefetch failed; continuing with fallback:", e);
+          }
         }
+
         const result = await originalSwiftV52RunForecastV56();
         setTimeout(patchedUpdateKpLabelsV56, 80);
         return result;
@@ -5430,12 +5545,14 @@
 
 
 /* =========================================================
- * SWIFT-TEC v6.2 failure analysis UI
- * Shows hit-rate by TEC error threshold and by Kp bin.
- * Purpose: find conditions where forecast misses.
+ * SWIFT-TEC v8.16 source-aware forecast verification UI
+ * NOAA: existing kp_performance.json
+ * ISEE: forecast_verification.json using actual ISEE observations.
  * ========================================================= */
 (function () {
   let failPerfV62 = null;
+  let failSourceV62 = "";
+  let failErrorV62 = "";
 
   function readyV62(fn) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
@@ -5450,6 +5567,25 @@
     const n = Number(v);
     return Number.isFinite(n) ? n.toFixed(d) : "--";
   }
+  function isIseeV62() {
+    // v8.17: accuracy/verification display is independent from forecast TEC source.
+    return String(q62("swiftV52MetricsSource")?.value || "noaa").toLowerCase() === "isee";
+  }
+  function sourceInfoV62() {
+    return isIseeV62()
+      ? {
+          key:"isee",
+          url:"data/ai/isee_japan/forecast_verification.json",
+          label:"ISEE Japan",
+          sub:"時間別平均 + Kp補正の予報を、後から取得できた実測ISEE VTECと比較",
+        }
+      : {
+          key:"global",
+          url:"data/ai/kp_performance.json",
+          label:"NOAA / Global",
+          sub:"TEC誤差閾値別・Kp帯別に的中率を見ることで、どの条件で外れるかを確認",
+        };
+  }
 
   function injectStyleV62() {
     if (q62("swiftFailAnalysisStyleV62")) return;
@@ -5463,188 +5599,580 @@
         padding: 10px;
         margin-top: 10px;
       }
-      .swift-v62-title {
-        font-size: 13px;
-        font-weight: 900;
-        color: #eaf2ff;
-        margin-bottom: 2px;
+      .swift-v62-title { font-size:13px;font-weight:900;color:#eaf2ff;margin-bottom:2px; }
+      .swift-v62-sub { font-size:10px;color:#9fb0cc;margin-bottom:8px;line-height:1.45; }
+      .swift-v62-source {
+        display:inline-flex;align-items:center;gap:5px;border:1px solid #315a93;
+        background:#081b37;border-radius:999px;padding:3px 8px;font-size:10px;color:#dbeafe;
       }
-      .swift-v62-sub {
-        font-size: 10px;
-        color: #9fb0cc;
-        margin-bottom: 8px;
+      .swift-v62-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:6px 0 8px; }
+      .swift-v62-btn {
+        border-radius:9px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;
+        padding:6px 9px;font-size:10px;font-weight:800;cursor:pointer;
       }
+      .swift-v62-btn.secondary { background:#0f172a;border-color:#334155; }
+      .swift-v62-error { color:#fecaca;font-size:10px;line-height:1.45; }
+      .swift-v62-kpis {
+        display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 10px;
+      }
+      .swift-v62-kpi {
+        border:1px solid #1f355a;border-radius:11px;background:#061020;padding:8px;
+      }
+      .swift-v62-kpi-label { color:#9fb0cc;font-size:9px; }
+      .swift-v62-kpi-value { color:#f8fafc;font-weight:850;font-size:17px;margin-top:3px; }
       .swift-v62-grid {
-        display: grid;
-        grid-template-columns: minmax(280px, .85fr) minmax(360px, 1.15fr);
-        gap: 10px;
+        display:grid;grid-template-columns:minmax(300px,.9fr) minmax(420px,1.1fr);gap:10px;
       }
-      .swift-v62-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 10px;
+      .swift-v62-table { width:100%;border-collapse:collapse;font-size:10px; }
+      .swift-v62-table th,.swift-v62-table td {
+        border:1px solid #1f355a;padding:5px 6px;text-align:right;
       }
-      .swift-v62-table th,
-      .swift-v62-table td {
-        border: 1px solid #1f355a;
-        padding: 5px 6px;
-        text-align: right;
-      }
-      .swift-v62-table th:first-child,
-      .swift-v62-table td:first-child {
-        text-align: left;
-      }
-      .swift-v62-table th {
-        background: #0b1730;
-        color: #bcd0ee;
-      }
-      .swift-v62-bad { color: #fecaca; font-weight: 850; }
-      .swift-v62-good { color: #bbf7d0; font-weight: 850; }
+      .swift-v62-table th:first-child,.swift-v62-table td:first-child { text-align:left; }
+      .swift-v62-table th { background:#0b1730;color:#bcd0ee; }
+      .swift-v62-bad { color:#fecaca;font-weight:850; }
+      .swift-v62-good { color:#bbf7d0;font-weight:850; }
       .swift-v62-barbox {
-        width: 100%;
-        height: 9px;
-        background: #020617;
-        border: 1px solid #1f355a;
-        border-radius: 99px;
-        overflow: hidden;
+        width:100%;height:9px;background:#020617;border:1px solid #1f355a;border-radius:99px;overflow:hidden;
       }
-      .swift-v62-bar {
-        height: 100%;
-        background: #60a5fa;
-        border-radius: 99px;
-      }
+      .swift-v62-bar { height:100%;background:#60a5fa;border-radius:99px; }
       .swift-v62-kp-row {
-        display: grid;
-        grid-template-columns: 42px 1fr 58px 58px 70px;
-        gap: 6px;
-        align-items: center;
-        font-size: 10px;
-        color: #dbeafe;
-        margin: 5px 0;
+        display:grid;grid-template-columns:42px 1fr 56px 72px 72px;
+        gap:5px;align-items:center;font-size:9.5px;color:#dbeafe;margin:5px 0;
       }
-      @media (max-width: 980px) {
-        .swift-v62-grid { grid-template-columns: 1fr; }
+      .swift-v62-recent { max-height:210px;overflow:auto;margin-top:8px; }
+      @media (max-width:980px) {
+        .swift-v62-grid{grid-template-columns:1fr}
+        .swift-v62-kpis{grid-template-columns:1fr 1fr}
+        .swift-v62-kp-row{grid-template-columns:42px 1fr 50px 60px 64px}
+        .swift-v62-kp-row .ncol{display:none}
       }
     `;
     document.head.appendChild(st);
   }
 
-  async function loadFailPerfV62() {
-    try {
-      const res = await fetch("data/ai/kp_performance.json", { cache: "no-store" });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      failPerfV62 = await res.json();
-    } catch (e) {
-      console.warn("failure analysis load failed", e);
-      failPerfV62 = null;
+  async function fetchJsonRetryV62(url, tries = 3) {
+    let lastErr = null;
+    for (let i = 0; i < tries; i++) {
+      try {
+        const abs = new URL(url, window.location.href);
+        abs.searchParams.set("_swift", `${Date.now()}_${i}`);
+        const res = await fetch(abs.href, {
+          cache:"no-store",
+          credentials:"same-origin",
+          headers:{ "Accept":"application/json" },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${abs.pathname}`);
+        return await res.json();
+      } catch (e) {
+        lastErr = e;
+        if (i + 1 < tries) await new Promise(r => setTimeout(r, 250 * (i + 1)));
+      }
     }
+    throw lastErr || new Error("JSON load failed");
+  }
+
+  async function loadFailPerfV62(force = false) {
+    const info = sourceInfoV62();
+    if (!force && failPerfV62 && failSourceV62 === info.key) {
+      renderFailPanelV62();
+      return failPerfV62;
+    }
+
+    failPerfV62 = null;
+    failErrorV62 = "";
+    failSourceV62 = info.key;
     renderFailPanelV62();
+
+    try {
+      failPerfV62 = await fetchJsonRetryV62(info.url, 3);
+    } catch (e) {
+      // NOAA performance is also loaded by the main Kp-AI loader.
+      // Reuse it if the page/data deployment had a transient fetch failure.
+      if (info.key === "global") {
+        try {
+          const cached = window.swiftGetKpAiPerformanceData?.("noaa");
+          if (cached && typeof cached === "object") {
+            failPerfV62 = cached;
+          }
+        } catch {}
+      }
+
+      if (!failPerfV62) {
+        failErrorV62 = String(e?.message || e || "読込失敗");
+        console.warn("forecast verification load failed", info.url, e);
+      }
+    }
+
+    renderFailPanelV62();
+    return failPerfV62;
+  }
+
+  function renderSummaryKpisV62() {
+    const s = failPerfV62?.summary || {};
+    const bias = Number(s.corrected_bias ?? s.bias);
+    const mae = Number(s.corrected_mae ?? s.mae);
+    const rmse = Number(s.corrected_rmse ?? s.rmse);
+    const hit = Number(s.corrected_hit_rate ?? s.hit_rate);
+    const n = Number(s.sample_count || 0);
+    return `<div class="swift-v62-kpis">
+      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">実測−予報 Bias</div><div class="swift-v62-kpi-value">${num62(bias)} TECU</div></div>
+      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">MAE</div><div class="swift-v62-kpi-value">${num62(mae)} TECU</div></div>
+      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">RMSE</div><div class="swift-v62-kpi-value">${num62(rmse)} TECU</div></div>
+      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">±5 TECU Hit / N</div><div class="swift-v62-kpi-value">${pct62(hit)} / ${n || 0}</div></div>
+    </div>`;
   }
 
   function renderThresholdTableV62() {
     const th = failPerfV62?.thresholds || failPerfV62?.summary?.thresholds || {};
-    const keys = ["5", "10", "15", "20"];
+    const keys = ["5","10","15","20"];
     return `<table class="swift-v62-table">
-      <thead>
-        <tr><th>閾値</th><th>raw Hit</th><th>AI Hit</th><th>改善</th><th>AI RMSE</th><th>N</th></tr>
-      </thead>
-      <tbody>
-        ${keys.map(k => {
-          const r = th[k] || {};
-          const raw = Number(r.raw_hit_rate);
-          const corr = Number(r.corrected_hit_rate);
-          const imp = Number.isFinite(raw) && Number.isFinite(corr) ? corr - raw : NaN;
-          const cls = Number.isFinite(imp) && imp < 0 ? "swift-v62-bad" : "swift-v62-good";
-          return `<tr>
-            <td>±${k} TECU</td>
-            <td>${pct62(raw)}</td>
-            <td><b>${pct62(corr)}</b></td>
-            <td class="${cls}">${Number.isFinite(imp) ? (imp >= 0 ? "+" : "") + (imp * 100).toFixed(1) + "pt" : "--"}</td>
-            <td>${num62(r.corrected_rmse)}</td>
-            <td>${r.sample_count || 0}</td>
-          </tr>`;
-        }).join("")}
-      </tbody>
+      <thead><tr><th>閾値</th><th>平均のみ</th><th>Kp補正後</th><th>改善</th><th>RMSE</th><th>N</th></tr></thead>
+      <tbody>${keys.map(k => {
+        const r=th[k]||{};
+        const raw=Number(r.raw_hit_rate), corr=Number(r.corrected_hit_rate);
+        const imp=Number.isFinite(raw)&&Number.isFinite(corr)?corr-raw:NaN;
+        const cls=Number.isFinite(imp)&&imp<0?"swift-v62-bad":"swift-v62-good";
+        return `<tr>
+          <td>±${k} TECU</td><td>${pct62(raw)}</td><td><b>${pct62(corr)}</b></td>
+          <td class="${cls}">${Number.isFinite(imp)?(imp>=0?"+":"")+(imp*100).toFixed(1)+"pt":"--"}</td>
+          <td>${num62(r.corrected_rmse)}</td><td>${r.sample_count||0}</td>
+        </tr>`;
+      }).join("")}</tbody>
     </table>`;
   }
 
-  function renderKpBinsV62() {
-    const bins = failPerfV62?.kp_bins || {};
-    const keys = ["0-2", "2-3", "3-4", "4-5", "5-6", "6-7", "7+"];
-    const rows = keys.map(k => {
-      const r = bins[k] || {};
-      const t = r.thresholds?.["5"] || r;
-      const corr = Number(t.corrected_hit_rate);
-      const n = Number(t.sample_count || 0);
-      return { k, corr, n, rmse: t.corrected_rmse };
+  function renderKpHitRateV62() {
+    // v8.20:
+    // Long-term Kp hit rate uses the lightweight 365-day N/Hit archive.
+    // Bias/MAE/RMSE below continue to use the normal short-window kp_bins.
+    const bins = failPerfV62?.kp_bins_1y_hit || failPerfV62?.kp_bins || {};
+    const arc = failPerfV62?.kp_hit_archive || {};
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+
+    const rows=keys.map(k=>{
+      const r=bins[k]||{};
+      const t=r.thresholds?.["5"]||r;
+      return {
+        k,
+        hit:Number(t.corrected_hit_rate),
+        raw:Number(t.raw_hit_rate),
+        n:Number(t.sample_count ?? r.sample_count ?? 0),
+      };
     });
+
+    const days=Number(arc.window_days||365);
+    const totalN=Number(arc.sample_count||rows.reduce((a,r)=>a+(r.n||0),0));
+    const first=arc.first_date_utc||"";
+    const last=arc.last_date_utc||"";
+    const range=(first&&last)?` / ${first}〜${last}`:"";
+
     return `<div>
-      <div class="swift-v62-sub">KpFごとの ±5 TECU 的中率。低いKp帯が外れやすい条件です。</div>
-      ${rows.map(r => `<div class="swift-v62-kp-row">
+      <div class="swift-v62-sub">
+        KpFごとの ±5 TECU 的中率。過去${days}日・全有効格子ケースをN/Hitだけ軽量保存${range} / 総N=${totalN||0}。
+      </div>
+      ${rows.map(r=>`<div class="swift-v62-kp-row">
         <div>Kp ${r.k}</div>
-        <div class="swift-v62-barbox"><div class="swift-v62-bar" style="width:${Math.max(0, Math.min(100, (r.corr || 0) * 100)).toFixed(1)}%"></div></div>
-        <div>${pct62(r.corr)}</div>
+        <div class="swift-v62-barbox"><div class="swift-v62-bar" style="width:${Math.max(0,Math.min(100,(r.hit||0)*100)).toFixed(1)}%"></div></div>
+        <div>${pct62(r.hit)}</div>
+        <div>raw ${pct62(r.raw)}</div>
         <div>N=${r.n}</div>
-        <div>RMSE ${num62(r.rmse)}</div>
       </div>`).join("")}
     </div>`;
   }
 
+  function renderKpErrorV62() {
+    const bins=failPerfV62?.kp_bins||{};
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    const rows=keys.map(k=>{
+      const r=bins[k]||{};
+      const t=r.thresholds?.["5"]||r;
+      return {
+        k,
+        bias:Number(r.corrected_bias ?? t.corrected_bias),
+        mae:Number(r.corrected_mae ?? t.corrected_mae),
+        rmse:Number(r.corrected_rmse ?? t.corrected_rmse),
+        n:Number(r.sample_count ?? t.sample_count ?? 0),
+      };
+    });
+
+    return `<table class="swift-v62-table">
+      <thead><tr><th>KpF</th><th>Bias</th><th>MAE</th><th>RMSE</th><th>N</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr>
+        <td>Kp ${r.k}</td>
+        <td>${num62(r.bias)}</td>
+        <td>${num62(r.mae)}</td>
+        <td>${num62(r.rmse)}</td>
+        <td>${r.n}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  }
+
   function worstKpTextV62() {
-    const bins = failPerfV62?.kp_bins || {};
-    let worst = null;
-    for (const [k, r] of Object.entries(bins)) {
-      const t = r.thresholds?.["5"] || r;
-      const n = Number(t.sample_count || 0);
-      const hit = Number(t.corrected_hit_rate);
-      if (n < 100 || !Number.isFinite(hit)) continue;
-      if (!worst || hit < worst.hit) worst = { k, hit, n, rmse: t.corrected_rmse };
+    const bins=failPerfV62?.kp_bins||{};
+    let worst=null;
+    for (const [k,r] of Object.entries(bins)) {
+      const t=r.thresholds?.["5"]||r;
+      const n=Number(t.sample_count ?? r.sample_count ?? 0);
+      const hit=Number(t.corrected_hit_rate);
+      if (n<=0 || !Number.isFinite(hit)) continue;
+      if (!worst || hit<worst.hit) {
+        worst={k,hit,n,rmse:Number(t.corrected_rmse ?? r.corrected_rmse)};
+      }
     }
-    if (!worst) return "外れやすいKp帯はまだ判定できません。学習データが増えると表示が安定します。";
+    if (!worst) return "Kp帯別の的中率データはまだ不足しています。";
     return `現時点で一番外れやすいKp帯: Kp ${worst.k} / Hit ${pct62(worst.hit)} / RMSE ${num62(worst.rmse)} / N=${worst.n}`;
   }
 
+  function renderRecentV62() {
+    if (!isIseeV62()) return "";
+    const rows = Array.isArray(failPerfV62?.recent) ? failPerfV62.recent.slice(-12).reverse() : [];
+    if (!rows.length) return "";
+    return `<div style="margin-top:10px;">
+      <div class="swift-v62-title">最近の実測ISEEとの差</div>
+      <div class="swift-v62-recent">
+        <table class="swift-v62-table">
+          <thead><tr><th>UTC</th><th>Kp</th><th>実測平均</th><th>予報平均</th><th>Bias</th><th>MAE</th><th>RMSE</th></tr></thead>
+          <tbody>${rows.map(r=>`<tr>
+            <td>${String(r.time_utc||"").replace("T"," ").slice(0,16)}</td>
+            <td>${num62(r.kp,1)}</td>
+            <td>${num62(r.observed_mean_tecu)}</td>
+            <td>${num62(r.forecast_mean_tecu)}</td>
+            <td>${num62(r.bias_tecu)}</td>
+            <td>${num62(r.mae_tecu)}</td>
+            <td>${num62(r.rmse_tecu)}</td>
+          </tr>`).join("")}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  function worstKpTextV62() {
+    const bins=failPerfV62?.kp_bins||{};
+    let worst=null;
+    for (const [k,r] of Object.entries(bins)) {
+      const n=Number(r.sample_count ?? r.thresholds?.["5"]?.sample_count ?? 0);
+      const rmse=Number(r.corrected_rmse ?? r.thresholds?.["5"]?.corrected_rmse);
+      if (n<=0 || !Number.isFinite(rmse)) continue;
+      if (!worst || rmse>worst.rmse) worst={k,n,rmse,bias:r.corrected_bias};
+    }
+    if (!worst) return "Kp帯別の実測検証データはまだ不足しています。";
+    return `現在RMSEが最大のKp帯: Kp ${worst.k} / RMSE ${num62(worst.rmse)} TECU / Bias ${num62(worst.bias)} / N=${worst.n}`;
+  }
+
   function ensureFailPanelV62() {
-    const main = q62("swiftAccuracyMain");
+    const main=q62("swiftAccuracyMain");
     if (!main || q62("swiftFailureAnalysisV62")) return null;
-    const panel = document.createElement("div");
-    panel.id = "swiftFailureAnalysisV62";
-    panel.className = "swift-v62-card";
-    panel.innerHTML = `<div class="swift-v62-title">外れやすさ分析</div>
-      <div class="swift-v62-sub">TEC誤差閾値別・Kp帯別に的中率を見ることで、どの条件で外れるかを確認します。</div>
-      <div id="swiftFailureAnalysisBodyV62">読み込み中…</div>`;
+    const panel=document.createElement("div");
+    panel.id="swiftFailureAnalysisV62";
+    panel.className="swift-v62-card";
     main.appendChild(panel);
     return panel;
   }
 
   function renderFailPanelV62() {
-    ensureFailPanelV62();
-    const body = q62("swiftFailureAnalysisBodyV62");
-    if (!body) return;
+    const panel=ensureFailPanelV62();
+    if (!panel) return;
+    const info=sourceInfoV62();
+
     if (!failPerfV62) {
-      body.innerHTML = `<div class="swift-v62-sub">まだ kp_performance.json を読めません。Train Kp AI Corrector を実行してください。</div>`;
+      panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
+        <div class="swift-v62-sub">${info.sub}</div>
+        <div class="swift-v62-actions">
+          <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">再読込</button>
+          <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">検証Excel出力</button>
+        </div>
+        <div class="swift-v62-error">
+          読込失敗${failErrorV62 ? `: ${failErrorV62}` : ""}<br>
+          ${isIseeV62()
+            ? "ISEE検証JSONが未生成の場合は Update ISEE Japan VTEC and AI を実行してください。"
+            : "一時的なPages反映遅延でもこの表示になるため、再読込を試してください。"}
+        </div>`;
       return;
     }
-    body.innerHTML = `<div class="swift-v62-grid">
-      <div>
-        <div class="swift-v62-title">閾値別 的中率</div>
-        ${renderThresholdTableV62()}
+
+    const s=failPerfV62.summary||{};
+    const latest = s.latest_isee_time_utc ? ` / ISEE最新=${s.latest_isee_time_utc}` : "";
+    const note = failPerfV62.verification_note ? `<div class="swift-v62-sub">${failPerfV62.verification_note}</div>` : "";
+
+    panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
+      <div class="swift-v62-sub">${info.sub}${latest}</div>
+      <div class="swift-v62-actions">
+        <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">再読込</button>
+        <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">NOAA + ISEE 検証Excel出力</button>
       </div>
-      <div>
-        <div class="swift-v62-title">Kp別 的中率</div>
-        ${renderKpBinsV62()}
-        <div class="swift-v62-sub" style="margin-top:8px;">${worstKpTextV62()}</div>
+      ${renderSummaryKpisV62()}
+      <div class="swift-v62-grid">
+        <div>
+          <div class="swift-v62-title">誤差閾値別 的中率</div>
+          ${renderThresholdTableV62()}
+        </div>
+        <div>
+          <div class="swift-v62-title">Kp別 的中率（過去1年・全ケース・±5 TECU）</div>
+          ${renderKpHitRateV62()}
+          <div class="swift-v62-sub" style="margin-top:8px;">${worstKpTextV62()}</div>
+        </div>
       </div>
-    </div>`;
+      <div style="margin-top:10px;">
+        <div class="swift-v62-title">Kp別 予報のずれ</div>
+        <div class="swift-v62-sub">上の的中率を残したまま、Bias / MAE / RMSEも追加表示します。</div>
+        ${renderKpErrorV62()}
+      </div>
+      ${renderRecentV62()}
+      ${note}`;
   }
+
+
+  function loadSheetJsV821() {
+    return new Promise((resolve, reject) => {
+      if (window.XLSX) return resolve();
+      const urls = [
+        "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+        "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js",
+      ];
+      let i = 0;
+      const next = () => {
+        if (window.XLSX) return resolve();
+        if (i >= urls.length) return reject(new Error("SheetJSの読み込みに失敗しました。"));
+        const s = document.createElement("script");
+        s.src = urls[i++];
+        s.async = true;
+        s.onload = () => window.XLSX ? resolve() : next();
+        s.onerror = next;
+        document.head.appendChild(s);
+      };
+      next();
+    });
+  }
+
+  function aggregateHitArchiveV821(archive) {
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    const totals=Object.fromEntries(keys.map(k=>[k,{n:0,r:0,c:0}]));
+    for (const d of (archive?.days || [])) {
+      for (const k of keys) {
+        const x=d?.b?.[k] || {};
+        totals[k].n += Number(x.n || 0);
+        totals[k].r += Number(x.r || 0);
+        totals[k].c += Number(x.c || 0);
+      }
+    }
+    return Object.fromEntries(keys.map(k=>{
+      const x=totals[k], n=x.n;
+      return [k,{
+        kp_bin:k,
+        sample_count:n,
+        raw_hit_count:x.r,
+        corrected_hit_count:x.c,
+        raw_hit_rate:n?x.r/n:null,
+        corrected_hit_rate:n?x.c/n:null,
+        threshold_tecu:Number(archive?.threshold_tecu || 5),
+      }];
+    }));
+  }
+
+  function hitBinsV821(doc, archive) {
+    if (doc?.kp_bins_1y_hit && Object.keys(doc.kp_bins_1y_hit).length) return doc.kp_bins_1y_hit;
+    if (archive?.days?.length) return aggregateHitArchiveV821(archive);
+    return doc?.kp_bins || {};
+  }
+
+  function kpHitRowsV821(doc, archive) {
+    const bins=hitBinsV821(doc, archive);
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    return keys.map(k=>{
+      const r=bins?.[k] || {};
+      const t=r?.thresholds?.["5"] || r;
+      const raw=Number(t.raw_hit_rate);
+      const corr=Number(t.corrected_hit_rate);
+      return {
+        Kp_bin:k,
+        threshold_TECU:Number(t.threshold_tecu ?? r.threshold_tecu ?? 5),
+        raw_hit_rate_pct:Number.isFinite(raw)?raw*100:"",
+        corrected_hit_rate_pct:Number.isFinite(corr)?corr*100:"",
+        improvement_pt:Number.isFinite(raw)&&Number.isFinite(corr)?(corr-raw)*100:"",
+        sample_count:Number(t.sample_count ?? r.sample_count ?? 0),
+        raw_hit_count:Number(t.raw_hit_count ?? r.raw_hit_count ?? 0),
+        corrected_hit_count:Number(t.corrected_hit_count ?? r.corrected_hit_count ?? 0),
+      };
+    });
+  }
+
+  function kpErrorRowsV821(doc) {
+    const bins=doc?.kp_bins || {};
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    return keys.map(k=>{
+      const r=bins?.[k] || {};
+      const t=r?.thresholds?.["5"] || r;
+      return {
+        Kp_bin:k,
+        Bias_TECU:Number.isFinite(Number(r.corrected_bias ?? t.corrected_bias))?Number(r.corrected_bias ?? t.corrected_bias):"",
+        MAE_TECU:Number.isFinite(Number(r.corrected_mae ?? t.corrected_mae))?Number(r.corrected_mae ?? t.corrected_mae):"",
+        RMSE_TECU:Number.isFinite(Number(r.corrected_rmse ?? t.corrected_rmse))?Number(r.corrected_rmse ?? t.corrected_rmse):"",
+        sample_count:Number(r.sample_count ?? t.sample_count ?? 0),
+      };
+    });
+  }
+
+  function thresholdRowsV821(doc) {
+    const th=doc?.thresholds || doc?.summary?.thresholds || {};
+    return ["5","10","15","20"].map(k=>{
+      const r=th?.[k] || {};
+      const raw=Number(r.raw_hit_rate), corr=Number(r.corrected_hit_rate);
+      return {
+        threshold_TECU:Number(k),
+        raw_hit_rate_pct:Number.isFinite(raw)?raw*100:"",
+        corrected_hit_rate_pct:Number.isFinite(corr)?corr*100:"",
+        improvement_pt:Number.isFinite(raw)&&Number.isFinite(corr)?(corr-raw)*100:"",
+        Bias_TECU:Number.isFinite(Number(r.corrected_bias))?Number(r.corrected_bias):"",
+        MAE_TECU:Number.isFinite(Number(r.corrected_mae))?Number(r.corrected_mae):"",
+        RMSE_TECU:Number.isFinite(Number(r.corrected_rmse))?Number(r.corrected_rmse):"",
+        sample_count:Number(r.sample_count || 0),
+      };
+    });
+  }
+
+  function summaryRowsV821(doc, sourceName) {
+    const s=doc?.summary || {};
+    const arc=doc?.kp_hit_archive || {};
+    return [
+      ["source", sourceName],
+      ["updated_utc", doc?.updated_utc || ""],
+      ["model_rule", doc?.model_rule || doc?.forecast_model || ""],
+      ["verification_note", doc?.verification_note || ""],
+      ["Bias_TECU", Number.isFinite(Number(s.corrected_bias ?? s.bias))?Number(s.corrected_bias ?? s.bias):""],
+      ["MAE_TECU", Number.isFinite(Number(s.corrected_mae ?? s.mae))?Number(s.corrected_mae ?? s.mae):""],
+      ["RMSE_TECU", Number.isFinite(Number(s.corrected_rmse ?? s.rmse))?Number(s.corrected_rmse ?? s.rmse):""],
+      ["sample_count", Number(s.sample_count || 0)],
+      ["1y_hit_window_days", Number(arc.window_days || 365)],
+      ["1y_hit_first_date", arc.first_date_utc || ""],
+      ["1y_hit_last_date", arc.last_date_utc || ""],
+      ["1y_hit_sample_count", Number(arc.sample_count || 0)],
+    ];
+  }
+
+  function dailyHitRowsV821(archive) {
+    const out=[];
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    for (const d of (archive?.days || [])) {
+      for (const k of keys) {
+        const x=d?.b?.[k] || {};
+        const n=Number(x.n || 0), r=Number(x.r || 0), c=Number(x.c || 0);
+        if (!n) continue;
+        out.push({
+          date_utc:d.d || "",
+          Kp_bin:k,
+          sample_count:n,
+          raw_hit_count:r,
+          corrected_hit_count:c,
+          raw_hit_rate_pct:n?r/n*100:"",
+          corrected_hit_rate_pct:n?c/n*100:"",
+        });
+      }
+    }
+    return out;
+  }
+
+  function recentRowsV821(doc) {
+    return (doc?.recent || []).map(r=>({
+      time_utc:r.time_utc || "",
+      Kp:Number.isFinite(Number(r.kp))?Number(r.kp):"",
+      observed_mean_TECU:Number.isFinite(Number(r.observed_mean_tecu))?Number(r.observed_mean_tecu):"",
+      forecast_mean_TECU:Number.isFinite(Number(r.forecast_mean_tecu))?Number(r.forecast_mean_tecu):"",
+      Bias_TECU:Number.isFinite(Number(r.bias_tecu))?Number(r.bias_tecu):"",
+      MAE_TECU:Number.isFinite(Number(r.mae_tecu))?Number(r.mae_tecu):"",
+      RMSE_TECU:Number.isFinite(Number(r.rmse_tecu))?Number(r.rmse_tecu):"",
+      history_days:Number(r.history_days || 0),
+      sample_count:Number(r.sample_count || 0),
+    }));
+  }
+
+  function appendSheetV821(wb, name, data, aoa=false) {
+    const safe=String(name).slice(0,31);
+    const ws=aoa ? XLSX.utils.aoa_to_sheet(data) : XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, safe);
+  }
+
+  async function optionalJsonV821(url) {
+    try { return await fetchJsonRetryV62(url, 2); }
+    catch { return null; }
+  }
+
+  async function exportAccuracyExcelV821() {
+    try {
+      await loadSheetJsV821();
+
+      const [
+        noaaPerf,noaaArchive,
+        iseeVerify,iseeArchive
+      ] = await Promise.all([
+        optionalJsonV821("data/ai/kp_performance.json"),
+        optionalJsonV821("data/ai/kp_hit_archive_1y.json"),
+        optionalJsonV821("data/ai/isee_japan/forecast_verification.json"),
+        optionalJsonV821("data/ai/isee_japan/kp_hit_archive_1y.json"),
+      ]);
+
+      if (!noaaPerf && !iseeVerify) {
+        throw new Error("NOAA / ISEE の検証データをどちらも取得できません。");
+      }
+
+      const wb=XLSX.utils.book_new();
+      appendSheetV821(wb,"Info",[
+        ["item","value"],
+        ["generated_utc",new Date().toISOString()],
+        ["NOAA_available",!!noaaPerf],
+        ["NOAA_1y_hit_archive",!!noaaArchive],
+        ["ISEE_available",!!iseeVerify],
+        ["ISEE_1y_hit_archive",!!iseeArchive],
+        ["note","Kp Hit sheets use the lightweight 365-day N/Hit archive when available. Error sheets use recent detailed verification."],
+      ],true);
+
+      if (noaaPerf) {
+        appendSheetV821(wb,"Summary_NOAA",summaryRowsV821(noaaPerf,"NOAA / Global"),true);
+        appendSheetV821(wb,"Threshold_NOAA",thresholdRowsV821(noaaPerf));
+        appendSheetV821(wb,"Kp_Hit_NOAA",kpHitRowsV821(noaaPerf,noaaArchive));
+        appendSheetV821(wb,"Kp_Error_NOAA",kpErrorRowsV821(noaaPerf));
+        if (noaaArchive?.days?.length) {
+          appendSheetV821(wb,"Kp_Hit_Daily_NOAA",dailyHitRowsV821(noaaArchive));
+        }
+      }
+
+      if (iseeVerify) {
+        appendSheetV821(wb,"Summary_ISEE",summaryRowsV821(iseeVerify,"ISEE Japan"),true);
+        appendSheetV821(wb,"Threshold_ISEE",thresholdRowsV821(iseeVerify));
+        appendSheetV821(wb,"Kp_Hit_ISEE",kpHitRowsV821(iseeVerify,iseeArchive));
+        appendSheetV821(wb,"Kp_Error_ISEE",kpErrorRowsV821(iseeVerify));
+        const recent=recentRowsV821(iseeVerify);
+        if (recent.length) appendSheetV821(wb,"ISEE_Recent",recent);
+        if (iseeArchive?.days?.length) {
+          appendSheetV821(wb,"Kp_Hit_Daily_ISEE",dailyHitRowsV821(iseeArchive));
+        }
+      }
+
+      // Side-by-side comparison sheet, useful for making an Excel chart.
+      const nh=kpHitRowsV821(noaaPerf||{},noaaArchive);
+      const ih=kpHitRowsV821(iseeVerify||{},iseeArchive);
+      const compare=["0-2","2-3","3-4","4-5","5-6","6-7","7+"].map((k,i)=>({
+        Kp_bin:k,
+        NOAA_hit_rate_pct:nh[i]?.corrected_hit_rate_pct ?? "",
+        ISEE_hit_rate_pct:ih[i]?.corrected_hit_rate_pct ?? "",
+        NOAA_N:nh[i]?.sample_count ?? 0,
+        ISEE_N:ih[i]?.sample_count ?? 0,
+      }));
+      appendSheetV821(wb,"Kp_Hit_Compare",compare);
+
+      const dt=new Date().toISOString().slice(0,10).replaceAll("-","");
+      XLSX.writeFile(wb,`swifttec_accuracy_NOAA_ISEE_${dt}.xlsx`);
+    } catch (e) {
+      console.error(e);
+      alert("検証Excel出力失敗: "+e.message);
+    }
+  }
+
+  window.swiftExportAccuracyExcelV821 = exportAccuracyExcelV821;
 
   function bootV62() {
     injectStyleV62();
-    for (const delay of [800, 1500, 2600]) {
-      setTimeout(() => {
-        ensureFailPanelV62();
-        if (!failPerfV62) loadFailPerfV62();
-      }, delay);
+    for (const delay of [800,1500,2600]) {
+      setTimeout(()=>{ ensureFailPanelV62(); loadFailPerfV62(false); },delay);
     }
   }
 
