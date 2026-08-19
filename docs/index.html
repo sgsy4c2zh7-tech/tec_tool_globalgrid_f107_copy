@@ -2318,18 +2318,6 @@ Mar 11       Mar 12       Mar 13
 
         const baseKpRaw = document.getElementById("baseKpJson").value || "";
         const baseKpParsed = parseNoaaPlanetaryKIndexJson(baseKpRaw);
-
-        // v8.21:
-        // NOAA / Global forecast MUST use an independent observed Base Kp.
-        // Never silently copy KpF into KpB, because that cancels the intended
-        // Base-Kp correction. ISEE Japan uses the dedicated no-Base forecast
-        // path and does not come through this NOAA branch.
-        if (input.source === "noaa" && !baseKpParsed.length) {
-          throw new Error(
-            "NOAA TEC予報にはBase Kp実測値が必要です。Base用Kpを取得してから再実行してください。"
-          );
-        }
-
         gBaseKpSeries = baseKpParsed.length
           ? baseKpParsed
           : gKpSeries.map(x=>({ t:x.t, kp:x.kp }));
