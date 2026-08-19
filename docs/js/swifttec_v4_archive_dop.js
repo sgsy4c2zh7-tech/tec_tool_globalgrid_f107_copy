@@ -7,6 +7,9 @@
   const KP_AI_COEFF_URL = "data/ai/kp_coefficients.json";
   const KP_AI_PERF_URL = "data/ai/kp_performance.json";
   const KP_AI_GRID_COEFF_URL = "data/ai/kp_grid_coefficients.json";
+  const ISEE_KP_AI_COEFF_URL = "data/ai/isee_japan/kp_coefficients.json";
+  const ISEE_KP_AI_PERF_URL = "data/ai/isee_japan/kp_performance.json";
+  const ISEE_KP_AI_GRID_COEFF_URL = "data/ai/isee_japan/kp_grid_coefficients.json";
 
   const GNSS_SOURCES = {
     gps:     { label: "GPS",     url: "data/gnss/gps_latest.tle",     liveUrl: "https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle",     checked: true  },
@@ -46,6 +49,9 @@
   let kpAiCoefficients = null;
   let kpAiPerformance = null;
   let kpAiGridCoefficients = null;
+  let iseeKpAiCoefficients = null;
+  let iseeKpAiPerformance = null;
+  let iseeKpAiGridCoefficients = null;
   let kpAiLoaded = false;
   let kpAiLoadError = null;
   let kpAiRenderMode = "hitrate";
@@ -554,14 +560,30 @@
     return (t instanceof Date && !isNaN(t.getTime())) ? String(t.getUTCMonth() + 1) : String((new Date()).getUTCMonth() + 1);
   }
 
+  function kpAiUsingIseeJapan() {
+    return String(document.getElementById("tecSourceSelect")?.value || "").toLowerCase() === "isee";
+  }
+
+  function kpAiActiveCoefficients() {
+    return kpAiUsingIseeJapan() && iseeKpAiCoefficients ? iseeKpAiCoefficients : kpAiCoefficients;
+  }
+
+  function kpAiActivePerformance() {
+    return kpAiUsingIseeJapan() && iseeKpAiPerformance ? iseeKpAiPerformance : kpAiPerformance;
+  }
+
+  function kpAiActiveGridCoefficients() {
+    return kpAiUsingIseeJapan() && iseeKpAiGridCoefficients ? iseeKpAiGridCoefficients : kpAiGridCoefficients;
+  }
+
   function kpAiEnabled() {
     const el = document.getElementById("kpAiCorrectionEnabled");
-    return !!(el && el.checked && kpAiCoefficients && kpAiLoaded);
+    return !!(el && el.checked && kpAiActiveCoefficients() && kpAiLoaded);
   }
 
   function kpAiClipLimit() {
     const el = document.getElementById("kpAiCorrectionClip");
-    const v = parseFloat(el?.value || kpAiCoefficients?.model?.correction_clip_tecu || "20");
+    const v = parseFloat(el?.value || kpAiActiveCoefficients()?.model?.correction_clip_tecu || "20");
     return isFinite(v) ? c(v, 1, 60) : 20;
   }
 
@@ -585,7 +607,7 @@
   }
 
   function kpAiCoeffFor(regionId, monthKey) {
-    const cfs = kpAiCoefficients?.coefficients || {};
+    const cfs = kpAiActiveCoefficients()?.coefficients || {};
     const r = cfs[regionId] || {};
     return r[monthKey] || r[String(parseInt(monthKey, 10))] || null;
   }
@@ -605,7 +627,8 @@
 
 
   function kpAiGridMonthFor(monthKey) {
-    const g = kpAiGridCoefficients?.coefficients_grid || kpAiGridCoefficients?.grid_coefficients || {};
+    const activeGrid = kpAiActiveGridCoefficients();
+    const g = activeGrid?.coefficients_grid || activeGrid?.grid_coefficients || {};
     return g[monthKey] || g[String(parseInt(monthKey, 10))] || null;
   }
 
@@ -623,8 +646,9 @@
   function kpAiGridCoeffAt(monthGrid, i, j, lat, lon) {
     if (!monthGrid) return null;
     let ii = i, jj = j;
-    const latArr = kpAiGridCoefficients?.lat_arr || kpAiGridCoefficients?.latArr;
-    const lonArr = kpAiGridCoefficients?.lon_arr || kpAiGridCoefficients?.lonArr;
+    const activeGrid = kpAiActiveGridCoefficients();
+    const latArr = activeGrid?.lat_arr || activeGrid?.latArr;
+    const lonArr = activeGrid?.lon_arr || activeGrid?.lonArr;
     if (Array.isArray(latArr) && Array.isArray(lonArr)) {
       if (!monthGrid.k0?.[ii] || monthGrid.k0?.[ii]?.[jj] === undefined) {
         ii = kpAiNearestIndex(latArr, lat);
@@ -699,15 +723,21 @@
     if (kpAiLoaded && !force) return;
     kpAiLoadError = null;
     try {
-      const [coeff, perf, gridCoeff] = await Promise.all([
+      const [coeff, perf, gridCoeff, iseeCoeff, iseePerf, iseeGridCoeff] = await Promise.all([
         fetch(KP_AI_COEFF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null),
         fetch(KP_AI_PERF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null),
         fetch(KP_AI_GRID_COEFF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(ISEE_KP_AI_COEFF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(ISEE_KP_AI_PERF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(ISEE_KP_AI_GRID_COEFF_URL, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
       kpAiCoefficients = coeff;
       kpAiPerformance = perf;
       kpAiGridCoefficients = gridCoeff;
-      kpAiLoaded = !!(coeff || gridCoeff);
+      iseeKpAiCoefficients = iseeCoeff;
+      iseeKpAiPerformance = iseePerf;
+      iseeKpAiGridCoefficients = iseeGridCoeff;
+      kpAiLoaded = !!(coeff || gridCoeff || iseeCoeff || iseeGridCoeff);
       renderKpAiPanel();
     } catch (e) {
       kpAiLoadError = e.message;
@@ -3404,9 +3434,21 @@
 
   function syncV52ForecastControls() {
     const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
+    const isIsee = source === "isee_japan_highres";
+
+    const legacyTecSource = q52("tecSourceSelect");
+    if (legacyTecSource) legacyTecSource.value = isIsee ? "isee" : "noaa";
+
     const legacySource = q52("forecastTecApiSourceSelect");
-    if (legacySource) legacySource.value = source;
-    try { window.setForecastTecApiMode?.(source); } catch {}
+    if (!isIsee && legacySource) legacySource.value = source;
+    if (!isIsee) {
+      try { window.setForecastTecApiMode?.(source); } catch {}
+    }
+
+    const iseeActions = q52("swiftV52IseeActions");
+    const iseeNote = q52("swiftV52IseeNote");
+    if (iseeActions) iseeActions.style.display = isIsee ? "flex" : "none";
+    if (iseeNote) iseeNote.style.display = isIsee ? "block" : "none";
 
     const enabled = !!q52("swiftV52AiEnabled")?.checked;
     const legacyEnabled = q52("kpAiCorrectionEnabled");
@@ -3415,10 +3457,19 @@
     const clip = q52("swiftV52AiClip")?.value || "20";
     const legacyClip = q52("kpAiCorrectionClip");
     if (legacyClip) legacyClip.value = clip;
+
+    try { localStorage.setItem("swift_v52_tec_source", source); } catch {}
   }
 
   async function v52LoadTec() {
     syncV52ForecastControls();
+    const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
+    if (source === "isee_japan_highres") {
+      setV52Status("ISEE Japan High-Res TECを取得中…");
+      await window.swiftIseeLoadLatest?.(false);
+      setV52Status("ISEE Japan High-Res TECを取得しました。");
+      return;
+    }
     setV52Status("予報用TECを取得中…");
     await window.loadForecastTecFromSelectedApi?.(false);
     setV52Status("予報用TECを取得しました。");
@@ -3426,11 +3477,27 @@
 
   async function v52RunForecast() {
     syncV52ForecastControls();
+    const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
     const auto = q52("forecastTecAutoFetch");
-    if (auto) auto.checked = true;
-    setV52Status("AI設定を反映してTEC予報を計算中…");
+
+    if (source === "isee_japan_highres") {
+      if (!(window.swiftIseeFrames || []).length) {
+        setV52Status("ISEE Japan High-Res TECを先に読み込みます…");
+        await window.swiftIseeLoadLatest?.(false);
+      }
+      if (auto) auto.checked = false; // NOAA/data APIの自動取得を止める
+      const legacyTecSource = q52("tecSourceSelect");
+      if (legacyTecSource) legacyTecSource.value = "isee";
+      setV52Status("Japan格子別AI設定を反映してTEC予報を計算中…");
+    } else {
+      if (auto) auto.checked = true;
+      setV52Status("AI設定を反映してTEC予報を計算中…");
+    }
+
     await window.runForecast?.();
-    setV52Status("予報を実行しました。地図・時間スライダーで確認できます。");
+    setV52Status(source === "isee_japan_highres"
+      ? "ISEE Japan High-Res予報を実行しました。『🇯🇵 日本表示』で確認できます。"
+      : "予報を実行しました。地図・時間スライダーで確認できます。");
   }
 
   function drawAxes52(ctx, w, h, plot, yLabel) {
@@ -3712,7 +3779,15 @@
           <select id="swiftV52TecSource" class="swift-v52-select" onchange="window.swiftV52SyncForecastControls()">
             <option value="archive_data_30m" selected>取りため済みdata API</option>
             <option value="noaa_direct_30m">NOAA API直取得</option>
+            <option value="isee_japan_highres">🇯🇵 ISEE Japan High-Res</option>
           </select>
+          <div id="swiftV52IseeActions" class="swift-v52-row" style="display:none;margin-top:6px;">
+            <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(false)">ISEE読込</button>
+            <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(true)">🇯🇵 日本表示</button>
+          </div>
+          <div id="swiftV52IseeNote" class="swift-v52-sub" style="display:none;margin-top:4px;">
+            日本高解像度TEC + Japan格子別AI
+          </div>
         </div>
         <div class="swift-v52-row">
           <label class="swift-v52-pill" style="justify-content:center;cursor:pointer;">
@@ -3841,6 +3916,10 @@
       q52("swiftCleanDashboard")?.remove();
       buildSidebarV52();
       buildMainV52();
+      try {
+        const savedSource = localStorage.getItem("swift_v52_tec_source");
+        if (savedSource && q52("swiftV52TecSource")) q52("swiftV52TecSource").value = savedSource;
+      } catch {}
       syncV52ForecastControls();
       loadV52Data().catch(e => {
         console.warn(e);
@@ -10023,4 +10102,3 @@
   window.swiftExportPointDopExcelWithChartsV77 = exportPointDopExcelWithChartsV77;
   readyV77(bootV77);
 })();
-
