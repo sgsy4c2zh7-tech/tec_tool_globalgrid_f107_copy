@@ -1,0 +1,2637 @@
+{
+  "version": "swifttec-isee-japan-kp-model-rule-ai-performance-v1",
+  "updated_utc": "2026-08-19T02:19:27Z",
+  "model_rule": "raw=PrevObservedTEC, corrected=PrevObservedTEC - F(KpB) + F(KpF)",
+  "hit_threshold_tecu": 5.0,
+  "summary": {
+    "sample_count": 46537,
+    "raw_rmse": 2.9397,
+    "corrected_rmse": 2.4667,
+    "raw_bias": 1.9501,
+    "corrected_bias": 1.5978,
+    "raw_hit_rate": 0.9793,
+    "corrected_hit_rate": 0.9944,
+    "threshold_tecu": 5.0,
+    "updated_cells": 2238,
+    "training_pairs": 24,
+    "thresholds": {
+      "5": {
+        "sample_count": 46537,
+        "raw_rmse": 2.9397,
+        "corrected_rmse": 2.4667,
+        "raw_bias": 1.9501,
+        "corrected_bias": 1.5978,
+        "raw_hit_rate": 0.9793,
+        "corrected_hit_rate": 0.9944
+      },
+      "10": {
+        "sample_count": 46537,
+        "raw_rmse": 2.9397,
+        "corrected_rmse": 2.4667,
+        "raw_bias": 1.9501,
+        "corrected_bias": 1.5978,
+        "raw_hit_rate": 1.0,
+        "corrected_hit_rate": 1.0
+      },
+      "15": {
+        "sample_count": 46537,
+        "raw_rmse": 2.9397,
+        "corrected_rmse": 2.4667,
+        "raw_bias": 1.9501,
+        "corrected_bias": 1.5978,
+        "raw_hit_rate": 1.0,
+        "corrected_hit_rate": 1.0
+      },
+      "20": {
+        "sample_count": 46537,
+        "raw_rmse": 2.9397,
+        "corrected_rmse": 2.4667,
+        "raw_bias": 1.9501,
+        "corrected_bias": 1.5978,
+        "raw_hit_rate": 1.0,
+        "corrected_hit_rate": 1.0
+      }
+    }
+  },
+  "thresholds": {
+    "5": {
+      "sample_count": 46537,
+      "raw_rmse": 2.9397,
+      "corrected_rmse": 2.4667,
+      "raw_bias": 1.9501,
+      "corrected_bias": 1.5978,
+      "raw_hit_rate": 0.9793,
+      "corrected_hit_rate": 0.9944
+    },
+    "10": {
+      "sample_count": 46537,
+      "raw_rmse": 2.9397,
+      "corrected_rmse": 2.4667,
+      "raw_bias": 1.9501,
+      "corrected_bias": 1.5978,
+      "raw_hit_rate": 1.0,
+      "corrected_hit_rate": 1.0
+    },
+    "15": {
+      "sample_count": 46537,
+      "raw_rmse": 2.9397,
+      "corrected_rmse": 2.4667,
+      "raw_bias": 1.9501,
+      "corrected_bias": 1.5978,
+      "raw_hit_rate": 1.0,
+      "corrected_hit_rate": 1.0
+    },
+    "20": {
+      "sample_count": 46537,
+      "raw_rmse": 2.9397,
+      "corrected_rmse": 2.4667,
+      "raw_bias": 1.9501,
+      "corrected_bias": 1.5978,
+      "raw_hit_rate": 1.0,
+      "corrected_hit_rate": 1.0
+    }
+  },
+  "kp_bins": {
+    "0-2": {
+      "kp_bin": "0-2",
+      "thresholds": {
+        "5": {
+          "sample_count": 13844,
+          "raw_rmse": 2.6773,
+          "corrected_rmse": 2.2195,
+          "raw_bias": 1.7774,
+          "corrected_bias": 1.4513,
+          "raw_hit_rate": 0.9817,
+          "corrected_hit_rate": 0.9974
+        },
+        "10": {
+          "sample_count": 13844,
+          "raw_rmse": 2.6773,
+          "corrected_rmse": 2.2195,
+          "raw_bias": 1.7774,
+          "corrected_bias": 1.4513,
+          "raw_hit_rate": 0.9999,
+          "corrected_hit_rate": 0.9999
+        },
+        "15": {
+          "sample_count": 13844,
+          "raw_rmse": 2.6773,
+          "corrected_rmse": 2.2195,
+          "raw_bias": 1.7774,
+          "corrected_bias": 1.4513,
+          "raw_hit_rate": 1.0,
+          "corrected_hit_rate": 1.0
+        },
+        "20": {
+          "sample_count": 13844,
+          "raw_rmse": 2.6773,
+          "corrected_rmse": 2.2195,
+          "raw_bias": 1.7774,
+          "corrected_bias": 1.4513,
+          "raw_hit_rate": 1.0,
+          "corrected_hit_rate": 1.0
+        }
+      },
+      "sample_count": 13844,
+      "raw_rmse": 2.6773,
+      "corrected_rmse": 2.2195,
+      "raw_bias": 1.7774,
+      "corrected_bias": 1.4513,
+      "raw_hit_rate": 0.9817,
+      "corrected_hit_rate": 0.9974,
+      "threshold_tecu": 5.0
+    },
+    "2-3": {
+      "kp_bin": "2-3",
+      "thresholds": {
+        "5": {
+          "sample_count": 32693,
+          "raw_rmse": 3.044,
+          "corrected_rmse": 2.5642,
+          "raw_bias": 2.0232,
+          "corrected_bias": 1.6598,
+          "raw_hit_rate": 0.9783,
+          "corrected_hit_rate": 0.9931
+        },
+        "10": {
+          "sample_count": 32693,
+          "raw_rmse": 3.044,
+          "corrected_rmse": 2.5642,
+          "raw_bias": 2.0232,
+          "corrected_bias": 1.6598,
+          "raw_hit_rate": 1.0,
+          "corrected_hit_rate": 1.0
+        },
+        "15": {
+          "sample_count": 32693,
+          "raw_rmse": 3.044,
+          "corrected_rmse": 2.5642,
+          "raw_bias": 2.0232,
+          "corrected_bias": 1.6598,
+          "raw_hit_rate": 1.0,
+          "corrected_hit_rate": 1.0
+        },
+        "20": {
+          "sample_count": 32693,
+          "raw_rmse": 3.044,
+          "corrected_rmse": 2.5642,
+          "raw_bias": 2.0232,
+          "corrected_bias": 1.6598,
+          "raw_hit_rate": 1.0,
+          "corrected_hit_rate": 1.0
+        }
+      },
+      "sample_count": 32693,
+      "raw_rmse": 3.044,
+      "corrected_rmse": 2.5642,
+      "raw_bias": 2.0232,
+      "corrected_bias": 1.6598,
+      "raw_hit_rate": 0.9783,
+      "corrected_hit_rate": 0.9931,
+      "threshold_tecu": 5.0
+    },
+    "3-4": {
+      "kp_bin": "3-4",
+      "thresholds": {
+        "5": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "10": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "15": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "20": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        }
+      },
+      "sample_count": 0,
+      "raw_rmse": null,
+      "corrected_rmse": null,
+      "raw_bias": null,
+      "corrected_bias": null,
+      "raw_hit_rate": 0,
+      "corrected_hit_rate": 0,
+      "threshold_tecu": 5.0
+    },
+    "4-5": {
+      "kp_bin": "4-5",
+      "thresholds": {
+        "5": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "10": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "15": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "20": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        }
+      },
+      "sample_count": 0,
+      "raw_rmse": null,
+      "corrected_rmse": null,
+      "raw_bias": null,
+      "corrected_bias": null,
+      "raw_hit_rate": 0,
+      "corrected_hit_rate": 0,
+      "threshold_tecu": 5.0
+    },
+    "5-6": {
+      "kp_bin": "5-6",
+      "thresholds": {
+        "5": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "10": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "15": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "20": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        }
+      },
+      "sample_count": 0,
+      "raw_rmse": null,
+      "corrected_rmse": null,
+      "raw_bias": null,
+      "corrected_bias": null,
+      "raw_hit_rate": 0,
+      "corrected_hit_rate": 0,
+      "threshold_tecu": 5.0
+    },
+    "6-7": {
+      "kp_bin": "6-7",
+      "thresholds": {
+        "5": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "10": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "15": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "20": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        }
+      },
+      "sample_count": 0,
+      "raw_rmse": null,
+      "corrected_rmse": null,
+      "raw_bias": null,
+      "corrected_bias": null,
+      "raw_hit_rate": 0,
+      "corrected_hit_rate": 0,
+      "threshold_tecu": 5.0
+    },
+    "7+": {
+      "kp_bin": "7+",
+      "thresholds": {
+        "5": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "10": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "15": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        },
+        "20": {
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
+        }
+      },
+      "sample_count": 0,
+      "raw_rmse": null,
+      "corrected_rmse": null,
+      "raw_bias": null,
+      "corrected_bias": null,
+      "raw_hit_rate": 0,
+      "corrected_hit_rate": 0,
+      "threshold_tecu": 5.0
+    }
+  },
+  "metrics": {
+    "R01": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R02": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R03": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R04": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R05": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R06": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R07": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R08": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R09": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R10": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R11": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R12": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 11670,
+        "raw_rmse": 2.6852,
+        "corrected_rmse": 2.309,
+        "raw_bias": -0.5283,
+        "corrected_bias": -0.4258,
+        "raw_hit_rate": 0.9552,
+        "corrected_hit_rate": 0.9875,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R13": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R14": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R15": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R16": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R17": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    },
+    "R18": {
+      "1": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "2": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "3": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "4": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "5": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "6": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "7": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "8": {
+        "sample_count": 34867,
+        "raw_rmse": 3.0201,
+        "corrected_rmse": 2.5173,
+        "raw_bias": 2.7796,
+        "corrected_bias": 2.2751,
+        "raw_hit_rate": 0.9874,
+        "corrected_hit_rate": 0.9967,
+        "threshold_tecu": 5.0
+      },
+      "9": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "10": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "11": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      },
+      "12": {
+        "sample_count": 0,
+        "raw_rmse": null,
+        "corrected_rmse": null,
+        "raw_bias": null,
+        "corrected_bias": null,
+        "raw_hit_rate": 0,
+        "corrected_hit_rate": 0,
+        "threshold_tecu": 5.0
+      }
+    }
+  }
+}
