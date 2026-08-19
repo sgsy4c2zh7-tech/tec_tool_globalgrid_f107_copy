@@ -842,8 +842,16 @@
     if (!(t instanceof Date) || isNaN(t.getTime())) return null;
     const grid = interpolateGridAtTime(t);
 
-    // ISEE and NOAA BaseTEC v8.25 frames are already final forecast VTEC/TEC.
-    if (isee10DayBaseForecastActive || noaaBaseTecForecastActive) return grid;
+    // ISEE frames are already final forecast VTEC.
+    if (isee10DayBaseForecastActive) return grid;
+
+    // v8.29 NOAA:
+    // rawDisplayFrames keep the moving previous-day TEC pattern.
+    // Apply BaseTEC/KpF dynamically for the CURRENT slider time so the
+    // heatmap always changes with both time-of-day TEC and Kp.
+    if (noaaBaseTecForecastActive) {
+      return applyNoaaBaseTecFormulaV829(grid, t);
+    }
 
     return applyKpAiCorrectionToGrid(grid, t);
   }
@@ -1104,7 +1112,18 @@
     if (typeof setOverlayTime === "function") setOverlayTime(t);
     if (typeof updateKpLabels === "function") updateKpLabels();
     updateGnssQuickStatus();
-    if (typeof requestDraw === "function") requestDraw();
+
+    // v8.29: guarantee each slider step produces a fresh heatmap frame.
+    // Timestamp-keyed interpolation already changes naturally; selectionVersion
+    // also prevents any stale display cache from surviving source/mode changes.
+    if (noaaBaseTecForecastActive || isee10DayBaseForecastActive) {
+      tecSmoothCache.clear();
+    }
+
+    if (typeof requestDraw === "function") {
+      requestDraw();
+      setTimeout(requestDraw, 16);
+    }
   }
 
   function playArchiveMovie() {
@@ -2496,9 +2515,16 @@
   function pointTecAtTimeForSeries(t, i, j) {
     const raw = interpolateGridAtTime(t);
     if (!raw) return NaN;
-    const grid = (isee10DayBaseForecastActive || noaaBaseTecForecastActive)
-      ? raw
-      : applyKpAiCorrectionToGrid(raw, t);
+
+    let grid = raw;
+    if (isee10DayBaseForecastActive) {
+      grid = raw;
+    } else if (noaaBaseTecForecastActive) {
+      grid = applyNoaaBaseTecFormulaV829(raw, t);
+    } else {
+      grid = applyKpAiCorrectionToGrid(raw, t);
+    }
+
     const v = Number(grid?.[i]?.[j]);
     return isFinite(v) ? v : NaN;
   }
@@ -3558,6 +3584,11 @@
     const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
     const isIsee = source === "isee_japan_highres";
 
+    // Source switches must never reuse the previous heatmap frame cache.
+    selectionVersion++;
+    tecInterpCache.clear();
+    tecSmoothCache.clear();
+
     const legacyTecSource = q52("tecSourceSelect");
     if (legacyTecSource) legacyTecSource.value = isIsee ? "isee" : "noaa";
 
@@ -3598,6 +3629,74 @@
     setV52Status("予報用TECを取得しました。");
   }
 
+  function applyNoaaBaseTecFormulaV829(grid, t) {
+    if (!grid || !gGrid) return grid;
+
+    // If AI is disabled or coefficients are not available, keep the moving
+    // observed/base-day TEC pattern rather than freezing the heatmap.
+    if (!kpAiEnabled()) return grid;
+
+    const kpF0 = kpAiKpAtTime(t);
+    let kpB0 = kpAiBaseKpAtTime(t);
+
+    const kpF = isFinite(kpF0) ? Number(kpF0) : 3.0;
+    // Required fallback:
+    // KpB missing -> use KpF; if both missing -> neutral 3.
+    const kpB = isFinite(kpB0) ? Number(kpB0) : kpF;
+
+    const mk = kpAiMonthKey(t);
+    const monthGrid = kpAiGridMonthFor(mk);
+    const lim = kpAiClipLimit();
+
+    const out = Array.from({length:gGrid.nLat}, () => Array(gGrid.nLon).fill(NaN));
+
+    for (let i=0; i<gGrid.nLat; i++) {
+      const lat = Number(gGrid.latArr[i]);
+      for (let j=0; j<gGrid.nLon; j++) {
+        const obs = Number(grid?.[i]?.[j]);
+        if (!isFinite(obs)) continue;
+
+        let cf = kpAiGridCoeffAt(monthGrid, i, j, lat, Number(gGrid.lonArr[j]));
+        if (!cf) {
+          const rid = kpAiRegionId(lat, Number(gGrid.lonArr[j]));
+          cf = kpAiCoeffFor(rid, mk);
+        }
+
+        if (!cf || Number(cf.sample_count || 0) < 4) {
+          out[i][j] = Math.max(0, obs);
+          continue;
+        }
+
+        let fB = kpAiFValue(cf, kpB);
+        let fF = kpAiFValue(cf, kpF);
+        if (!isFinite(fB)) fB = 0;
+        if (!isFinite(fF)) fF = 0;
+
+        // Preserve the model explicitly:
+        //   BaseTEC     = ObservedTEC - F(KpB)
+        //   ForecastTEC = BaseTEC + F(KpF)
+        //
+        // The net Kp correction is clipped only for numerical safety.
+        let net = fF - fB;
+        net = c(net, -lim, lim);
+
+        const baseTec = Math.max(0, obs - fB);
+        let forecastTec = baseTec + fF;
+
+        // If the explicit split would exceed the configured correction clip,
+        // preserve the same safe net limit used by the existing AI corrector.
+        const clippedForecast = Math.max(0, obs + net);
+        if (!isFinite(forecastTec) || Math.abs(forecastTec - obs) > lim) {
+          forecastTec = clippedForecast;
+        }
+
+        out[i][j] = Math.max(0, forecastTec);
+      }
+    }
+
+    return out;
+  }
+
   function noaaBaseTecInputGridAtV825(tecTod, t) {
     if (!tecTod?.frames?.length || !(t instanceof Date) || isNaN(t.getTime())) return null;
     const step = Math.max(1, Number(tecTod.stepMinutes || 30));
@@ -3607,30 +3706,41 @@
   }
 
   async function rebuildNoaaBaseTecForecastV825() {
+    // v8.29 implementation:
     // NOAA only. ISEE has no BaseTEC by design.
     const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
     if (source === "isee_japan_highres") return false;
 
     if (!Array.isArray(gNoaaDayFrames) || gNoaaDayFrames.length < 2 ||
         !Array.isArray(gNoaaDayTimes) || gNoaaDayTimes.length < 2) {
-      console.warn("v8.25 NOAA BaseTEC rebuild skipped: NOAA TEC base frames not ready");
+      console.warn("v8.29 NOAA BaseTEC dynamic setup skipped: NOAA TEC base frames not ready");
       return false;
     }
 
-    if (!Array.isArray(gForecastTimes) || !gForecastTimes.length) {
-      console.warn("v8.25 NOAA BaseTEC rebuild skipped: forecast timeline not ready");
+    // Preserve the legacy forecast timeline before setDisplayedFrames rebuilds it.
+    const forecastTimes = Array.isArray(gForecastTimes)
+      ? gForecastTimes
+          .map(t => t instanceof Date ? new Date(t.getTime()) : new Date(t))
+          .filter(t => !isNaN(t.getTime()))
+      : [];
+
+    if (!forecastTimes.length) {
+      console.warn("v8.29 NOAA BaseTEC dynamic setup skipped: forecast timeline not ready");
       return false;
     }
 
     try { await window.loadKpAiData?.(false); } catch {}
 
-    // v8.26: guarantee KpB model state immediately before NOAA BaseTEC math.
-    // This is independent of the legacy runForecast parser.
+    // Ensure actual NOAA Base Kp is in model state.
     const baseKpReady = await ensureNoaaBaseKpStateV826(false);
 
-    const tecTod = buildGenericNoaaTecTodFromFramesV48(gNoaaDayFrames, gNoaaDayTimes, 30);
+    const tecTod = buildGenericNoaaTecTodFromFramesV48(
+      gNoaaDayFrames,
+      gNoaaDayTimes,
+      30
+    );
     if (!tecTod?.frames?.length) {
-      console.warn("v8.25 NOAA BaseTEC rebuild skipped: failed to build TEC time-of-day grid");
+      console.warn("v8.29 NOAA BaseTEC dynamic setup skipped: failed to build TEC time-of-day grid");
       return false;
     }
 
@@ -3642,87 +3752,46 @@
       nLon: firstMeta.nLon,
     };
 
-    const aiOn = kpAiEnabled();
+    // IMPORTANT:
+    // Store the MOVING observed/base-day TEC pattern as raw frames.
+    // The final BaseTEC + KpF equation is applied in currentTecGrid()
+    // for the exact current slider time.
     const frames = [];
-    let baseKpFallbackCount = 0;
-    let activeCoeffCells = 0;
-
-    for (const t0 of gForecastTimes) {
-      const t = t0 instanceof Date ? new Date(t0.getTime()) : new Date(t0);
-      if (isNaN(t.getTime())) continue;
-
+    for (const t of forecastTimes) {
       const input = noaaBaseTecInputGridAtV825(tecTod, t);
       if (!input?.grid) continue;
 
-      const kpF = kpAiKpAtTime(t);
-      let kpB = kpAiBaseKpAtTime(t);
-      if (!isFinite(kpB)) {
-        kpB = isFinite(kpF) ? kpF : 3.0;
-        baseKpFallbackCount++;
-      }
-
-      const mk = kpAiMonthKey(t);
-      const monthGrid = kpAiGridMonthFor(mk);
-      const outGrid = Array.from({length: meta.nLat}, () => Array(meta.nLon).fill(NaN));
-
-      for (let i = 0; i < meta.nLat; i++) {
-        const lat = Number(meta.latArr[i]);
-        for (let j = 0; j < meta.nLon; j++) {
-          const obs = Number(input.grid?.[i]?.[j]);
-          if (!isFinite(obs)) continue;
-
-          let fB = 0;
-          let fF = 0;
-
-          if (aiOn) {
-            let cf = kpAiGridCoeffAt(monthGrid, i, j, lat, Number(meta.lonArr[j]));
-            if (!cf) {
-              const rid = kpAiRegionId(lat, Number(meta.lonArr[j]));
-              cf = kpAiCoeffFor(rid, mk);
-            }
-
-            if (cf && Number(cf.sample_count || 0) >= 4) {
-              fB = kpAiFValue(cf, kpB);
-              fF = kpAiFValue(cf, kpF);
-              if (isFinite(fB) && isFinite(fF)) activeCoeffCells++;
-              else { fB = 0; fF = 0; }
-            }
-          }
-
-          // User's NOAA model:
-          // BaseTEC = observed/base-day TEC - F(KpB)
-          // ForecastTEC = BaseTEC + F(KpF)
-          const baseTec = Math.max(0, obs - fB);
-          const forecastTec = Math.max(0, baseTec + fF);
-          outGrid[i][j] = forecastTec;
-        }
-      }
-
       frames.push({
-        time: t,
+        time: new Date(t.getTime()),
         gridMeta: meta,
-        grid: outGrid,
-        sourceFile: "NOAA BaseTEC Forecast",
-        kpF: isFinite(kpF) ? Number(kpF) : NaN,
-        kpB: isFinite(kpB) ? Number(kpB) : NaN,
+        grid: input.grid,
+        sourceFile: "NOAA BaseTEC Dynamic Input",
       });
     }
 
     if (!frames.length) return false;
 
-    // Mark as final so display/DOP code does not add F(KpF)-F(KpB) a second time.
     noaaBaseTecForecastActive = true;
     setDisplayedFrames(frames, "NOAA BaseTEC Forecast");
+    noaaBaseTecForecastActive = true; // explicit after timeline rebuild
+
+    // Force map redraw now and once more after layout/slider settles.
+    selectionVersion++;
+    tecInterpCache.clear();
+    tecSmoothCache.clear();
+    try { requestDraw(); } catch {}
+    setTimeout(() => {
+      try { requestDraw(); } catch {}
+    }, 80);
 
     const status = q52("swiftV52Status");
     if (status) {
       status.textContent =
-        `NOAA BaseTEC予報: ${frames.length} frames / ` +
+        `NOAA BaseTEC動的予報: ${frames.length} frames / ` +
         `BaseTEC=実測TEC−F(KpB), Forecast=BaseTEC+F(KpF)` +
-        ` / KpB=${baseKpReady ? "実測" : "fallback"}` +
+        ` / KpB=${baseKpReady ? "実測" : "KpF代用"}` +
         (noaaBaseKpStateV826.baseDayUtc ? `(${noaaBaseKpStateV826.baseDayUtc})` : "") +
-        (baseKpFallbackCount ? ` / KpB代用=${baseKpFallbackCount}時刻` : "") +
-        ` / AI係数cell=${activeCoeffCells}`;
+        ` / ヒートマップ=時刻ごと再計算`;
     }
 
     return true;
@@ -3759,7 +3828,7 @@
     const rebuilt = await rebuildNoaaBaseTecForecastV825();
 
     if (rebuilt) {
-      setV52Status("NOAA BaseTEC予報を実行しました。BaseTEC=実測TEC−F(KpB) → +F(KpF)。");
+      setV52Status("NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。");
     } else {
       setV52Status("NOAA予報を実行しました（BaseTEC再構成は利用可能データ不足のため未適用）。");
     }
@@ -4216,6 +4285,7 @@
   window.swiftV52RunForecast = v52RunForecast;
   window.swiftRebuildNoaaBaseTecForecastV825 = rebuildNoaaBaseTecForecastV825;
   window.swiftIsNoaaBaseTecForecastActiveV825 = () => !!noaaBaseTecForecastActive;
+  window.swiftApplyNoaaBaseTecFormulaV829 = applyNoaaBaseTecFormulaV829;
   window.swiftV52SyncForecastControls = syncV52ForecastControls;
   window.swiftV52RenderAll = renderV52All;
   window.swiftV52SelectRegion = function (rid) {
