@@ -298,7 +298,7 @@
     // For our 30-minute forecast, at least the 48 half-hour points must exist.
     let halfHourCount = 0;
     for (let h=0; h<24; h++) {
-      for (const m of (0,30)) {
+      for (const m of [0, 30]) {
         const key = String(h).padStart(2,"0") + String(m).padStart(2,"0");
         if (unique.has(key)) halfHourCount++;
       }
