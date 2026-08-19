@@ -4768,8 +4768,8 @@
       // show the weighted historical Kp used to build Base10.
       // This is DISPLAY ONLY. Forecast calculation uses the already
       // Kp-removed Base10 grid and does not subtract this Kp again.
-      if (isee10DayBaseForecastActive || isIseeForecastV56()) {
-        // ISEE has no BaseTEC / KpB concept, even before forecast execution.
+      if (isee10DayBaseForecastActive) {
+        // ISEE v8.14 has no Base/KpB concept.
         return NaN;
       }
 
@@ -4811,16 +4811,15 @@
 
   function updateKpPanelV56(t, kpF, kpB) {
     const set = (id, val) => { const el = q56(id); if (el) el.textContent = val; };
-    const isIsee = isee10DayBaseForecastActive || isIseeForecastV56();
     set("swiftV56KpF", fmt56(kpF));
-    set("swiftV56KpB", isIsee ? "なし" : fmt56(kpB));
-    const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-metric")?.querySelector(".swift-v56-kp-label");
-    if (kpBLabel) kpBLabel.textContent = isIsee ? "KpB（ISEEでは未使用）" : "KpB Base";
+    set("swiftV56KpB", fmt56(kpB));
+    const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-box")?.querySelector(".swift-v56-kp-label");
+    if (kpBLabel) kpBLabel.textContent = isee10DayBaseForecastActive ? "KpB（ISEEでは未使用）" : "KpB Base";
     set("swiftV56KpTime", iso56(t));
 
     const srcEl = q56("swiftV56KpBSource");
     if (srcEl) {
-      srcEl.textContent = isIsee
+      srcEl.textContent = isee10DayBaseForecastActive
         ? "KpB source: ISEEでは未使用"
         : `KpB source: ${noaaBaseKpStateV826.source || "--"}` +
           (noaaBaseKpStateV826.baseDayUtc ? ` / ${noaaBaseKpStateV826.baseDayUtc}` : "");
@@ -4828,8 +4827,8 @@
 
     const next = nextKpChangeV56(t);
     set("swiftV56KpNext", next ? `${iso56(next.t)} / KpF=${fmt56(next.kp)}` : "--");
-    const diff = (!isIsee && finite56(kpF) && finite56(kpB)) ? Number(kpF) - Number(kpB) : NaN;
-    set("swiftV56KpDiff", isIsee ? "なし" : (finite56(diff) ? `${diff >= 0 ? "+" : ""}${diff.toFixed(2)}` : "--"));
+    const diff = finite56(kpF) && finite56(kpB) ? Number(kpF) - Number(kpB) : NaN;
+    set("swiftV56KpDiff", finite56(diff) ? `${diff >= 0 ? "+" : ""}${diff.toFixed(2)}` : "--");
 
     const steps = q56("swiftV56KpSteps");
     if (steps && Array.isArray(gKpSeries) && gKpSeries.length) {
@@ -5113,59 +5112,13 @@
     }
   }
 
-  async function hydrateBaseKpUiV827(force = false) {
-    try {
-      if (isIseeForecastV56()) {
-        patchedUpdateKpLabelsV56();
-        return false;
-      }
-
-      const ok = await ensureNoaaBaseKpStateV826(force);
-      if (ok) {
-        patchedUpdateKpLabelsV56();
-        const steps = q56("swiftV56KpSteps");
-        if (steps && (!Array.isArray(gKpSeries) || !gKpSeries.length)) {
-          steps.textContent = "KpBは読込済み / KpFは予報実行後に表示";
-        }
-      } else {
-        const src = q56("swiftV56KpBSource");
-        if (src) src.textContent = `KpB source: 読込失敗 / ${noaaBaseKpStateV826.error || "--"}`;
-      }
-      return ok;
-    } catch (e) {
-      console.warn("v8.27 Base Kp UI hydrate failed:", e);
-      return false;
-    }
-  }
-
-  function bindBaseKpAutoLoadV827() {
-    const src = q56("swiftV52TecSource");
-    if (src && !src.dataset.v827BaseKpBound) {
-      src.dataset.v827BaseKpBound = "1";
-      src.addEventListener("change", async () => {
-        if (isIseeForecastV56()) {
-          patchedUpdateKpLabelsV56();
-        } else {
-          await hydrateBaseKpUiV827(true);
-        }
-      });
-    }
-  }
-
   function bootV56() {
     injectStyleV56();
     for (const delay of [500, 1000, 1800]) {
-      setTimeout(async () => {
+      setTimeout(() => {
         installKpPanelV56();
         installKpLabelPatchV56();
-        bindBaseKpAutoLoadV827();
-
-        // v8.27: NOAA KpB must appear immediately, not only after pressing forecast.
-        if (!isIseeForecastV56()) {
-          await hydrateBaseKpUiV827(false);
-        } else {
-          try { patchedUpdateKpLabelsV56(); } catch {}
-        }
+        try { patchedUpdateKpLabelsV56(); } catch {}
       }, delay);
     }
   }
@@ -5173,7 +5126,6 @@
   window.swiftV56UpdateKpLabels = patchedUpdateKpLabelsV56;
   window.swiftEnsureNoaaBaseKpStateV826 = ensureNoaaBaseKpStateV826;
   window.swiftNoaaBaseKpStateV826 = () => ({...noaaBaseKpStateV826});
-  window.swiftHydrateBaseKpUiV827 = hydrateBaseKpUiV827;
   readyV56(bootV56);
 })();
 
