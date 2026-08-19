@@ -897,6 +897,7 @@ Mar 11       Mar 12       Mar 13
 
     const NOAA_3DAY_FORECAST_TEXT_URL = "https://services.swpc.noaa.gov/text/3-day-forecast.txt";
     const NOAA_PLANETARY_K_INDEX_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
+    const NOAA_BASE_KP_LOCAL_URL = "data/ai/noaa_base_kp.json";
     const NOAA_XRAY_FLARES_LATEST_URL = "https://services.swpc.noaa.gov/json/goes/primary/xray-flares-latest.json";
 
     const NOAA_GLOTEC_INDEX_URL = "https://services.swpc.noaa.gov/products/glotec/geojson_2d_urt.json";
@@ -1200,15 +1201,53 @@ Mar 11       Mar 12       Mar 13
     }
 
     async function fetchNoaaPlanetaryKIndex1DayToBase() {
+      const ta = document.getElementById("baseKpJson");
+      let localError = null;
+
+      // v8.23: first use the same-origin Base Kp file created by GitHub Actions.
+      // This removes the browser's dependency on NOAA API CORS/403 behavior.
       try {
-        setStatus("kindexStatus", "取得中…");
+        setStatus("kindexStatus", "Base Kpローカルキャッシュ取得中…");
+        const sep = NOAA_BASE_KP_LOCAL_URL.includes("?") ? "&" : "?";
+        const local = await fetchJson(NOAA_BASE_KP_LOCAL_URL + sep + "_=" + Date.now());
+        const rows = Array.isArray(local) ? local : local?.rows;
+
+        if (!Array.isArray(rows) || !rows.length) {
+          throw new Error("ローカルBase Kpにrowsがありません");
+        }
+
+        const parsed = parseNoaaPlanetaryKIndexJson(rows);
+        if (!parsed.length) {
+          throw new Error("ローカルBase Kpを解析できません");
+        }
+
+        if (ta) ta.value = JSON.stringify(rows);
+        const day = local?.base_day_utc ? ` / Base日=${local.base_day_utc}` : "";
+        const n = local?.row_count || rows.length;
+        setStatus("kindexStatus", `OK（ローカルBase Kp ${n}点${day}）`);
+        return true;
+      } catch (e) {
+        localError = e;
+        console.warn("Local Base Kp load failed:", e);
+      }
+
+      // Fallback only: direct NOAA browser fetch.
+      try {
+        setStatus("kindexStatus", "ローカル失敗 → NOAA API直接取得中…");
         const data = await fetchJson(NOAA_PLANETARY_K_INDEX_URL);
-        const ta = document.getElementById("baseKpJson");
-        if (ta) ta.value = JSON.stringify(data);
-        setStatus("kindexStatus", "OK（Base用Kpへ反映）");
+        const rows = Array.isArray(data) ? data : data?.rows;
+        const parsed = parseNoaaPlanetaryKIndexJson(rows || data);
+        if (!parsed.length) throw new Error("NOAA APIデータを解析できません");
+        if (ta) ta.value = JSON.stringify(rows || data);
+        setStatus("kindexStatus", "OK（NOAA API直接取得）");
+        return true;
       } catch (e) {
         console.error(e);
-        setStatus("kindexStatus", "失敗: " + e.message);
+        setStatus(
+          "kindexStatus",
+          "Base Kp取得失敗: local=" + (localError?.message || "--") + " / NOAA=" + e.message
+        );
+        return false;
       }
     }
 
@@ -2318,9 +2357,26 @@ Mar 11       Mar 12       Mar 13
 
         const baseKpRaw = document.getElementById("baseKpJson").value || "";
         const baseKpParsed = parseNoaaPlanetaryKIndexJson(baseKpRaw);
+
+        // v8.22:
+        // NOAA / Global normally uses an independent observed Base Kp.
+        // If Base Kp could not be obtained, do NOT stop the whole forecast.
+        // Continue with KpF as an emergency fallback and clearly warn the UI.
+        // ISEE Japan uses the dedicated no-Base forecast path and does not use KpB.
+        const baseKpFallbackUsed = input.source === "noaa" && !baseKpParsed.length;
+
         gBaseKpSeries = baseKpParsed.length
           ? baseKpParsed
           : gKpSeries.map(x=>({ t:x.t, kp:x.kp }));
+
+        if (baseKpFallbackUsed) {
+          const msg = "警告: NOAA Base Kp実測値を取得できなかったため、この予報のみKpFをKpB代用として継続します。";
+          try { if (typeof logInfo === "function") logInfo(msg); } catch {}
+          try {
+            const el = document.getElementById("v4ArchiveStatus");
+            if (el) el.textContent = msg;
+          } catch {}
+        }
 
         const baseFlRaw = document.getElementById("baseFlareJson").value || "";
         gBaseFlareSeries = parseBaseFlareJson(baseFlRaw);
