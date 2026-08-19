@@ -21,22 +21,43 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Fetch NOAA GloTEC 30-min archive
         run: python scripts/fetch_noaa_tec_archive.py
+
+      - name: Fetch NOAA Base Kp local cache
+        run: python scripts/fetch_noaa_base_kp.py
+
       - name: Show generated files
         run: |
           echo "--- docs/data/tec ---"
           find docs/data/tec -maxdepth 2 -type f -print | sort | tail -120
+          echo "--- NOAA Base Kp ---"
+          if [ -f docs/data/ai/noaa_base_kp.json ]; then
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("docs/data/ai/noaa_base_kp.json")
+          d=json.loads(p.read_text())
+          print("base_day_utc:", d.get("base_day_utc"))
+          print("row_count:", d.get("row_count"))
+          print("source:", d.get("source"))
+          print("first:", d.get("first_time_utc"))
+          print("last:", d.get("last_time_utc"))
+          PY
+          fi
           echo "--- git status ---"
           git status --short
-      - name: Commit TEC updates
+
+      - name: Commit TEC and Base Kp updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A docs/data/tec
+          git add -A docs/data/tec docs/data/ai/noaa_base_kp.json
           if git diff --cached --quiet; then
-            echo "No TEC changes to commit"
+            echo "No TEC/Base Kp changes to commit"
           else
-            git commit -m "data: update NOAA TEC 30min archive"
+            git commit -m "data: update NOAA TEC and Base Kp"
+            git pull --rebase
             git push
           fi
