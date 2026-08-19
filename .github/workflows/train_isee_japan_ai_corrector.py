@@ -1,0 +1,61 @@
+name: Train ISEE Japan AI Corrector
+
+on:
+  schedule:
+    - cron: '45 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: train-isee-japan-ai-corrector
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ISEE NetCDF dependencies
+        run: pip install --disable-pip-version-check numpy xarray netCDF4
+
+      - name: Refresh ISEE Japan TEC
+        run: python scripts/fetch_isee_japan_tec.py
+
+      - name: Train Japan high-resolution Kp AI
+        env:
+          SWIFTTEC_TEC_ROOT: docs/data/isee_tec
+          SWIFTTEC_AI_ROOT: docs/data/ai/isee_japan
+          SWIFTTEC_KP_AI_TRAIN_DAYS: "30"
+          SWIFTTEC_KP_AI_PAIR_HOURS: "24"
+          SWIFTTEC_KP_AI_PAIR_TOLERANCE_MIN: "10"
+          SWIFTTEC_KP_AI_MIN_CELL_SAMPLES: "6"
+          SWIFTTEC_KP_AI_BLEND_ALPHA: "0.20"
+        run: python scripts/train_isee_japan_ai_corrector.py
+
+      - name: Show generated Japan AI files
+        run: |
+          echo "--- ISEE Japan TEC ---"
+          find docs/data/isee_tec -maxdepth 1 -type f -print | sort | tail -20
+          echo "--- Japan AI ---"
+          find docs/data/ai/isee_japan -maxdepth 1 -type f -print | sort
+          echo "--- git status ---"
+          git status --short
+
+      - name: Commit Japan TEC and AI updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/data/isee_tec docs/data/ai/isee_japan
+          if git diff --cached --quiet; then
+            echo "No Japan AI changes to commit"
+          else
+            git commit -m "data: update ISEE Japan Kp AI corrector"
+            git pull --rebase
+            git push
+          fi
