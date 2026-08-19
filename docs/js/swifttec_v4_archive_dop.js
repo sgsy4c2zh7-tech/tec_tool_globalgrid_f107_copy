@@ -851,7 +851,7 @@
 
   function setDisplayedFrames(frames, sourceLabel) {
     if (!frames.length) throw new Error("表示できるTECフレームがありません。期間を変えてください。");
-    if (!String(sourceLabel || "").includes("ISEE Base10 Forecast")) {
+    if (!String(sourceLabel || "").includes("ISEE Mean Forecast")) {
       isee10DayBaseForecastActive = false;
     }
     const meta = frames[0].gridMeta;
@@ -884,7 +884,7 @@
         time: t,
         grid: f.grid,
         gridMeta: gm,
-        sourceFile: f.sourceFile || "ISEE Base10 Forecast",
+        sourceFile: f.sourceFile || "ISEE Mean Forecast",
         // v8.13: preserve display-only Base10 metadata.
         // v8.12 accidentally dropped these fields here, so KpB UI fell back to 3.00.
         baseKpDisplay: Number(f.baseKpDisplay ?? f.base_kp_display ?? NaN),
@@ -910,16 +910,10 @@
       gBaseKpSeries = normalized.map(f => ({ t: f.time, kp: 3.0 }));
       try { gBaseKpTod = buildTodSeriesFromTimeSeries(gBaseKpSeries, "kp", 30); } catch {}
 
-      iseeBaseKpDisplaySeries = normalized
-        .map(f => ({
-          t: f.time,
-          kp: Number(f.baseKpDisplay ?? f.base_kp_display ?? NaN),
-          daysUsed: Number(f.baseDaysUsed ?? f.base_days_used ?? NaN),
-        }))
-        .filter(r => r.t instanceof Date && !isNaN(r.t.getTime()) && Number.isFinite(r.kp));
+      iseeBaseKpDisplaySeries = []; // ISEE v8.14: no Base Kp by design
     }
 
-    setDisplayedFrames(normalized, "ISEE Base10 Forecast");
+    setDisplayedFrames(normalized, "ISEE Mean Forecast");
     isee10DayBaseForecastActive = true; // setDisplayedFrames preserves it, explicit for safety.
 
     gForecastStart = normalized[0].time;
@@ -937,7 +931,7 @@
 
     try { updateKpLabels?.(); } catch {}
     setV4Status(
-      `ISEE Base10 Forecast: ${normalized.length} frames / VTEC [TECU] / ` +
+      `ISEE Mean Forecast: ${normalized.length} frames / VTEC [TECU] / ` +
       `${isoNoMs(normalized[0].time)} 〜 ${isoNoMs(normalized[normalized.length-1].time)}`
     );
   };
@@ -3568,9 +3562,9 @@
       const legacyTecSource = q52("tecSourceSelect");
       if (legacyTecSource) legacyTecSource.value = "isee";
 
-      setV52Status("ISEE 10日Base VTEC + 予報Kp + Japan格子別AIで4日予報を計算中…");
-      await window.swiftIseeRun10DayBaseForecast?.();
-      setV52Status("ISEE Japan 10日Base予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。");
+      setV52Status("ISEE時間別平均VTEC + 予報Kp + Japan格子別AIで4日予報を計算中…");
+      await (window.swiftIseeRunMeanForecast || window.swiftIseeRun10DayBaseForecast)?.();
+      setV52Status("ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。");
       return;
     } else {
       if (auto) auto.checked = true;
@@ -3868,7 +3862,7 @@
             <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(true)">🇯🇵 日本表示</button>
           </div>
           <div id="swiftV52IseeNote" class="swift-v52-sub" style="display:none;margin-top:4px;">
-            日本高解像度 VTEC [TECU] / 30日保存 / 10日Base + 予報Kp + Japan格子別AI
+            日本高解像度 VTEC [TECU] / 30日保存 / 時間別平均 + 予報Kp + Japan格子別AI
           </div>
         </div>
         <div class="swift-v52-row">
@@ -4570,14 +4564,9 @@
       // show the weighted historical Kp used to build Base10.
       // This is DISPLAY ONLY. Forecast calculation uses the already
       // Kp-removed Base10 grid and does not subtract this Kp again.
-      if (isee10DayBaseForecastActive && Array.isArray(iseeBaseKpDisplaySeries) && iseeBaseKpDisplaySeries.length) {
-        let best = null, bestDiff = Infinity;
-        for (const r of iseeBaseKpDisplaySeries) {
-          if (!(r?.t instanceof Date) || isNaN(r.t.getTime()) || !finite56(r.kp)) continue;
-          const d = Math.abs(r.t.getTime() - t.getTime());
-          if (d < bestDiff) { bestDiff = d; best = r; }
-        }
-        if (best && finite56(best.kp)) return Number(best.kp);
+      if (isee10DayBaseForecastActive) {
+        // ISEE v8.14 has no Base/KpB concept.
+        return NaN;
       }
 
       const v = todValueAt(gBaseKpTod, t);
@@ -4604,7 +4593,7 @@
     set("swiftV56KpF", fmt56(kpF));
     set("swiftV56KpB", fmt56(kpB));
     const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-box")?.querySelector(".swift-v56-kp-label");
-    if (kpBLabel) kpBLabel.textContent = isee10DayBaseForecastActive ? "KpB Base10加重平均（表示用）" : "KpB Base";
+    if (kpBLabel) kpBLabel.textContent = isee10DayBaseForecastActive ? "KpB（ISEEでは未使用）" : "KpB Base";
     set("swiftV56KpTime", iso56(t));
     const next = nextKpChangeV56(t);
     set("swiftV56KpNext", next ? `${iso56(next.t)} / KpF=${fmt56(next.kp)}` : "--");
