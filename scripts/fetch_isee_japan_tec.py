@@ -10,20 +10,21 @@ Key behavior
 ------------
 1. Discover the newest actually-published ISEE hourly NetCDF, rather than
    assuming "now" exists. ISEE products can have publication latency.
-2. On the first run, backfill the latest 72 hours available at ISEE.
+2. On the first run, backfill up to the latest 10 days available at ISEE.
 3. On later runs, download only hourly source files not already represented
    in docs/data/isee_tec/index.json.
 4. Expand each hourly NetCDF into its native time records (normally 5-min).
 5. Always write JSON grids as VTEC [TECU].
-6. Keep source latency metadata in index.json so the UI can show how old the
+6. Keep the latest 30 days of VTEC frames for Japan-AI training and Base generation.
+7. Keep source latency metadata in index.json so the UI can show how old the
    newest upstream ISEE product is.
 
 Environment
 -----------
-SWIFTTEC_ISEE_BACKFILL_HOURS   default 72
-SWIFTTEC_ISEE_KEEP_DAYS        default 14
+SWIFTTEC_ISEE_BACKFILL_HOURS   default 240
+SWIFTTEC_ISEE_KEEP_DAYS        default 30
 SWIFTTEC_ISEE_SEARCH_DAYS      default 90
-SWIFTTEC_ISEE_MAX_HOURLY_FILES default 96
+SWIFTTEC_ISEE_MAX_HOURLY_FILES default 240
 SWIFTTEC_ISEE_FORCE_REFETCH    default 0
 """
 
@@ -52,10 +53,10 @@ LAT_MAX = float(os.environ.get("SWIFTTEC_ISEE_LAT_MAX", "46"))
 LON_MIN = float(os.environ.get("SWIFTTEC_ISEE_LON_MIN", "122"))
 LON_MAX = float(os.environ.get("SWIFTTEC_ISEE_LON_MAX", "150"))
 
-BACKFILL_HOURS = max(24, int(os.environ.get("SWIFTTEC_ISEE_BACKFILL_HOURS", "72")))
-KEEP_DAYS = max(4, int(os.environ.get("SWIFTTEC_ISEE_KEEP_DAYS", "14")))
+BACKFILL_HOURS = max(24, int(os.environ.get("SWIFTTEC_ISEE_BACKFILL_HOURS", "240")))
+KEEP_DAYS = max(10, int(os.environ.get("SWIFTTEC_ISEE_KEEP_DAYS", "30")))
 SEARCH_DAYS = max(14, int(os.environ.get("SWIFTTEC_ISEE_SEARCH_DAYS", "90")))
-MAX_HOURLY_FILES = max(1, int(os.environ.get("SWIFTTEC_ISEE_MAX_HOURLY_FILES", "96")))
+MAX_HOURLY_FILES = max(1, int(os.environ.get("SWIFTTEC_ISEE_MAX_HOURLY_FILES", "240")))
 FORCE_REFETCH = os.environ.get("SWIFTTEC_ISEE_FORCE_REFETCH", "0").strip().lower() in {"1", "true", "yes"}
 
 UA = "SWIFT-TEC/8.8 ISEE-Japan-VTEC"
@@ -467,7 +468,7 @@ def main() -> int:
         newest_frame_time = datetime.fromisoformat(merged[-1]["time_utc"].replace("Z", "+00:00"))
 
     index = {
-        "version": "swifttec-isee-japan-index-v3-72h-vtec",
+        "version": "swifttec-isee-japan-index-v4-daily30d-vtec",
         "updated_utc": iso(now),
         "quantity": "VTEC",
         "units": "TECU",
