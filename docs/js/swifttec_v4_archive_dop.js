@@ -45,6 +45,7 @@
   let activeTimelineStepMin = TEC_REPLAY_STEP_MIN;
   let tecSmoothCache = new Map();
   let selectionVersion = 0;
+  let isee10DayBaseForecastActive = false;
 
   let kpAiCoefficients = null;
   let kpAiPerformance = null;
@@ -838,6 +839,7 @@
     const t = gForecastTimes[currentStepIndex];
     if (!(t instanceof Date) || isNaN(t.getTime())) return null;
     const grid = interpolateGridAtTime(t);
+    if (isee10DayBaseForecastActive) return grid;
     return applyKpAiCorrectionToGrid(grid, t);
   }
 
@@ -848,6 +850,9 @@
 
   function setDisplayedFrames(frames, sourceLabel) {
     if (!frames.length) throw new Error("表示できるTECフレームがありません。期間を変えてください。");
+    if (!String(sourceLabel || "").includes("ISEE Base10 Forecast")) {
+      isee10DayBaseForecastActive = false;
+    }
     const meta = frames[0].gridMeta;
     gGrid = { latArr: meta.latArr, lonArr: meta.lonArr, nLat: meta.nLat, nLon: meta.nLon };
     rawDisplayFrames = frames.slice().sort((a, b) => a.time - b.time);
@@ -863,6 +868,67 @@
     setV4Status(`${sourceLabel}: base ${rawDisplayFrames.length}枚を読み込み。表示=${getTimelineLabel()} / ${isoNoMs(rawDisplayFrames[0].time)} 〜 ${isoNoMs(rawDisplayFrames[rawDisplayFrames.length - 1].time)}`);
     maybeAutoPlayAfterLoad();
   }
+
+  window.swiftInstallIsee10DayBaseForecast = function (frames, kpSeries, meta = {}) {
+    if (!Array.isArray(frames) || !frames.length) throw new Error("Japan Base10 forecast frames are empty.");
+
+    const normalized = frames.map((f, idx) => {
+      const t = f.time instanceof Date ? f.time : new Date(f.time || f.time_utc || 0);
+      if (isNaN(t.getTime())) throw new Error(`Japan forecast invalid time at frame ${idx}`);
+      const gm = f.gridMeta || meta.gridMeta;
+      if (!gm || !Array.isArray(gm.latArr) || !Array.isArray(gm.lonArr)) {
+        throw new Error("Japan forecast grid metadata is missing.");
+      }
+      return {
+        time: t,
+        grid: f.grid,
+        gridMeta: gm,
+        sourceFile: f.sourceFile || "ISEE Base10 Forecast",
+      };
+    });
+
+    isee10DayBaseForecastActive = true;
+
+    if (Array.isArray(kpSeries) && kpSeries.length) {
+      gKpSeries = kpSeries.map(x => ({
+        t: x.t instanceof Date ? x.t : new Date(x.t || x.time || 0),
+        kp: Number(x.kp),
+      }));
+    }
+
+    // Base10 is already Kp-removed. Keep KpB display neutral instead of
+    // subtracting another historical Kp term.
+    if (normalized.length) {
+      gBaseKpSeries = normalized.map(f => ({ t: f.time, kp: 3.0 }));
+      try { gBaseKpTod = buildTodSeriesFromTimeSeries(gBaseKpSeries, "kp", 30); } catch {}
+    }
+
+    setDisplayedFrames(normalized, "ISEE Base10 Forecast");
+    isee10DayBaseForecastActive = true; // setDisplayedFrames preserves it, explicit for safety.
+
+    gForecastStart = normalized[0].time;
+    gForecastTimes = buildUniformTimeline(normalized, TEC_REPLAY_STEP_MIN);
+    gForecastFrames = new Array(gForecastTimes.length).fill(null);
+    currentStepIndex = 0;
+    setSliderForTimeline();
+    dynamicOnSliderChange();
+
+    try {
+      if (typeof gMap !== "undefined" && gMap?.fitBounds) {
+        gMap.fitBounds([[24,122],[46,150]], { padding:[8,8] });
+      }
+    } catch {}
+
+    try { updateKpLabels?.(); } catch {}
+    setV4Status(
+      `ISEE Base10 Forecast: ${normalized.length} frames / VTEC [TECU] / ` +
+      `${isoNoMs(normalized[0].time)} 〜 ${isoNoMs(normalized[normalized.length-1].time)}`
+    );
+  };
+
+  window.swiftClearIsee10DayBaseForecastMode = function () {
+    isee10DayBaseForecastActive = false;
+  };
 
   async function loadTecArchiveRange() {
     try {
@@ -2412,7 +2478,7 @@
   function pointTecAtTimeForSeries(t, i, j) {
     const raw = interpolateGridAtTime(t);
     if (!raw) return NaN;
-    const grid = applyKpAiCorrectionToGrid(raw, t);
+    const grid = isee10DayBaseForecastActive ? raw : applyKpAiCorrectionToGrid(raw, t);
     const v = Number(grid?.[i]?.[j]);
     return isFinite(v) ? v : NaN;
   }
@@ -3465,9 +3531,9 @@
     syncV52ForecastControls();
     const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
     if (source === "isee_japan_highres") {
-      setV52Status("ISEE Japan High-Res TECを取得中…");
+      setV52Status("ISEE Japan High-Res VTEC [TECU]を取得中…");
       await window.swiftIseeLoadLatest?.(false);
-      setV52Status("ISEE Japan High-Res TECを取得しました。");
+      setV52Status("ISEE Japan High-Res VTEC [TECU]を取得しました。");
       return;
     }
     setV52Status("予報用TECを取得中…");
@@ -3481,23 +3547,22 @@
     const auto = q52("forecastTecAutoFetch");
 
     if (source === "isee_japan_highres") {
-      if (!(window.swiftIseeFrames || []).length) {
-        setV52Status("ISEE Japan High-Res TECを先に読み込みます…");
-        await window.swiftIseeLoadLatest?.(false);
-      }
-      if (auto) auto.checked = false; // NOAA/data APIの自動取得を止める
+      if (auto) auto.checked = false; // NOAA/data TEC自動取得を止める
       const legacyTecSource = q52("tecSourceSelect");
       if (legacyTecSource) legacyTecSource.value = "isee";
-      setV52Status("Japan格子別AI設定を反映してTEC予報を計算中…");
+
+      setV52Status("ISEE 10日Base VTEC + 予報Kp + Japan格子別AIで4日予報を計算中…");
+      await window.swiftIseeRun10DayBaseForecast?.();
+      setV52Status("ISEE Japan 10日Base予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。");
+      return;
     } else {
       if (auto) auto.checked = true;
+      try { window.swiftClearIsee10DayBaseForecastMode?.(); } catch {}
       setV52Status("AI設定を反映してTEC予報を計算中…");
     }
 
     await window.runForecast?.();
-    setV52Status(source === "isee_japan_highres"
-      ? "ISEE Japan High-Res予報を実行しました。『🇯🇵 日本表示』で確認できます。"
-      : "予報を実行しました。地図・時間スライダーで確認できます。");
+    setV52Status("予報を実行しました。地図・時間スライダーで確認できます。");
   }
 
   function drawAxes52(ctx, w, h, plot, yLabel) {
@@ -3779,14 +3844,14 @@
           <select id="swiftV52TecSource" class="swift-v52-select" onchange="window.swiftV52SyncForecastControls()">
             <option value="archive_data_30m" selected>取りため済みdata API</option>
             <option value="noaa_direct_30m">NOAA API直取得</option>
-            <option value="isee_japan_highres">🇯🇵 ISEE Japan High-Res</option>
+            <option value="isee_japan_highres">🇯🇵 ISEE Japan High-Res VTEC</option>
           </select>
           <div id="swiftV52IseeActions" class="swift-v52-row" style="display:none;margin-top:6px;">
             <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(false)">ISEE読込</button>
             <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(true)">🇯🇵 日本表示</button>
           </div>
           <div id="swiftV52IseeNote" class="swift-v52-sub" style="display:none;margin-top:4px;">
-            日本高解像度TEC + Japan格子別AI
+            日本高解像度 VTEC [TECU] / 30日保存 / 10日Base + 予報Kp + Japan格子別AI
           </div>
         </div>
         <div class="swift-v52-row">
