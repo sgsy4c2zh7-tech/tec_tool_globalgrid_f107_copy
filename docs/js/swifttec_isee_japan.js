@@ -178,14 +178,17 @@
   function coeffAt(mg, i, j) {
     if (!mg) return null;
     const n = Number(mg.sample_count?.[i]?.[j] ?? mg.count?.[i]?.[j] ?? 0);
-    if (!Number.isFinite(n) || n < 4) return null;
-    return {
-      k0: Number(mg.k0?.[i]?.[j] || 0),
-      k1: Number(mg.k1?.[i]?.[j] || 0),
-      k2: Number(mg.k2?.[i]?.[j] || 0),
-      k3: Number(mg.k3?.[i]?.[j] || 0),
-      n,
-    };
+    const k0 = Number(mg.k0?.[i]?.[j] ?? 0);
+    const k1 = Number(mg.k1?.[i]?.[j] ?? 0);
+    const k2 = Number(mg.k2?.[i]?.[j] ?? 0);
+    const k3 = Number(mg.k3?.[i]?.[j] ?? 0);
+
+    // v8.11:
+    // Persisted coefficients remain valid even if the latest training run has
+    // a small current-run sample_count. The old v8.10 n<4 gate could turn the
+    // entire Kp correction into zero and make every forecast day repeat.
+    if (![k0,k1,k2,k3].every(Number.isFinite)) return null;
+    return { k0, k1, k2, k3, n: Number.isFinite(n) ? n : 0 };
   }
 
   function F(cf, kp) {
@@ -205,17 +208,50 @@
     const txt = (document.getElementById("noaaKpText")?.value || "").trim();
     const nSteps = Math.round(FORECAST_HOURS * 60 / FORECAST_STEP_MIN);
 
-    if (typeof buildForecastKpSeriesFrom3DayText === "function" && txt) {
+    const parser =
+      (typeof window.buildForecastKpSeriesFrom3DayText === "function" && window.buildForecastKpSeriesFrom3DayText) ||
+      (typeof buildForecastKpSeriesFrom3DayText === "function" && buildForecastKpSeriesFrom3DayText);
+
+    if (parser && txt) {
       const mode = (typeof gKpInputMode !== "undefined" ? gKpInputMode : "auto");
-      const rows = buildForecastKpSeriesFrom3DayText(txt, startUtc, nSteps, FORECAST_STEP_MIN, mode);
-      if (Array.isArray(rows) && rows.length) return rows;
+      const rows = parser(txt, startUtc, nSteps, FORECAST_STEP_MIN, mode);
+      if (Array.isArray(rows) && rows.length >= 2) {
+        return rows.map((r,i) => ({
+          t: r.t instanceof Date ? r.t : new Date(r.t || r.time || startUtc.getTime() + i*FORECAST_STEP_MIN*60000),
+          kp: Number(r.kp),
+        }));
+      }
     }
 
-    // Fallback only if NOAA text is unavailable.
-    return Array.from({length:nSteps+1}, (_,i) => ({
-      t: new Date(startUtc.getTime() + i*FORECAST_STEP_MIN*60000),
-      kp: 3.0,
-    }));
+    // Second fallback: use an already-built forecast Kp series from SWIFT-TEC.
+    try {
+      if (Array.isArray(gKpSeries) && gKpSeries.length) {
+        const valid = gKpSeries.map(r => ({
+          t: r.t instanceof Date ? r.t : new Date(r.t || r.time || r.time_utc || 0),
+          kp: Number(r.kp ?? r.Kp ?? r.value),
+        })).filter(r => !isNaN(r.t.getTime()) && Number.isFinite(r.kp));
+
+        if (valid.length) {
+          const out = [];
+          for (let i=0; i<=nSteps; i++) {
+            const t = new Date(startUtc.getTime() + i*FORECAST_STEP_MIN*60000);
+            let best = valid[0], bd = Infinity;
+            for (const r of valid) {
+              const d = Math.abs(r.t.getTime() - t.getTime());
+              if (d < bd) { bd = d; best = r; }
+            }
+            out.push({t, kp:best.kp});
+          }
+          return out;
+        }
+      }
+    } catch {}
+
+    // Never silently use constant Kp=3. That hides a broken Kp input and makes
+    // the Japan forecast look frozen.
+    throw new Error(
+      "予報Kpを生成できません。『予報時にNOAA 3-Day Kpを自動取得』をONにして、もう一度予報実行してください。"
+    );
   }
 
   function aiEnabled() {
@@ -223,6 +259,25 @@
     if (compact) return !!compact.checked;
     const legacy = document.getElementById("kpAiCorrectionEnabled");
     return legacy ? !!legacy.checked : true;
+  }
+
+  function correctionClipTecU() {
+    const a = Number(document.getElementById("swiftV52AiClip")?.value);
+    const b = Number(document.getElementById("kpAiCorrectionClip")?.value);
+    const v = Number.isFinite(a) ? a : (Number.isFinite(b) ? b : 20);
+    return Math.max(1, Math.min(60, v));
+  }
+
+  function gridStats(grid) {
+    let min=Infinity, max=-Infinity, sum=0, n=0;
+    for (const row of grid || []) {
+      for (const v0 of row || []) {
+        const v=Number(v0);
+        if (!Number.isFinite(v)) continue;
+        min=Math.min(min,v); max=Math.max(max,v); sum+=v; n++;
+      }
+    }
+    return {min:n?min:NaN,max:n?max:NaN,mean:n?sum/n:NaN,n};
   }
 
   async function run10DayBaseForecast() {
@@ -243,6 +298,14 @@
     let minDaysUsed = Infinity;
     let maxDaysUsed = 0;
     const useAi = aiEnabled();
+    const clip = correctionClipTecU();
+    const kpVals = kpSeries.map(r => Number(r.kp)).filter(Number.isFinite);
+    const kpMin = kpVals.length ? Math.min(...kpVals) : NaN;
+    const kpMax = kpVals.length ? Math.max(...kpVals) : NaN;
+    let activeCoeffCells = 0;
+    let coeffCellsChecked = false;
+    let minAppliedDelta = Infinity;
+    let maxAppliedDelta = -Infinity;
 
     for (let s=0; s<=nSteps; s++) {
       const t = new Date(startUtc.getTime() + s*FORECAST_STEP_MIN*60000);
@@ -278,10 +341,32 @@
             continue;
           }
           const cf = coeffAt(mg, i, j);
-          const kpTerm = useAi ? F(cf, kpF) : 0;
+          if (!coeffCellsChecked && cf && (Math.abs(cf.k0)+Math.abs(cf.k1)+Math.abs(cf.k2)+Math.abs(cf.k3) > 1e-10)) {
+            activeCoeffCells++;
+          }
+
+          let kpTerm = useAi ? F(cf, kpF) : 0;
+          if (!Number.isFinite(kpTerm)) kpTerm = 0;
+          kpTerm = Math.max(-clip, Math.min(clip, kpTerm));
+          minAppliedDelta = Math.min(minAppliedDelta, kpTerm);
+          maxAppliedDelta = Math.max(maxAppliedDelta, kpTerm);
+
           const vtec = Math.max(0, Math.min(300, b + kpTerm));
           outGrid[i][j] = Number.isFinite(vtec) ? vtec : null;
         }
+      }
+
+      if (!coeffCellsChecked) {
+        activeCoeffCells = 0;
+        for (let ii=0; ii<gridMeta.nLat; ii++) {
+          for (let jj=0; jj<gridMeta.nLon; jj++) {
+            const cfx = coeffAt(mg, ii, jj);
+            if (cfx && (Math.abs(cfx.k0)+Math.abs(cfx.k1)+Math.abs(cfx.k2)+Math.abs(cfx.k3) > 1e-10)) {
+              activeCoeffCells++;
+            }
+          }
+        }
+        coeffCellsChecked = true;
       }
 
       frames.push({
@@ -302,11 +387,25 @@
     const daysTxt = Number.isFinite(minDaysUsed)
       ? (minDaysUsed === maxDaysUsed ? `${minDaysUsed}日` : `${minDaysUsed}〜${maxDaysUsed}日`)
       : "--";
-    status(
-      `Japan予報OK: ISEE同一UTC時刻 ${daysTxt} Base / ` +
-      `${useAi ? "予報Kp + Japan格子AI" : "AI補正OFF"} / ` +
-      `+0〜+4日 / VTEC [TECU]`
-    );
+    const deltaSpan = (Number.isFinite(minAppliedDelta) && Number.isFinite(maxAppliedDelta))
+      ? `${minAppliedDelta.toFixed(2)}〜${maxAppliedDelta.toFixed(2)} TECU`
+      : "--";
+
+    const kpTxt = (Number.isFinite(kpMin) && Number.isFinite(kpMax))
+      ? `${kpMin.toFixed(2)}〜${kpMax.toFixed(2)}`
+      : "--";
+
+    if (useAi && activeCoeffCells === 0) {
+      status(
+        `⚠ Japan予報は生成しましたが、Japan AI係数が全格子0です。` +
+        `KpF=${kpTxt} / Base=${daysTxt} / AI学習が進むまで同一UTC時刻の日別値はほぼ同じになります。`
+      );
+    } else {
+      status(
+        `Japan予報OK: Base=${daysTxt} / KpF=${kpTxt} / ` +
+        `AI有効格子=${activeCoeffCells} / Kp補正=${deltaSpan} / +0〜+4日 / VTEC [TECU]`
+      );
+    }
     return frames;
   }
 
