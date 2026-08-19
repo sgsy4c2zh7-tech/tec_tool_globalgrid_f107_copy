@@ -5580,14 +5580,14 @@
       }
       .swift-v62-bar { height:100%;background:#60a5fa;border-radius:99px; }
       .swift-v62-kp-row {
-        display:grid;grid-template-columns:42px 1fr 56px 72px 76px 64px;
+        display:grid;grid-template-columns:42px 1fr 56px 72px 72px;
         gap:5px;align-items:center;font-size:9.5px;color:#dbeafe;margin:5px 0;
       }
       .swift-v62-recent { max-height:210px;overflow:auto;margin-top:8px; }
       @media (max-width:980px) {
         .swift-v62-grid{grid-template-columns:1fr}
         .swift-v62-kpis{grid-template-columns:1fr 1fr}
-        .swift-v62-kp-row{grid-template-columns:42px 1fr 50px 64px 68px}
+        .swift-v62-kp-row{grid-template-columns:42px 1fr 50px 60px 64px}
         .swift-v62-kp-row .ncol{display:none}
       }
     `;
@@ -5650,8 +5650,13 @@
   }
 
   function renderKpHitRateV62() {
-    const bins=failPerfV62?.kp_bins||{};
+    // v8.20:
+    // Long-term Kp hit rate uses the lightweight 365-day N/Hit archive.
+    // Bias/MAE/RMSE below continue to use the normal short-window kp_bins.
+    const bins = failPerfV62?.kp_bins_1y_hit || failPerfV62?.kp_bins || {};
+    const arc = failPerfV62?.kp_hit_archive || {};
     const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+
     const rows=keys.map(k=>{
       const r=bins[k]||{};
       const t=r.thresholds?.["5"]||r;
@@ -5660,19 +5665,25 @@
         hit:Number(t.corrected_hit_rate),
         raw:Number(t.raw_hit_rate),
         n:Number(t.sample_count ?? r.sample_count ?? 0),
-        rmse:Number(t.corrected_rmse ?? r.corrected_rmse),
       };
     });
 
+    const days=Number(arc.window_days||365);
+    const totalN=Number(arc.sample_count||rows.reduce((a,r)=>a+(r.n||0),0));
+    const first=arc.first_date_utc||"";
+    const last=arc.last_date_utc||"";
+    const range=(first&&last)?` / ${first}〜${last}`:"";
+
     return `<div>
-      <div class="swift-v62-sub">KpFごとの ±5 TECU 的中率。以前のKp別的中率表示をそのまま復活しています。</div>
+      <div class="swift-v62-sub">
+        KpFごとの ±5 TECU 的中率。過去${days}日・全有効格子ケースをN/Hitだけ軽量保存${range} / 総N=${totalN||0}。
+      </div>
       ${rows.map(r=>`<div class="swift-v62-kp-row">
         <div>Kp ${r.k}</div>
         <div class="swift-v62-barbox"><div class="swift-v62-bar" style="width:${Math.max(0,Math.min(100,(r.hit||0)*100)).toFixed(1)}%"></div></div>
         <div>${pct62(r.hit)}</div>
         <div>raw ${pct62(r.raw)}</div>
-        <div>RMSE ${num62(r.rmse)}</div>
-        <div class="ncol">N=${r.n}</div>
+        <div>N=${r.n}</div>
       </div>`).join("")}
     </div>`;
   }
@@ -5793,7 +5804,7 @@
           ${renderThresholdTableV62()}
         </div>
         <div>
-          <div class="swift-v62-title">Kp別 的中率（±5 TECU）</div>
+          <div class="swift-v62-title">Kp別 的中率（過去1年・全ケース・±5 TECU）</div>
           ${renderKpHitRateV62()}
           <div class="swift-v62-sub" style="margin-top:8px;">${worstKpTextV62()}</div>
         </div>
