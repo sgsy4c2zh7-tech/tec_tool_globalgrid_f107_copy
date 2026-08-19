@@ -5580,14 +5580,14 @@
       }
       .swift-v62-bar { height:100%;background:#60a5fa;border-radius:99px; }
       .swift-v62-kp-row {
-        display:grid;grid-template-columns:42px 1fr 56px 62px 62px 62px 64px;
+        display:grid;grid-template-columns:42px 1fr 56px 72px 76px 64px;
         gap:5px;align-items:center;font-size:9.5px;color:#dbeafe;margin:5px 0;
       }
       .swift-v62-recent { max-height:210px;overflow:auto;margin-top:8px; }
       @media (max-width:980px) {
         .swift-v62-grid{grid-template-columns:1fr}
         .swift-v62-kpis{grid-template-columns:1fr 1fr}
-        .swift-v62-kp-row{grid-template-columns:42px 1fr 50px 55px 55px 55px}
+        .swift-v62-kp-row{grid-template-columns:42px 1fr 50px 64px 68px}
         .swift-v62-kp-row .ncol{display:none}
       }
     `;
@@ -5649,7 +5649,7 @@
     </table>`;
   }
 
-  function renderKpBinsV62() {
+  function renderKpHitRateV62() {
     const bins=failPerfV62?.kp_bins||{};
     const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
     const rows=keys.map(k=>{
@@ -5658,24 +5658,66 @@
       return {
         k,
         hit:Number(t.corrected_hit_rate),
+        raw:Number(t.raw_hit_rate),
+        n:Number(t.sample_count ?? r.sample_count ?? 0),
+        rmse:Number(t.corrected_rmse ?? r.corrected_rmse),
+      };
+    });
+
+    return `<div>
+      <div class="swift-v62-sub">KpFごとの ±5 TECU 的中率。以前のKp別的中率表示をそのまま復活しています。</div>
+      ${rows.map(r=>`<div class="swift-v62-kp-row">
+        <div>Kp ${r.k}</div>
+        <div class="swift-v62-barbox"><div class="swift-v62-bar" style="width:${Math.max(0,Math.min(100,(r.hit||0)*100)).toFixed(1)}%"></div></div>
+        <div>${pct62(r.hit)}</div>
+        <div>raw ${pct62(r.raw)}</div>
+        <div>RMSE ${num62(r.rmse)}</div>
+        <div class="ncol">N=${r.n}</div>
+      </div>`).join("")}
+    </div>`;
+  }
+
+  function renderKpErrorV62() {
+    const bins=failPerfV62?.kp_bins||{};
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    const rows=keys.map(k=>{
+      const r=bins[k]||{};
+      const t=r.thresholds?.["5"]||r;
+      return {
+        k,
         bias:Number(r.corrected_bias ?? t.corrected_bias),
         mae:Number(r.corrected_mae ?? t.corrected_mae),
         rmse:Number(r.corrected_rmse ?? t.corrected_rmse),
         n:Number(r.sample_count ?? t.sample_count ?? 0),
       };
     });
-    return `<div>
-      <div class="swift-v62-sub">KpF帯ごとの「実測TEC − 予報TEC」。Biasが＋なら予報が低すぎ、−なら予報が高すぎです。</div>
-      ${rows.map(r=>`<div class="swift-v62-kp-row">
-        <div>Kp ${r.k}</div>
-        <div class="swift-v62-barbox"><div class="swift-v62-bar" style="width:${Math.max(0,Math.min(100,(r.hit||0)*100)).toFixed(1)}%"></div></div>
-        <div>${pct62(r.hit)}</div>
-        <div>B ${num62(r.bias)}</div>
-        <div>MAE ${num62(r.mae)}</div>
-        <div>R ${num62(r.rmse)}</div>
-        <div class="ncol">N=${r.n}</div>
-      </div>`).join("")}
-    </div>`;
+
+    return `<table class="swift-v62-table">
+      <thead><tr><th>KpF</th><th>Bias</th><th>MAE</th><th>RMSE</th><th>N</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr>
+        <td>Kp ${r.k}</td>
+        <td>${num62(r.bias)}</td>
+        <td>${num62(r.mae)}</td>
+        <td>${num62(r.rmse)}</td>
+        <td>${r.n}</td>
+      </tr>`).join("")}</tbody>
+    </table>`;
+  }
+
+  function worstKpTextV62() {
+    const bins=failPerfV62?.kp_bins||{};
+    let worst=null;
+    for (const [k,r] of Object.entries(bins)) {
+      const t=r.thresholds?.["5"]||r;
+      const n=Number(t.sample_count ?? r.sample_count ?? 0);
+      const hit=Number(t.corrected_hit_rate);
+      if (n<=0 || !Number.isFinite(hit)) continue;
+      if (!worst || hit<worst.hit) {
+        worst={k,hit,n,rmse:Number(t.corrected_rmse ?? r.corrected_rmse)};
+      }
+    }
+    if (!worst) return "Kp帯別の的中率データはまだ不足しています。";
+    return `現時点で一番外れやすいKp帯: Kp ${worst.k} / Hit ${pct62(worst.hit)} / RMSE ${num62(worst.rmse)} / N=${worst.n}`;
   }
 
   function renderRecentV62() {
@@ -5746,10 +5788,20 @@
       <div class="swift-v62-sub">${info.sub}${latest}</div>
       ${renderSummaryKpisV62()}
       <div class="swift-v62-grid">
-        <div><div class="swift-v62-title">誤差閾値別</div>${renderThresholdTableV62()}</div>
-        <div><div class="swift-v62-title">Kp別 予報のずれ</div>${renderKpBinsV62()}
+        <div>
+          <div class="swift-v62-title">誤差閾値別 的中率</div>
+          ${renderThresholdTableV62()}
+        </div>
+        <div>
+          <div class="swift-v62-title">Kp別 的中率（±5 TECU）</div>
+          ${renderKpHitRateV62()}
           <div class="swift-v62-sub" style="margin-top:8px;">${worstKpTextV62()}</div>
         </div>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="swift-v62-title">Kp別 予報のずれ</div>
+        <div class="swift-v62-sub">上の的中率を残したまま、Bias / MAE / RMSEも追加表示します。</div>
+        ${renderKpErrorV62()}
       </div>
       ${renderRecentV62()}
       ${note}`;
