@@ -46,7 +46,8 @@
   let tecSmoothCache = new Map();
   let selectionVersion = 0;
   let isee10DayBaseForecastActive = false;
-  let iseeBaseKpDisplaySeries = []; // display only; never used to re-subtract Kp from Base10
+  let noaaBaseTecForecastActive = false; // v8.25: final NOAA BaseTEC forecast already contains KpB/KpF terms
+  let iseeBaseKpDisplaySeries = []; // legacy display metadata only
 
   let kpAiCoefficients = null;
   let kpAiPerformance = null;
@@ -840,7 +841,10 @@
     const t = gForecastTimes[currentStepIndex];
     if (!(t instanceof Date) || isNaN(t.getTime())) return null;
     const grid = interpolateGridAtTime(t);
-    if (isee10DayBaseForecastActive) return grid;
+
+    // ISEE and NOAA BaseTEC v8.25 frames are already final forecast VTEC/TEC.
+    if (isee10DayBaseForecastActive || noaaBaseTecForecastActive) return grid;
+
     return applyKpAiCorrectionToGrid(grid, t);
   }
 
@@ -851,9 +855,12 @@
 
   function setDisplayedFrames(frames, sourceLabel) {
     if (!frames.length) throw new Error("表示できるTECフレームがありません。期間を変えてください。");
-    if (!String(sourceLabel || "").includes("ISEE Mean Forecast")) {
+
+    const label = String(sourceLabel || "");
+    if (!label.includes("ISEE Mean Forecast")) {
       isee10DayBaseForecastActive = false;
     }
+    noaaBaseTecForecastActive = label.includes("NOAA BaseTEC Forecast");
     const meta = frames[0].gridMeta;
     gGrid = { latArr: meta.latArr, lonArr: meta.lonArr, nLat: meta.nLat, nLon: meta.nLon };
     rawDisplayFrames = frames.slice().sort((a, b) => a.time - b.time);
@@ -2489,7 +2496,9 @@
   function pointTecAtTimeForSeries(t, i, j) {
     const raw = interpolateGridAtTime(t);
     if (!raw) return NaN;
-    const grid = isee10DayBaseForecastActive ? raw : applyKpAiCorrectionToGrid(raw, t);
+    const grid = (isee10DayBaseForecastActive || noaaBaseTecForecastActive)
+      ? raw
+      : applyKpAiCorrectionToGrid(raw, t);
     const v = Number(grid?.[i]?.[j]);
     return isFinite(v) ? v : NaN;
   }
@@ -3589,12 +3598,137 @@
     setV52Status("予報用TECを取得しました。");
   }
 
+  function noaaBaseTecInputGridAtV825(tecTod, t) {
+    if (!tecTod?.frames?.length || !(t instanceof Date) || isNaN(t.getTime())) return null;
+    const step = Math.max(1, Number(tecTod.stepMinutes || 30));
+    const mins = t.getUTCHours() * 60 + t.getUTCMinutes();
+    const idx = Math.max(0, Math.min(tecTod.frames.length - 1, Math.round(mins / step) % tecTod.frames.length));
+    return tecTod.frames[idx] || null;
+  }
+
+  async function rebuildNoaaBaseTecForecastV825() {
+    // NOAA only. ISEE has no BaseTEC by design.
+    const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
+    if (source === "isee_japan_highres") return false;
+
+    if (!Array.isArray(gNoaaDayFrames) || gNoaaDayFrames.length < 2 ||
+        !Array.isArray(gNoaaDayTimes) || gNoaaDayTimes.length < 2) {
+      console.warn("v8.25 NOAA BaseTEC rebuild skipped: NOAA TEC base frames not ready");
+      return false;
+    }
+
+    if (!Array.isArray(gForecastTimes) || !gForecastTimes.length) {
+      console.warn("v8.25 NOAA BaseTEC rebuild skipped: forecast timeline not ready");
+      return false;
+    }
+
+    try { await window.loadKpAiData?.(false); } catch {}
+
+    const tecTod = buildGenericNoaaTecTodFromFramesV48(gNoaaDayFrames, gNoaaDayTimes, 30);
+    if (!tecTod?.frames?.length) {
+      console.warn("v8.25 NOAA BaseTEC rebuild skipped: failed to build TEC time-of-day grid");
+      return false;
+    }
+
+    const firstMeta = tecTod.frames[0];
+    const meta = {
+      latArr: firstMeta.latArr,
+      lonArr: firstMeta.lonArr,
+      nLat: firstMeta.nLat,
+      nLon: firstMeta.nLon,
+    };
+
+    const aiOn = kpAiEnabled();
+    const frames = [];
+    let baseKpFallbackCount = 0;
+    let activeCoeffCells = 0;
+
+    for (const t0 of gForecastTimes) {
+      const t = t0 instanceof Date ? new Date(t0.getTime()) : new Date(t0);
+      if (isNaN(t.getTime())) continue;
+
+      const input = noaaBaseTecInputGridAtV825(tecTod, t);
+      if (!input?.grid) continue;
+
+      const kpF = kpAiKpAtTime(t);
+      let kpB = kpAiBaseKpAtTime(t);
+      if (!isFinite(kpB)) {
+        kpB = isFinite(kpF) ? kpF : 3.0;
+        baseKpFallbackCount++;
+      }
+
+      const mk = kpAiMonthKey(t);
+      const monthGrid = kpAiGridMonthFor(mk);
+      const outGrid = Array.from({length: meta.nLat}, () => Array(meta.nLon).fill(NaN));
+
+      for (let i = 0; i < meta.nLat; i++) {
+        const lat = Number(meta.latArr[i]);
+        for (let j = 0; j < meta.nLon; j++) {
+          const obs = Number(input.grid?.[i]?.[j]);
+          if (!isFinite(obs)) continue;
+
+          let fB = 0;
+          let fF = 0;
+
+          if (aiOn) {
+            let cf = kpAiGridCoeffAt(monthGrid, i, j, lat, Number(meta.lonArr[j]));
+            if (!cf) {
+              const rid = kpAiRegionId(lat, Number(meta.lonArr[j]));
+              cf = kpAiCoeffFor(rid, mk);
+            }
+
+            if (cf && Number(cf.sample_count || 0) >= 4) {
+              fB = kpAiFValue(cf, kpB);
+              fF = kpAiFValue(cf, kpF);
+              if (isFinite(fB) && isFinite(fF)) activeCoeffCells++;
+              else { fB = 0; fF = 0; }
+            }
+          }
+
+          // User's NOAA model:
+          // BaseTEC = observed/base-day TEC - F(KpB)
+          // ForecastTEC = BaseTEC + F(KpF)
+          const baseTec = Math.max(0, obs - fB);
+          const forecastTec = Math.max(0, baseTec + fF);
+          outGrid[i][j] = forecastTec;
+        }
+      }
+
+      frames.push({
+        time: t,
+        gridMeta: meta,
+        grid: outGrid,
+        sourceFile: "NOAA BaseTEC Forecast",
+        kpF: isFinite(kpF) ? Number(kpF) : NaN,
+        kpB: isFinite(kpB) ? Number(kpB) : NaN,
+      });
+    }
+
+    if (!frames.length) return false;
+
+    // Mark as final so display/DOP code does not add F(KpF)-F(KpB) a second time.
+    noaaBaseTecForecastActive = true;
+    setDisplayedFrames(frames, "NOAA BaseTEC Forecast");
+
+    const status = q52("swiftV52Status");
+    if (status) {
+      status.textContent =
+        `NOAA BaseTEC予報: ${frames.length} frames / ` +
+        `BaseTEC=実測TEC−F(KpB), Forecast=BaseTEC+F(KpF)` +
+        (baseKpFallbackCount ? ` / KpB代用=${baseKpFallbackCount}時刻` : "") +
+        ` / AI係数cell=${activeCoeffCells}`;
+    }
+
+    return true;
+  }
+
   async function v52RunForecast() {
     syncV52ForecastControls();
     const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
     const auto = q52("forecastTecAutoFetch");
 
     if (source === "isee_japan_highres") {
+      noaaBaseTecForecastActive = false;
       if (auto) auto.checked = false; // NOAA/data TEC自動取得を止める
       const legacyTecSource = q52("tecSourceSelect");
       if (legacyTecSource) legacyTecSource.value = "isee";
@@ -3610,7 +3744,19 @@
     }
 
     await window.runForecast?.();
-    setV52Status("予報を実行しました。地図・時間スライダーで確認できます。");
+
+    // v8.25: NOAA must use explicit BaseTEC model.
+    // The legacy run above is retained only to prepare forecast times / Kp inputs.
+    // Its TEC frames are replaced here by:
+    //   BaseTEC = observed TEC - F(KpB)
+    //   ForecastTEC = BaseTEC + F(KpF)
+    const rebuilt = await rebuildNoaaBaseTecForecastV825();
+
+    if (rebuilt) {
+      setV52Status("NOAA BaseTEC予報を実行しました。BaseTEC=実測TEC−F(KpB) → +F(KpF)。");
+    } else {
+      setV52Status("NOAA予報を実行しました（BaseTEC再構成は利用可能データ不足のため未適用）。");
+    }
   }
 
   function drawAxes52(ctx, w, h, plot, yLabel) {
@@ -4062,6 +4208,8 @@
   window.swiftV52SetMetricsSource = setMetricsSourceV52;
   window.swiftV52LoadTec = v52LoadTec;
   window.swiftV52RunForecast = v52RunForecast;
+  window.swiftRebuildNoaaBaseTecForecastV825 = rebuildNoaaBaseTecForecastV825;
+  window.swiftIsNoaaBaseTecForecastActiveV825 = () => !!noaaBaseTecForecastActive;
   window.swiftV52SyncForecastControls = syncV52ForecastControls;
   window.swiftV52RenderAll = renderV52All;
   window.swiftV52SelectRegion = function (rid) {
@@ -4821,6 +4969,15 @@
   }
   function q57(id) { return document.getElementById(id); }
 
+  function updateModelRuleTextV825() {
+    const el = q57("swiftV57ModelRuleText");
+    if (!el) return;
+    const isIsee = String(document.getElementById("swiftV52TecSource")?.value || "") === "isee_japan_highres";
+    el.innerHTML = isIsee
+      ? "ISEE: <b>BaseTECなし / KpBなし</b><br>Forecast VTEC = 時間別平均VTEC + F(KpF)"
+      : "NOAA: <b>BaseTEC = 実測TEC − F(KpB)</b><br>ForecastTEC = BaseTEC + F(KpF)";
+  }
+
   function bootV57() {
     setTimeout(() => {
       const side = q57("swiftAccuracySide");
@@ -4833,15 +4990,22 @@
           <span>AIモデルルール</span>
           <span class="swift-v52-pill">v5.7</span>
         </div>
-        <div class="swift-v56-kp-note">
-          BaseTEC = 前日TEC − F(KpB)<br>
-          ForecastTEC = BaseTEC + F(KpF)<br>
-          AI補正 = F(KpF) − F(KpB)
+        <div class="swift-v56-kp-note" id="swiftV57ModelRuleText">
+          NOAA: BaseTEC = 実測TEC − F(KpB)<br>
+          NOAA: ForecastTEC = BaseTEC + F(KpF)<br>
+          ISEE: BaseTECなし / 時間別平均VTEC + F(KpF)
         </div>
       `;
       const kpCard = q57("swiftV56KpCard");
       if (kpCard) kpCard.insertAdjacentElement("afterend", note);
       else side.appendChild(note);
+
+      updateModelRuleTextV825();
+      const src = document.getElementById("swiftV52TecSource");
+      if (src && !src.dataset.v825RuleBound) {
+        src.dataset.v825RuleBound = "1";
+        src.addEventListener("change", updateModelRuleTextV825);
+      }
     }, 1400);
   }
   readyV57(bootV57);
@@ -5571,6 +5735,41 @@
     // v8.17: accuracy/verification display is independent from forecast TEC source.
     return String(q62("swiftV52MetricsSource")?.value || "noaa").toLowerCase() === "isee";
   }
+  function verificationSwitchHtmlV824() {
+    const isIsee = isIseeV62();
+    return `<div class="swift-v62-source-switch">
+      <span class="swift-v62-switch-label">検証切替</span>
+      <button class="swift-v62-switch-btn ${!isIsee ? "active" : ""}"
+              onclick="window.swiftSetVerificationSourceV824('noaa')">NOAA / Global</button>
+      <button class="swift-v62-switch-btn ${isIsee ? "active" : ""}"
+              onclick="window.swiftSetVerificationSourceV824('isee')">ISEE Japan</button>
+    </div>`;
+  }
+
+  async function setVerificationSourceV824(source) {
+    const v = String(source || "noaa").toLowerCase() === "isee" ? "isee" : "noaa";
+
+    // Keep the original v8.17 selector in sync if it exists.
+    const sel = q62("swiftV52MetricsSource");
+    if (sel) sel.value = v;
+
+    try { localStorage.setItem("swift_v52_metrics_source", v); } catch {}
+
+    // Refresh the top accuracy dashboard when available.
+    try {
+      if (typeof window.swiftV52SetMetricsSource === "function") {
+        await window.swiftV52SetMetricsSource(v);
+        return;
+      }
+    } catch (e) {
+      console.warn("metrics source switch failed; falling back to verification-only reload", e);
+    }
+
+    // Fallback: at least refresh this verification panel.
+    failSourceV62 = "";
+    await loadFailPerfV62(true);
+  }
+
   function sourceInfoV62() {
     return isIseeV62()
       ? {
@@ -5604,6 +5803,20 @@
       .swift-v62-source {
         display:inline-flex;align-items:center;gap:5px;border:1px solid #315a93;
         background:#081b37;border-radius:999px;padding:3px 8px;font-size:10px;color:#dbeafe;
+      }
+      .swift-v62-source-switch {
+        display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+        margin:7px 0 8px;padding:6px;border:1px solid #1f355a;
+        border-radius:11px;background:#061020;
+      }
+      .swift-v62-switch-label { font-size:10px;color:#9fb0cc;margin-right:2px; }
+      .swift-v62-switch-btn {
+        border-radius:999px;border:1px solid #334155;background:#0f172a;color:#cbd5e1;
+        padding:5px 9px;font-size:10px;font-weight:850;cursor:pointer;
+      }
+      .swift-v62-switch-btn.active {
+        border-color:#60a5fa;background:#1d4ed8;color:#fff;
+        box-shadow:0 0 0 1px rgba(96,165,250,.18) inset;
       }
       .swift-v62-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:6px 0 8px; }
       .swift-v62-btn {
@@ -5877,6 +6090,7 @@
     if (!failPerfV62) {
       panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
         <div class="swift-v62-sub">${info.sub}</div>
+        ${verificationSwitchHtmlV824()}
         <div class="swift-v62-actions">
           <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">再読込</button>
           <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">検証Excel出力</button>
@@ -5896,6 +6110,7 @@
 
     panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
       <div class="swift-v62-sub">${info.sub}${latest}</div>
+      ${verificationSwitchHtmlV824()}
       <div class="swift-v62-actions">
         <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">再読込</button>
         <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">NOAA + ISEE 検証Excel出力</button>
@@ -6169,14 +6384,43 @@
 
   window.swiftExportAccuracyExcelV821 = exportAccuracyExcelV821;
 
+  function ensureTopMetricsSelectorV824() {
+    if (q62("swiftV52MetricsSource")) return;
+    const head = document.querySelector(".swift-v52-head-actions");
+    if (!head) return;
+
+    const wrap = document.createElement("span");
+    wrap.innerHTML = `
+      <span style="font-size:10px;color:#9fb0cc;margin-right:4px;">検証表示</span>
+      <select id="swiftV52MetricsSource" class="swift-v52-select" style="width:130px;">
+        <option value="noaa">NOAA / Global</option>
+        <option value="isee">ISEE Japan</option>
+      </select>`;
+    head.prepend(wrap);
+
+    const sel = q62("swiftV52MetricsSource");
+    try {
+      sel.value = localStorage.getItem("swift_v52_metrics_source") === "isee" ? "isee" : "noaa";
+    } catch {
+      sel.value = "noaa";
+    }
+    sel.addEventListener("change", () => setVerificationSourceV824(sel.value));
+  }
+
   function bootV62() {
     injectStyleV62();
+    ensureTopMetricsSelectorV824();
     for (const delay of [800,1500,2600]) {
-      setTimeout(()=>{ ensureFailPanelV62(); loadFailPerfV62(false); },delay);
+      setTimeout(()=>{
+        ensureTopMetricsSelectorV824();
+        ensureFailPanelV62();
+        loadFailPerfV62(false);
+      },delay);
     }
   }
 
   window.swiftLoadFailureAnalysis = loadFailPerfV62;
+  window.swiftSetVerificationSourceV824 = setVerificationSourceV824;
   readyV62(bootV62);
 })();
 
