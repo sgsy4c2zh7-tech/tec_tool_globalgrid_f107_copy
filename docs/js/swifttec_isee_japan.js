@@ -4,8 +4,8 @@
 
   const TEC_INDEX_URL = "data/isee_tec/index.json";
   const TEC_BASE_URL = "data/isee_tec/";
-  const BASE_INDEX_URL = "data/isee_base/index.json";
-  const BASE_ROOT_URL = "data/isee_base/";
+  const MEAN_INDEX_URL = "data/isee_mean/index.json";
+  const MEAN_ROOT_URL = "data/isee_mean/";
   const JAPAN_GRID_COEFF_URL = "data/ai/isee_japan/kp_grid_coefficients.json";
 
   const FORECAST_STEP_MIN = 30;
@@ -14,8 +14,8 @@
   window.swiftIseeFrames = window.swiftIseeFrames || [];
   window.swiftIseeTimes = window.swiftIseeTimes || [];
 
-  const baseSlotCache = new Map();
-  let baseIndexCache = null;
+  const meanSlotCache = new Map();
+  let meanIndexCache = null;
   let gridCoeffCache = null;
 
   function status(msg) {
@@ -156,22 +156,22 @@
     return { entry: null, diffMin: bestD };
   }
 
-  async function loadBaseIndex() {
-    baseIndexCache = await getJson(BASE_INDEX_URL);
-    if (!Array.isArray(baseIndexCache.slots) || !baseIndexCache.slots.length) {
-      throw new Error("docs/data/isee_base/index.json に10日Base VTECがありません。Update ISEE Japan VTEC and AIを先に実行してください。");
+  async function loadMeanIndex() {
+    meanIndexCache = await getJson(MEAN_INDEX_URL);
+    if (!Array.isArray(meanIndexCache.slots) || !meanIndexCache.slots.length) {
+      throw new Error("docs/data/isee_mean/index.json にISEE時間別平均VTECがありません。Update ISEE Japan VTEC and AIを先に実行してください。");
     }
-    return baseIndexCache;
+    return meanIndexCache;
   }
 
-  async function loadBaseSlot(entry) {
+  async function loadMeanSlot(entry) {
     const key = entry.file || `${entry.slot_utc_hhmm}.json`;
-    if (baseSlotCache.has(key)) return baseSlotCache.get(key);
-    const doc = await getJson(BASE_ROOT_URL + key);
-    if (doc.quantity !== "Base VTEC" && !String(doc.quantity || "").includes("VTEC")) {
-      console.warn("Unexpected Base quantity:", doc.quantity);
+    if (meanSlotCache.has(key)) return meanSlotCache.get(key);
+    const doc = await getJson(MEAN_ROOT_URL + key);
+    if (!String(doc.quantity || "").includes("VTEC")) {
+      console.warn("Unexpected ISEE mean quantity:", doc.quantity);
     }
-    baseSlotCache.set(key, doc);
+    meanSlotCache.set(key, doc);
     return doc;
   }
 
@@ -290,24 +290,6 @@
     return {min:n?min:NaN,max:n?max:NaN,mean:n?sum/n:NaN,n};
   }
 
-  function weightedBaseKpFromDoc(baseDoc) {
-    const rows = Array.isArray(baseDoc?.used_days) ? baseDoc.used_days : [];
-    let sw = 0, sk = 0, n = 0;
-    for (const r of rows) {
-      const kp = Number(r?.kp);
-      const w = Number(r?.weight);
-      if (!Number.isFinite(kp)) continue;
-      const ww = Number.isFinite(w) && w > 0 ? w : 1;
-      sk += kp * ww;
-      sw += ww;
-      n++;
-    }
-    return {
-      kp: sw > 0 ? sk / sw : NaN,
-      n,
-    };
-  }
-
   function validateBaseSlotCoverage(slots) {
     const unique = new Set((slots || []).map(x => String(x.slot_utc_hhmm || "").padStart(4,"0")));
     const count = unique.size;
@@ -340,22 +322,22 @@
     return { max: mx, mean: n ? sum/n : NaN, n };
   }
 
-  async function run10DayBaseForecast() {
-    status("ISEE 10日Base VTEC・Japan AI係数を読み込み中…");
+  async function runIseeMeanForecast() {
+    status("ISEE時間別平均VTEC・Japan AI係数を読み込み中…");
 
-    const [baseIndex, coeffDoc] = await Promise.all([
-      loadBaseIndex(),
+    const [meanIndex, coeffDoc] = await Promise.all([
+      loadMeanIndex(),
       loadGridCoefficients(),
     ]);
 
-    const slots = baseIndex.slots || [];
+    const slots = meanIndex.slots || [];
     const coverage = validateBaseSlotCoverage(slots);
 
     if (coverage.halfHourCount < 40) {
       throw new Error(
-        `ISEE 10日Baseの時刻スロット不足: ${coverage.count}/288 (5分), ` +
+        `ISEE時間別平均の時刻スロット不足: ${coverage.count}/288 (5分), ` +
         `${coverage.halfHourCount}/48 (30分)。` +
-        `現在のBaseが1時間分などしか無いため、同じ格子を別時刻へ使い回してヒートマップが止まって見えます。` +
+        `現在の時間別平均が1時間分などしか無いため、同じ格子を別時刻へ使い回してヒートマップが止まって見えます。` +
         `Update ISEE Japan VTEC and AI を実行して、少なくとも24時間分のISEE frameを取得してください。`
       );
     }
@@ -384,24 +366,24 @@
       const slotEntry = resolved.entry;
       if (!slotEntry) {
         throw new Error(
-          `10日BaseのUTC ${String(t.getUTCHours()).padStart(2,"0")}:` +
+          `ISEE時間別平均のUTC ${String(t.getUTCHours()).padStart(2,"0")}:` +
           `${String(t.getUTCMinutes()).padStart(2,"0")} slotがありません。` +
           `最寄りでも${Number.isFinite(resolved.diffMin) ? resolved.diffMin.toFixed(0) : "--"}分離れています。`
         );
       }
 
-      const baseDoc = await loadBaseSlot(slotEntry);
-      const baseGrid = baseDoc.grid || [];
-      const latArr = baseDoc.lat_arr || [];
-      const lonArr = baseDoc.lon_arr || [];
-      if (!latArr.length || !lonArr.length || !baseGrid.length) {
-        throw new Error(`Base VTEC格子が不正: ${slotEntry.file}`);
+      const meanDoc = await loadMeanSlot(slotEntry);
+      const meanGrid = meanDoc.grid || [];
+      const latArr = meanDoc.lat_arr || [];
+      const lonArr = meanDoc.lon_arr || [];
+      if (!latArr.length || !lonArr.length || !meanGrid.length) {
+        throw new Error(`ISEE平均VTEC格子が不正: ${slotEntry.file}`);
       }
       if (!gridMeta) {
         gridMeta = { latArr, lonArr, nLat:latArr.length, nLon:lonArr.length };
       }
 
-      const daysUsed = Number(baseDoc.days_used || slotEntry.days_used || 0);
+      const daysUsed = Number(meanDoc.days_used || slotEntry.days_used || 0);
       if (Number.isFinite(daysUsed)) {
         minDaysUsed = Math.min(minDaysUsed, daysUsed);
         maxDaysUsed = Math.max(maxDaysUsed, daysUsed);
@@ -410,7 +392,7 @@
       // Display-only KpB:
       // weighted mean of the historical Kp values that were removed from the
       // 10-day Base VTEC. It is NOT re-used in the forecast equation.
-      const baseKpInfo = weightedBaseKpFromDoc(baseDoc);
+      const baseKpInfo = {kp:NaN,n:0}; // ISEE mode has no Base Kp
 
       const kpF = Number(kpSeries[s]?.kp);
       const mg = monthGrid(coeffDoc, t.getUTCMonth()+1);
@@ -418,7 +400,7 @@
 
       for (let i=0; i<gridMeta.nLat; i++) {
         for (let j=0; j<gridMeta.nLon; j++) {
-          const b = Number(baseGrid?.[i]?.[j]);
+          const b = Number(meanGrid?.[i]?.[j]);
           if (!Number.isFinite(b)) {
             outGrid[i][j] = null;
             continue;
@@ -456,7 +438,7 @@
         time:t,
         grid:outGrid,
         gridMeta,
-        sourceFile:`ISEE Base10 ${slotEntry.slot_utc_hhmm}Z`,
+        sourceFile:`ISEE Mean ${slotEntry.slot_utc_hhmm}Z`,
         baseKpDisplay: baseKpInfo.kp,
         baseDaysUsed: daysUsed,
         baseSlotUtc: String(slotEntry.slot_utc_hhmm || ""),
@@ -496,14 +478,14 @@
     if (useAi && activeCoeffCells === 0) {
       status(
         `⚠ Japan予報は生成しましたが、Japan AI係数が全格子0です。` +
-        `KpF=${kpTxt} / Base=${daysTxt} / Base時刻=${coverage.halfHourCount}/48 / ` +
+        `KpF=${kpTxt} / ISEE平均=${daysTxt} / 平均時刻=${coverage.halfHourCount}/48 / ` +
         `地図変化 max=${variationMax.toFixed(2)} TECU。`
       );
     } else {
       status(
-        `Japan予報OK: Base=${daysTxt} / KpF=${kpTxt} / ` +
+        `Japan予報OK: ISEE平均=${daysTxt} / KpF=${kpTxt} / ` +
         `AI有効格子=${activeCoeffCells} / Kp補正=${deltaSpan} / ` +
-        `Base時刻=${coverage.halfHourCount}/48 / ` +
+        `平均時刻=${coverage.halfHourCount}/48 / ` +
         `地図変化 max=${variationMax.toFixed(2)} TECU, mean=${variationMeanMax.toFixed(2)} / ` +
         `+0〜+4日 / VTEC [TECU]`
       );
@@ -513,5 +495,7 @@
 
   window.swiftIseeLoadLatest = loadLatest;
   window.swiftIseeShowJapan = showLatestOnMap;
-  window.swiftIseeRun10DayBaseForecast = run10DayBaseForecast;
+  window.swiftIseeRunMeanForecast = runIseeMeanForecast;
+  window.swiftIseeRunMeanForecast = runIseeMeanForecast;
+  window.swiftIseeRun10DayBaseForecast = runIseeMeanForecast; // backward-compatible alias // backward-compatible alias
 })();
