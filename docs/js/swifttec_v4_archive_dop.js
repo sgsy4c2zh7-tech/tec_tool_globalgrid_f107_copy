@@ -2647,6 +2647,11 @@
   window.setForecastTecApiMode = setForecastTecApiMode;
   window.loadKpAiData = loadKpAiData;
   window.renderKpAiPanel = renderKpAiPanel;
+  window.swiftGetKpAiPerformanceData = function (source) {
+    return String(source || "noaa").toLowerCase() === "isee"
+      ? iseeKpAiPerformance
+      : kpAiPerformance;
+  };
   window.playArchiveMovie = playArchiveMovie;
   window.stopArchiveMovie = stopArchiveMovie;
 
@@ -4674,16 +4679,46 @@
     updateKpPanelV56(t, kpF, kpB);
   }
 
-  async function fetchBaseKpIfBlankV56() {
-    // The old behavior uses KpF as KpB when Base Kp is blank, so both labels become identical.
-    // Fetch actual NOAA 1-day K-index before forecasting to make KpB an independent base input.
+  function isIseeForecastV56() {
+    const compact = String(q56("swiftV52TecSource")?.value || "");
+    if (compact) return compact === "isee_japan_highres";
+    return String(q56("tecSourceSelect")?.value || "").toLowerCase() === "isee";
+  }
+
+  function hasValidBaseKpV56() {
     const ta = q56("baseKpJson");
-    if (ta && String(ta.value || "").trim().length > 8) return;
-    if (typeof window.fetchNoaaPlanetaryKIndex1DayToBase === "function") {
-      const status = q56("swiftV52Status");
-      if (status) status.textContent = "Base用Kp（NOAA K-index 1日分）を取得中…";
-      await window.fetchNoaaPlanetaryKIndex1DayToBase();
+    const raw = String(ta?.value || "").trim();
+    if (raw.length <= 8) return false;
+    try {
+      if (typeof parseNoaaPlanetaryKIndexJson === "function") {
+        const rows = parseNoaaPlanetaryKIndexJson(raw);
+        return Array.isArray(rows) && rows.length > 0;
+      }
+    } catch {}
+    return raw.startsWith("[");
+  }
+
+  async function fetchBaseKpIfBlankV56() {
+    // v8.21:
+    // NOAA MUST use observed Base Kp.
+    // ISEE Japan intentionally has no Base/KpB and must not fetch/use it.
+    if (isIseeForecastV56()) return true;
+    if (hasValidBaseKpV56()) return true;
+
+    if (typeof window.fetchNoaaPlanetaryKIndex1DayToBase !== "function") {
+      throw new Error("Base Kp取得関数が見つかりません。");
     }
+
+    const status = q56("swiftV52Status");
+    if (status) status.textContent = "NOAA Base Kp実測値を取得中…";
+    await window.fetchNoaaPlanetaryKIndex1DayToBase();
+
+    if (!hasValidBaseKpV56()) {
+      throw new Error(
+        "NOAA Base Kpの取得に失敗しました。Base KpなしではNOAA TEC予報を実行しません。"
+      );
+    }
+    return true;
   }
 
   function installKpPanelV56() {
@@ -4735,11 +4770,19 @@
     if (!originalSwiftV52RunForecastV56 && typeof window.swiftV52RunForecast === "function") {
       originalSwiftV52RunForecastV56 = window.swiftV52RunForecast;
       window.swiftV52RunForecast = async function () {
-        try {
-          await fetchBaseKpIfBlankV56();
-        } catch (e) {
-          console.warn("Base Kp auto fetch failed:", e);
+        // ISEE: no Base Kp. NOAA: require Base Kp and stop on failure.
+        if (!isIseeForecastV56()) {
+          try {
+            await fetchBaseKpIfBlankV56();
+          } catch (e) {
+            console.error("NOAA Base Kp required:", e);
+            const status = q56("swiftV52Status");
+            if (status) status.textContent = "予報失敗: " + e.message;
+            alert(e.message);
+            return null;
+          }
         }
+
         const result = await originalSwiftV52RunForecastV56();
         setTimeout(patchedUpdateKpLabelsV56, 80);
         return result;
@@ -5504,6 +5547,7 @@
 (function () {
   let failPerfV62 = null;
   let failSourceV62 = "";
+  let failErrorV62 = "";
 
   function readyV62(fn) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
@@ -5556,6 +5600,13 @@
         display:inline-flex;align-items:center;gap:5px;border:1px solid #315a93;
         background:#081b37;border-radius:999px;padding:3px 8px;font-size:10px;color:#dbeafe;
       }
+      .swift-v62-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:6px 0 8px; }
+      .swift-v62-btn {
+        border-radius:9px;border:1px solid #3b82f6;background:#1d4ed8;color:#fff;
+        padding:6px 9px;font-size:10px;font-weight:800;cursor:pointer;
+      }
+      .swift-v62-btn.secondary { background:#0f172a;border-color:#334155; }
+      .swift-v62-error { color:#fecaca;font-size:10px;line-height:1.45; }
       .swift-v62-kpis {
         display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 10px;
       }
@@ -5594,23 +5645,59 @@
     document.head.appendChild(st);
   }
 
+  async function fetchJsonRetryV62(url, tries = 3) {
+    let lastErr = null;
+    for (let i = 0; i < tries; i++) {
+      try {
+        const abs = new URL(url, window.location.href);
+        abs.searchParams.set("_swift", `${Date.now()}_${i}`);
+        const res = await fetch(abs.href, {
+          cache:"no-store",
+          credentials:"same-origin",
+          headers:{ "Accept":"application/json" },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${abs.pathname}`);
+        return await res.json();
+      } catch (e) {
+        lastErr = e;
+        if (i + 1 < tries) await new Promise(r => setTimeout(r, 250 * (i + 1)));
+      }
+    }
+    throw lastErr || new Error("JSON load failed");
+  }
+
   async function loadFailPerfV62(force = false) {
     const info = sourceInfoV62();
     if (!force && failPerfV62 && failSourceV62 === info.key) {
       renderFailPanelV62();
       return failPerfV62;
     }
+
     failPerfV62 = null;
+    failErrorV62 = "";
     failSourceV62 = info.key;
     renderFailPanelV62();
+
     try {
-      const res = await fetch(info.url, { cache:"no-store" });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      failPerfV62 = await res.json();
+      failPerfV62 = await fetchJsonRetryV62(info.url, 3);
     } catch (e) {
-      console.warn("forecast verification load failed", info.url, e);
-      failPerfV62 = null;
+      // NOAA performance is also loaded by the main Kp-AI loader.
+      // Reuse it if the page/data deployment had a transient fetch failure.
+      if (info.key === "global") {
+        try {
+          const cached = window.swiftGetKpAiPerformanceData?.("noaa");
+          if (cached && typeof cached === "object") {
+            failPerfV62 = cached;
+          }
+        } catch {}
+      }
+
+      if (!failPerfV62) {
+        failErrorV62 = String(e?.message || e || "読込失敗");
+        console.warn("forecast verification load failed", info.url, e);
+      }
     }
+
     renderFailPanelV62();
     return failPerfV62;
   }
@@ -5785,9 +5872,16 @@
     if (!failPerfV62) {
       panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
         <div class="swift-v62-sub">${info.sub}</div>
-        <div class="swift-v62-sub">${isIseeV62()
-          ? "forecast_verification.json をまだ読めません。Update ISEE Japan VTEC and AI を実行すると生成されます。"
-          : "kp_performance.json をまだ読めません。Train Kp AI Corrector を実行してください。"}</div>`;
+        <div class="swift-v62-actions">
+          <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">再読込</button>
+          <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">検証Excel出力</button>
+        </div>
+        <div class="swift-v62-error">
+          読込失敗${failErrorV62 ? `: ${failErrorV62}` : ""}<br>
+          ${isIseeV62()
+            ? "ISEE検証JSONが未生成の場合は Update ISEE Japan VTEC and AI を実行してください。"
+            : "一時的なPages反映遅延でもこの表示になるため、再読込を試してください。"}
+        </div>`;
       return;
     }
 
@@ -5797,6 +5891,10 @@
 
     panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
       <div class="swift-v62-sub">${info.sub}${latest}</div>
+      <div class="swift-v62-actions">
+        <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">再読込</button>
+        <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">NOAA + ISEE 検証Excel出力</button>
+      </div>
       ${renderSummaryKpisV62()}
       <div class="swift-v62-grid">
         <div>
@@ -5817,6 +5915,254 @@
       ${renderRecentV62()}
       ${note}`;
   }
+
+
+  function loadSheetJsV821() {
+    return new Promise((resolve, reject) => {
+      if (window.XLSX) return resolve();
+      const urls = [
+        "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+        "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js",
+      ];
+      let i = 0;
+      const next = () => {
+        if (window.XLSX) return resolve();
+        if (i >= urls.length) return reject(new Error("SheetJSの読み込みに失敗しました。"));
+        const s = document.createElement("script");
+        s.src = urls[i++];
+        s.async = true;
+        s.onload = () => window.XLSX ? resolve() : next();
+        s.onerror = next;
+        document.head.appendChild(s);
+      };
+      next();
+    });
+  }
+
+  function aggregateHitArchiveV821(archive) {
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    const totals=Object.fromEntries(keys.map(k=>[k,{n:0,r:0,c:0}]));
+    for (const d of (archive?.days || [])) {
+      for (const k of keys) {
+        const x=d?.b?.[k] || {};
+        totals[k].n += Number(x.n || 0);
+        totals[k].r += Number(x.r || 0);
+        totals[k].c += Number(x.c || 0);
+      }
+    }
+    return Object.fromEntries(keys.map(k=>{
+      const x=totals[k], n=x.n;
+      return [k,{
+        kp_bin:k,
+        sample_count:n,
+        raw_hit_count:x.r,
+        corrected_hit_count:x.c,
+        raw_hit_rate:n?x.r/n:null,
+        corrected_hit_rate:n?x.c/n:null,
+        threshold_tecu:Number(archive?.threshold_tecu || 5),
+      }];
+    }));
+  }
+
+  function hitBinsV821(doc, archive) {
+    if (doc?.kp_bins_1y_hit && Object.keys(doc.kp_bins_1y_hit).length) return doc.kp_bins_1y_hit;
+    if (archive?.days?.length) return aggregateHitArchiveV821(archive);
+    return doc?.kp_bins || {};
+  }
+
+  function kpHitRowsV821(doc, archive) {
+    const bins=hitBinsV821(doc, archive);
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    return keys.map(k=>{
+      const r=bins?.[k] || {};
+      const t=r?.thresholds?.["5"] || r;
+      const raw=Number(t.raw_hit_rate);
+      const corr=Number(t.corrected_hit_rate);
+      return {
+        Kp_bin:k,
+        threshold_TECU:Number(t.threshold_tecu ?? r.threshold_tecu ?? 5),
+        raw_hit_rate_pct:Number.isFinite(raw)?raw*100:"",
+        corrected_hit_rate_pct:Number.isFinite(corr)?corr*100:"",
+        improvement_pt:Number.isFinite(raw)&&Number.isFinite(corr)?(corr-raw)*100:"",
+        sample_count:Number(t.sample_count ?? r.sample_count ?? 0),
+        raw_hit_count:Number(t.raw_hit_count ?? r.raw_hit_count ?? 0),
+        corrected_hit_count:Number(t.corrected_hit_count ?? r.corrected_hit_count ?? 0),
+      };
+    });
+  }
+
+  function kpErrorRowsV821(doc) {
+    const bins=doc?.kp_bins || {};
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    return keys.map(k=>{
+      const r=bins?.[k] || {};
+      const t=r?.thresholds?.["5"] || r;
+      return {
+        Kp_bin:k,
+        Bias_TECU:Number.isFinite(Number(r.corrected_bias ?? t.corrected_bias))?Number(r.corrected_bias ?? t.corrected_bias):"",
+        MAE_TECU:Number.isFinite(Number(r.corrected_mae ?? t.corrected_mae))?Number(r.corrected_mae ?? t.corrected_mae):"",
+        RMSE_TECU:Number.isFinite(Number(r.corrected_rmse ?? t.corrected_rmse))?Number(r.corrected_rmse ?? t.corrected_rmse):"",
+        sample_count:Number(r.sample_count ?? t.sample_count ?? 0),
+      };
+    });
+  }
+
+  function thresholdRowsV821(doc) {
+    const th=doc?.thresholds || doc?.summary?.thresholds || {};
+    return ["5","10","15","20"].map(k=>{
+      const r=th?.[k] || {};
+      const raw=Number(r.raw_hit_rate), corr=Number(r.corrected_hit_rate);
+      return {
+        threshold_TECU:Number(k),
+        raw_hit_rate_pct:Number.isFinite(raw)?raw*100:"",
+        corrected_hit_rate_pct:Number.isFinite(corr)?corr*100:"",
+        improvement_pt:Number.isFinite(raw)&&Number.isFinite(corr)?(corr-raw)*100:"",
+        Bias_TECU:Number.isFinite(Number(r.corrected_bias))?Number(r.corrected_bias):"",
+        MAE_TECU:Number.isFinite(Number(r.corrected_mae))?Number(r.corrected_mae):"",
+        RMSE_TECU:Number.isFinite(Number(r.corrected_rmse))?Number(r.corrected_rmse):"",
+        sample_count:Number(r.sample_count || 0),
+      };
+    });
+  }
+
+  function summaryRowsV821(doc, sourceName) {
+    const s=doc?.summary || {};
+    const arc=doc?.kp_hit_archive || {};
+    return [
+      ["source", sourceName],
+      ["updated_utc", doc?.updated_utc || ""],
+      ["model_rule", doc?.model_rule || doc?.forecast_model || ""],
+      ["verification_note", doc?.verification_note || ""],
+      ["Bias_TECU", Number.isFinite(Number(s.corrected_bias ?? s.bias))?Number(s.corrected_bias ?? s.bias):""],
+      ["MAE_TECU", Number.isFinite(Number(s.corrected_mae ?? s.mae))?Number(s.corrected_mae ?? s.mae):""],
+      ["RMSE_TECU", Number.isFinite(Number(s.corrected_rmse ?? s.rmse))?Number(s.corrected_rmse ?? s.rmse):""],
+      ["sample_count", Number(s.sample_count || 0)],
+      ["1y_hit_window_days", Number(arc.window_days || 365)],
+      ["1y_hit_first_date", arc.first_date_utc || ""],
+      ["1y_hit_last_date", arc.last_date_utc || ""],
+      ["1y_hit_sample_count", Number(arc.sample_count || 0)],
+    ];
+  }
+
+  function dailyHitRowsV821(archive) {
+    const out=[];
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    for (const d of (archive?.days || [])) {
+      for (const k of keys) {
+        const x=d?.b?.[k] || {};
+        const n=Number(x.n || 0), r=Number(x.r || 0), c=Number(x.c || 0);
+        if (!n) continue;
+        out.push({
+          date_utc:d.d || "",
+          Kp_bin:k,
+          sample_count:n,
+          raw_hit_count:r,
+          corrected_hit_count:c,
+          raw_hit_rate_pct:n?r/n*100:"",
+          corrected_hit_rate_pct:n?c/n*100:"",
+        });
+      }
+    }
+    return out;
+  }
+
+  function recentRowsV821(doc) {
+    return (doc?.recent || []).map(r=>({
+      time_utc:r.time_utc || "",
+      Kp:Number.isFinite(Number(r.kp))?Number(r.kp):"",
+      observed_mean_TECU:Number.isFinite(Number(r.observed_mean_tecu))?Number(r.observed_mean_tecu):"",
+      forecast_mean_TECU:Number.isFinite(Number(r.forecast_mean_tecu))?Number(r.forecast_mean_tecu):"",
+      Bias_TECU:Number.isFinite(Number(r.bias_tecu))?Number(r.bias_tecu):"",
+      MAE_TECU:Number.isFinite(Number(r.mae_tecu))?Number(r.mae_tecu):"",
+      RMSE_TECU:Number.isFinite(Number(r.rmse_tecu))?Number(r.rmse_tecu):"",
+      history_days:Number(r.history_days || 0),
+      sample_count:Number(r.sample_count || 0),
+    }));
+  }
+
+  function appendSheetV821(wb, name, data, aoa=false) {
+    const safe=String(name).slice(0,31);
+    const ws=aoa ? XLSX.utils.aoa_to_sheet(data) : XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, safe);
+  }
+
+  async function optionalJsonV821(url) {
+    try { return await fetchJsonRetryV62(url, 2); }
+    catch { return null; }
+  }
+
+  async function exportAccuracyExcelV821() {
+    try {
+      await loadSheetJsV821();
+
+      const [
+        noaaPerf,noaaArchive,
+        iseeVerify,iseeArchive
+      ] = await Promise.all([
+        optionalJsonV821("data/ai/kp_performance.json"),
+        optionalJsonV821("data/ai/kp_hit_archive_1y.json"),
+        optionalJsonV821("data/ai/isee_japan/forecast_verification.json"),
+        optionalJsonV821("data/ai/isee_japan/kp_hit_archive_1y.json"),
+      ]);
+
+      if (!noaaPerf && !iseeVerify) {
+        throw new Error("NOAA / ISEE の検証データをどちらも取得できません。");
+      }
+
+      const wb=XLSX.utils.book_new();
+      appendSheetV821(wb,"Info",[
+        ["item","value"],
+        ["generated_utc",new Date().toISOString()],
+        ["NOAA_available",!!noaaPerf],
+        ["NOAA_1y_hit_archive",!!noaaArchive],
+        ["ISEE_available",!!iseeVerify],
+        ["ISEE_1y_hit_archive",!!iseeArchive],
+        ["note","Kp Hit sheets use the lightweight 365-day N/Hit archive when available. Error sheets use recent detailed verification."],
+      ],true);
+
+      if (noaaPerf) {
+        appendSheetV821(wb,"Summary_NOAA",summaryRowsV821(noaaPerf,"NOAA / Global"),true);
+        appendSheetV821(wb,"Threshold_NOAA",thresholdRowsV821(noaaPerf));
+        appendSheetV821(wb,"Kp_Hit_NOAA",kpHitRowsV821(noaaPerf,noaaArchive));
+        appendSheetV821(wb,"Kp_Error_NOAA",kpErrorRowsV821(noaaPerf));
+        if (noaaArchive?.days?.length) {
+          appendSheetV821(wb,"Kp_Hit_Daily_NOAA",dailyHitRowsV821(noaaArchive));
+        }
+      }
+
+      if (iseeVerify) {
+        appendSheetV821(wb,"Summary_ISEE",summaryRowsV821(iseeVerify,"ISEE Japan"),true);
+        appendSheetV821(wb,"Threshold_ISEE",thresholdRowsV821(iseeVerify));
+        appendSheetV821(wb,"Kp_Hit_ISEE",kpHitRowsV821(iseeVerify,iseeArchive));
+        appendSheetV821(wb,"Kp_Error_ISEE",kpErrorRowsV821(iseeVerify));
+        const recent=recentRowsV821(iseeVerify);
+        if (recent.length) appendSheetV821(wb,"ISEE_Recent",recent);
+        if (iseeArchive?.days?.length) {
+          appendSheetV821(wb,"Kp_Hit_Daily_ISEE",dailyHitRowsV821(iseeArchive));
+        }
+      }
+
+      // Side-by-side comparison sheet, useful for making an Excel chart.
+      const nh=kpHitRowsV821(noaaPerf||{},noaaArchive);
+      const ih=kpHitRowsV821(iseeVerify||{},iseeArchive);
+      const compare=["0-2","2-3","3-4","4-5","5-6","6-7","7+"].map((k,i)=>({
+        Kp_bin:k,
+        NOAA_hit_rate_pct:nh[i]?.corrected_hit_rate_pct ?? "",
+        ISEE_hit_rate_pct:ih[i]?.corrected_hit_rate_pct ?? "",
+        NOAA_N:nh[i]?.sample_count ?? 0,
+        ISEE_N:ih[i]?.sample_count ?? 0,
+      }));
+      appendSheetV821(wb,"Kp_Hit_Compare",compare);
+
+      const dt=new Date().toISOString().slice(0,10).replaceAll("-","");
+      XLSX.writeFile(wb,`swifttec_accuracy_NOAA_ISEE_${dt}.xlsx`);
+    } catch (e) {
+      console.error(e);
+      alert("検証Excel出力失敗: "+e.message);
+    }
+  }
+
+  window.swiftExportAccuracyExcelV821 = exportAccuracyExcelV821;
 
   function bootV62() {
     injectStyleV62();
