@@ -1,4 +1,4 @@
-/* SWIFT-TEC ISEE Japan High-Res TEC add-on */
+/* SWIFT-TEC v8.7 ISEE Japan High-Res TEC add-on */
 (function () {
   "use strict";
 
@@ -7,10 +7,10 @@
   window.swiftIseeFrames = window.swiftIseeFrames || [];
   window.swiftIseeTimes = window.swiftIseeTimes || [];
 
-  function status(msg) {
-    const el = document.getElementById("iseeTecStatus");
+  function setStatus(msg) {
+    const el = document.getElementById("swiftV52Status") || document.getElementById("iseeTecStatus");
     if (el) el.textContent = msg;
-    if (typeof logInfo === "function") logInfo(msg);
+    try { window.logInfo?.(msg); } catch {}
   }
 
   async function getJson(url) {
@@ -39,59 +39,88 @@
     };
   }
 
-  async function loadLatest(showOnMap) {
+  async function loadLatest(showOnMap = false) {
     try {
-      status("ISEE Japan High-Res TECを読込中...");
+      setStatus("ISEE Japan High-Res TECを読込中…");
       const idx = await getJson(INDEX_URL);
       const entries = Array.isArray(idx.frames) ? idx.frames.slice() : [];
       entries.sort((a,b) => String(a.time_utc).localeCompare(String(b.time_utc)));
       if (!entries.length) throw new Error("data/isee_tec/index.json にframeがありません");
 
-      // Keep latest 1 hour / max 13 frames. 5-min products are expected.
+      // Load latest ~24h when available. This is enough for Base/forecast input
+      // while the map itself only renders the selected frame.
       const latestMs = new Date(entries[entries.length - 1].time_utc).getTime();
       const selected = entries.filter(e => {
         const ms = new Date(e.time_utc).getTime();
-        return isFinite(ms) && ms >= latestMs - 60 * 60 * 1000;
-      }).slice(-13);
+        return Number.isFinite(ms) && ms >= latestMs - 24 * 3600 * 1000;
+      }).slice(-320);
 
       const loaded = [];
       for (const e of selected) {
         loaded.push(normalizeFrame(await getJson(BASE_URL + e.file), e));
       }
+      if (!loaded.length) throw new Error("ISEEフレームを読み込めませんでした");
+
       window.swiftIseeFrames = loaded;
       window.swiftIseeTimes = loaded.map(f => f.validTime);
 
+      const legacy = document.getElementById("tecSourceSelect");
+      if (legacy) legacy.value = "isee";
+
+      const compact = document.getElementById("swiftV52TecSource");
+      if (compact) compact.value = "isee_japan_highres";
+
       const first = loaded[0], last = loaded[loaded.length - 1];
-      status(`ISEE読込OK: ${loaded.length}枚 / ${first.nLat}×${first.nLon} / ${first.validTime.toISOString()} ～ ${last.validTime.toISOString()}`);
+      setStatus(`ISEE読込OK: ${loaded.length}枚 / ${first.nLat}×${first.nLon} / ${first.validTime.toISOString()} ～ ${last.validTime.toISOString()}`);
 
-      const sel = document.getElementById("tecSourceSelect");
-      if (sel) sel.value = "isee";
-      if (typeof fillForecastStartCandidates === "function") fillForecastStartCandidates();
+      if (showOnMap) showLatestOnMap();
+      return loaded;
+    } catch (e) {
+      console.error(e);
+      setStatus("ISEE読込失敗: " + e.message);
+      throw e;
+    }
+  }
 
-      if (showOnMap) {
-        gGrid = { latArr:first.latArr, lonArr:first.lonArr, nLat:first.nLat, nLon:first.nLon };
-        gForecastFrames = loaded.map(f => f.grid);
-        gForecastTimes = loaded.map(f => f.validTime);
-        gForecastStart = gForecastTimes[0];
-        currentStepIndex = 0;
-        const slider = document.getElementById("timeSlider");
-        if (slider) {
-          slider.min = "0";
-          slider.max = String(Math.max(0, gForecastTimes.length - 1));
-          slider.value = "0";
-        }
-        if (typeof initMapIfNeeded === "function") initMapIfNeeded();
-        if (typeof gMap !== "undefined" && gMap && typeof gMap.fitBounds === "function") {
-          gMap.fitBounds([[24,122],[46,150]], { padding:[8,8] });
-        }
+  function showLatestOnMap() {
+    const loaded = window.swiftIseeFrames || [];
+    if (!loaded.length) {
+      loadLatest(true);
+      return;
+    }
+    const f = loaded[loaded.length - 1];
+    try {
+      window.gGrid = { latArr:f.latArr, lonArr:f.lonArr, nLat:f.nLat, nLon:f.nLon };
+    } catch {}
+    try {
+      gGrid = { latArr:f.latArr, lonArr:f.lonArr, nLat:f.nLat, nLon:f.nLon };
+      gForecastFrames = loaded.map(x => x.grid);
+      gForecastTimes = loaded.map(x => x.validTime);
+      gForecastStart = gForecastTimes[0] || null;
+      currentStepIndex = Math.max(0, gForecastTimes.length - 1);
+
+      const slider = document.getElementById("timeSlider");
+      if (slider) {
+        slider.min = "0";
+        slider.max = String(Math.max(0, gForecastTimes.length - 1));
+        slider.value = String(currentStepIndex);
+      }
+
+      if (typeof initMapIfNeeded === "function") initMapIfNeeded();
+      if (typeof gMap !== "undefined" && gMap?.fitBounds) {
+        gMap.fitBounds([[24,122],[46,150]], { padding:[8,8] });
+      }
+      if (typeof dynamicOnSliderChange === "function") dynamicOnSliderChange();
+      else {
         if (typeof updateLegend === "function") updateLegend();
         if (typeof requestDraw === "function") requestDraw();
       }
     } catch (e) {
       console.error(e);
-      status("ISEE読込失敗: " + e.message);
+      setStatus("ISEE日本表示に失敗: " + e.message);
     }
   }
 
   window.swiftIseeLoadLatest = loadLatest;
+  window.swiftIseeShowJapan = showLatestOnMap;
 })();
