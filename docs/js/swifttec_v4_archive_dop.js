@@ -3624,6 +3624,10 @@
 
     try { await window.loadKpAiData?.(false); } catch {}
 
+    // v8.26: guarantee KpB model state immediately before NOAA BaseTEC math.
+    // This is independent of the legacy runForecast parser.
+    const baseKpReady = await ensureNoaaBaseKpStateV826(false);
+
     const tecTod = buildGenericNoaaTecTodFromFramesV48(gNoaaDayFrames, gNoaaDayTimes, 30);
     if (!tecTod?.frames?.length) {
       console.warn("v8.25 NOAA BaseTEC rebuild skipped: failed to build TEC time-of-day grid");
@@ -3715,6 +3719,8 @@
       status.textContent =
         `NOAA BaseTEC予報: ${frames.length} frames / ` +
         `BaseTEC=実測TEC−F(KpB), Forecast=BaseTEC+F(KpF)` +
+        ` / KpB=${baseKpReady ? "実測" : "fallback"}` +
+        (noaaBaseKpStateV826.baseDayUtc ? `(${noaaBaseKpStateV826.baseDayUtc})` : "") +
         (baseKpFallbackCount ? ` / KpB代用=${baseKpFallbackCount}時刻` : "") +
         ` / AI係数cell=${activeCoeffCells}`;
     }
@@ -4768,7 +4774,24 @@
       }
 
       const v = todValueAt(gBaseKpTod, t);
-      return finite56(v) ? Number(v) : NaN;
+      if (finite56(v)) return Number(v);
+
+      // v8.26 display fallback: nearest same-time-of-day Base Kp row.
+      if (Array.isArray(gBaseKpSeries) && gBaseKpSeries.length) {
+        const targetMin = t.getUTCHours() * 60 + t.getUTCMinutes();
+        let best = null;
+        let bestDiff = Infinity;
+        for (const r of gBaseKpSeries) {
+          if (!(r?.t instanceof Date) || isNaN(r.t.getTime()) || !finite56(r.kp)) continue;
+          const m = r.t.getUTCHours() * 60 + r.t.getUTCMinutes();
+          let d = Math.abs(m - targetMin);
+          d = Math.min(d, 1440 - d);
+          if (d < bestDiff) { bestDiff = d; best = r; }
+        }
+        if (best) return Number(best.kp);
+      }
+
+      return NaN;
     } catch {
       return NaN;
     }
@@ -4793,6 +4816,15 @@
     const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-box")?.querySelector(".swift-v56-kp-label");
     if (kpBLabel) kpBLabel.textContent = isee10DayBaseForecastActive ? "KpB（ISEEでは未使用）" : "KpB Base";
     set("swiftV56KpTime", iso56(t));
+
+    const srcEl = q56("swiftV56KpBSource");
+    if (srcEl) {
+      srcEl.textContent = isee10DayBaseForecastActive
+        ? "KpB source: ISEEでは未使用"
+        : `KpB source: ${noaaBaseKpStateV826.source || "--"}` +
+          (noaaBaseKpStateV826.baseDayUtc ? ` / ${noaaBaseKpStateV826.baseDayUtc}` : "");
+    }
+
     const next = nextKpChangeV56(t);
     set("swiftV56KpNext", next ? `${iso56(next.t)} / KpF=${fmt56(next.kp)}` : "--");
     const diff = finite56(kpF) && finite56(kpB) ? Number(kpF) - Number(kpB) : NaN;
@@ -4833,6 +4865,149 @@
     return String(q56("tecSourceSelect")?.value || "").toLowerCase() === "isee";
   }
 
+  let noaaBaseKpStateV826 = {
+    loaded: false,
+    source: "",
+    baseDayUtc: "",
+    rowCount: 0,
+    error: "",
+  };
+
+  function parseBaseKpRowsV826(input) {
+    // Accept:
+    // - SWPC array rows: [["2026-08-18T00:00:00Z",4], ...]
+    // - local cache object: {rows:[...]}
+    // - existing textarea JSON string
+    let obj = input;
+    if (typeof obj === "string") {
+      try { obj = JSON.parse(obj); } catch { return []; }
+    }
+    if (obj && !Array.isArray(obj) && Array.isArray(obj.rows)) obj = obj.rows;
+
+    try {
+      if (typeof parseNoaaPlanetaryKIndexJson === "function") {
+        const parsed = parseNoaaPlanetaryKIndexJson(obj);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch {}
+
+    if (!Array.isArray(obj)) return [];
+    const out = [];
+    for (const r of obj) {
+      if (!Array.isArray(r) || r.length < 2) continue;
+      const t = new Date(String(r[0] || "").replace(" ", "T"));
+      const kp = Number(r[1]);
+      if (!isNaN(t.getTime()) && isFinite(kp)) out.push({ t, kp });
+    }
+    out.sort((a,b)=>a.t-b.t);
+    return out;
+  }
+
+  function installBaseKpStateV826(rows, meta = {}) {
+    if (!Array.isArray(rows) || !rows.length) return false;
+
+    // This is the key v8.26 fix:
+    // populate the actual model state, not only the hidden textarea.
+    gBaseKpSeries = rows.map(r => ({
+      t: r.t instanceof Date ? new Date(r.t.getTime()) : new Date(r.t),
+      kp: Number(r.kp),
+    })).filter(r => !isNaN(r.t.getTime()) && isFinite(r.kp));
+
+    if (!gBaseKpSeries.length) return false;
+
+    gBaseKpTod = buildTodSeriesFromTimeSeries(gBaseKpSeries, "kp", 30);
+
+    const ta = q56("baseKpJson");
+    if (ta) {
+      ta.value = JSON.stringify(gBaseKpSeries.map(r => [r.t.toISOString(), r.kp]));
+    }
+
+    noaaBaseKpStateV826 = {
+      loaded: true,
+      source: String(meta.source || "unknown"),
+      baseDayUtc: String(meta.base_day_utc || meta.baseDayUtc || ""),
+      rowCount: gBaseKpSeries.length,
+      error: "",
+    };
+
+    return true;
+  }
+
+  function hasUsableBaseKpTodV826() {
+    try {
+      if (!gBaseKpTod || !Array.isArray(gBaseKpTod.values) || !gBaseKpTod.values.length) return false;
+      return gBaseKpTod.values.some(v => Number.isFinite(Number(v)));
+    } catch {
+      return false;
+    }
+  }
+
+  async function ensureNoaaBaseKpStateV826(force = false) {
+    if (isIseeForecastV56()) return false;
+
+    // Even if the hidden textarea is already populated, rebuild model state.
+    // This matters after switching ISEE -> NOAA, because ISEE may have changed
+    // the legacy gBaseKpTod compatibility state.
+    if (!force) {
+      const ta = q56("baseKpJson");
+      const parsedTextarea = parseBaseKpRowsV826(ta?.value || "");
+      if (parsedTextarea.length && installBaseKpStateV826(parsedTextarea, {
+        source: "baseKpJson",
+      })) {
+        return true;
+      }
+
+      if (hasUsableBaseKpTodV826() && Array.isArray(gBaseKpSeries) && gBaseKpSeries.length) {
+        return true;
+      }
+    }
+
+    // Primary path: GitHub Pages same-origin file generated by v8.23 workflow.
+    try {
+      const url = `data/ai/noaa_base_kp.json?_=${Date.now()}`;
+      const res = await fetch(url, {
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json" },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const doc = await res.json();
+      const rows = parseBaseKpRowsV826(doc);
+      if (!rows.length) throw new Error("rows=0");
+
+      if (!installBaseKpStateV826(rows, {
+        source: doc.source || "data/ai/noaa_base_kp.json",
+        base_day_utc: doc.base_day_utc || "",
+      })) {
+        throw new Error("Base Kp state install failed");
+      }
+
+      return true;
+    } catch (e) {
+      noaaBaseKpStateV826.error = String(e?.message || e);
+      console.warn("v8.26 local Base Kp state load failed:", e);
+    }
+
+    // Secondary path: existing index.html fetch helper.
+    try {
+      if (typeof window.fetchNoaaPlanetaryKIndex1DayToBase === "function") {
+        await window.fetchNoaaPlanetaryKIndex1DayToBase();
+        const ta = q56("baseKpJson");
+        const rows = parseBaseKpRowsV826(ta?.value || "");
+        if (rows.length && installBaseKpStateV826(rows, {
+          source: "fetchNoaaPlanetaryKIndex1DayToBase",
+        })) {
+          return true;
+        }
+      }
+    } catch (e) {
+      noaaBaseKpStateV826.error = String(e?.message || e);
+      console.warn("v8.26 NOAA API Base Kp fallback failed:", e);
+    }
+
+    return false;
+  }
+
   function hasValidBaseKpV56() {
     const ta = q56("baseKpJson");
     const raw = String(ta?.value || "").trim();
@@ -4847,34 +5022,27 @@
   }
 
   async function fetchBaseKpIfBlankV56() {
-    // v8.22:
-    // NOAA normally uses observed Base Kp.
-    // ISEE Japan intentionally has no Base/KpB.
-    // If NOAA Base Kp fetch fails, return false and let the forecast continue
-    // with the emergency fallback handled in index.html.
+    // v8.26:
+    // Always hydrate gBaseKpSeries + gBaseKpTod for NOAA.
+    // The old code could successfully fill baseKpJson while leaving the model
+    // state empty/stale, which caused KpB to display "--" and BaseTEC to use
+    // the neutral fallback.
     if (isIseeForecastV56()) return true;
-    if (hasValidBaseKpV56()) return true;
 
     const status = q56("swiftV52Status");
-    if (typeof window.fetchNoaaPlanetaryKIndex1DayToBase !== "function") {
-      if (status) status.textContent = "警告: Base Kp取得関数なし。KpF代用でNOAA予報を継続します。";
-      return false;
+    if (status) status.textContent = "NOAA Base Kpをモデルへ読み込み中…";
+
+    const ok = await ensureNoaaBaseKpStateV826(false);
+    if (ok) {
+      if (status) {
+        const day = noaaBaseKpStateV826.baseDayUtc ? ` / Base日=${noaaBaseKpStateV826.baseDayUtc}` : "";
+        status.textContent = `NOAA Base Kp読込OK: ${noaaBaseKpStateV826.rowCount}点${day}`;
+      }
+      return true;
     }
 
-    try {
-      if (status) status.textContent = "NOAA Base Kp（ローカルキャッシュ優先）を取得中…";
-      await window.fetchNoaaPlanetaryKIndex1DayToBase();
-    } catch (e) {
-      console.warn("NOAA Base Kp fetch failed:", e);
-      if (status) status.textContent = "警告: Base Kp取得失敗。KpF代用でNOAA予報を継続します。";
-      return false;
-    }
-
-    if (!hasValidBaseKpV56()) {
-      if (status) status.textContent = "警告: Base Kp未取得。KpF代用でNOAA予報を継続します。";
-      return false;
-    }
-    return true;
+    if (status) status.textContent = "警告: Base Kp未取得。KpF代用でNOAA予報を継続します。";
+    return false;
   }
 
   function installKpPanelV56() {
@@ -4907,8 +5075,9 @@
         </div>
       </div>
       <div class="swift-v56-kp-note">
-        KpFはNOAA 3-Day Forecast、KpBはBase抽出用Kpです。KpFは3時間単位なので、30分スライダーでは6コマごとに変わります。
+        KpFはNOAA 3-Day Forecast、KpBはBase抽出用の実測Kpです。KpFは3時間単位なので、30分スライダーでは6コマごとに変わります。
       </div>
+      <div class="swift-v56-kp-note" id="swiftV56KpBSource">KpB source: --</div>
       <div class="swift-v56-kp-note">時刻: <span id="swiftV56KpTime">--</span></div>
       <div class="swift-v56-kp-steps" id="swiftV56KpSteps">予報実行後に表示</div>
     `;
@@ -4955,6 +5124,8 @@
   }
 
   window.swiftV56UpdateKpLabels = patchedUpdateKpLabelsV56;
+  window.swiftEnsureNoaaBaseKpStateV826 = ensureNoaaBaseKpStateV826;
+  window.swiftNoaaBaseKpStateV826 = () => ({...noaaBaseKpStateV826});
   readyV56(bootV56);
 })();
 
