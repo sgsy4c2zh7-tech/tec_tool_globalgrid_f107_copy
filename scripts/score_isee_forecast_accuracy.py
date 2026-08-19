@@ -42,10 +42,12 @@ KP_ARCHIVE = Path(os.environ.get(
     "docs/data/ai/isee_japan/kp_actual_archive.json",
 ))
 OUT = AI_ROOT / "forecast_verification.json"
+HIT_ARCHIVE = AI_ROOT / "kp_hit_archive_1y.json"
+HIT_KEEP_DAYS = max(30, int(os.environ.get("SWIFTTEC_ISEE_HIT_KEEP_DAYS", "365")))
 
 MEAN_DAYS = max(1, int(os.environ.get("SWIFTTEC_ISEE_VERIFY_MEAN_DAYS", "10")))
 MIN_HISTORY_DAYS = max(1, int(os.environ.get("SWIFTTEC_ISEE_VERIFY_MIN_HISTORY_DAYS", "1")))
-VERIFY_DAYS = max(1, int(os.environ.get("SWIFTTEC_ISEE_VERIFY_DAYS", "14")))
+VERIFY_DAYS = max(1, int(os.environ.get("SWIFTTEC_ISEE_VERIFY_DAYS", "30")))
 STEP_MIN = max(5, int(os.environ.get("SWIFTTEC_ISEE_VERIFY_STEP_MIN", "30")))
 GRID_STRIDE = max(1, int(os.environ.get("SWIFTTEC_ISEE_VERIFY_GRID_STRIDE", "4")))
 CLIP_DEFAULT = float(os.environ.get("SWIFTTEC_ISEE_VERIFY_CLIP_TECU", "20"))
@@ -185,6 +187,92 @@ def month_coeff_arrays(grid_doc, month, nlat, nlon):
             return np.zeros((nlat,nlon),dtype=float)
     return tuple(arr(k) for k in ("k0","k1","k2","k3"))
 
+def load_hit_archive():
+    if not HIT_ARCHIVE.exists():
+        return {"v":1,"days":[]}
+    try:
+        return load_json(HIT_ARCHIVE)
+    except Exception:
+        return {"v":1,"days":[]}
+
+
+def aggregate_hit_days(days):
+    totals={label:{"n":0,"r":0,"c":0} for label,_,_ in KP_BINS}
+    total_n=0
+    for d in days:
+        for label,x in (d.get("b") or {}).items():
+            if label not in totals:
+                continue
+            totals[label]["n"] += int(x.get("n") or 0)
+            totals[label]["r"] += int(x.get("r") or 0)
+            totals[label]["c"] += int(x.get("c") or 0)
+
+    bins={}
+    for label,_,_ in KP_BINS:
+        x=totals[label]
+        n=x["n"]
+        total_n += n
+        bins[label]={
+            "kp_bin":label,
+            "threshold_tecu":5.0,
+            "sample_count":n,
+            "raw_hit_count":x["r"],
+            "corrected_hit_count":x["c"],
+            "raw_hit_rate":None if n<=0 else round(x["r"]/n,6),
+            "corrected_hit_rate":None if n<=0 else round(x["c"]/n,6),
+        }
+    return bins,total_n
+
+
+def update_light_hit_archive(now, daily_hit):
+    old=load_hit_archive()
+    existing={d.get("d"):d for d in old.get("days",[]) if d.get("d")}
+
+    # Replace rescanned dates; never double-count.
+    for day,bins in daily_hit.items():
+        existing[day]={
+            "d":day,
+            "b":{
+                label:{
+                    "n":int(x["n"]),
+                    "r":int(x["r"]),
+                    "c":int(x["c"]),
+                }
+                for label,x in bins.items()
+            },
+        }
+
+    cutoff=(now-timedelta(days=HIT_KEEP_DAYS)).date()
+    kept=[]
+    for day,obj in existing.items():
+        try:
+            dd=datetime.fromisoformat(day).date()
+        except Exception:
+            continue
+        if dd>=cutoff:
+            kept.append(obj)
+    kept.sort(key=lambda x:x["d"])
+
+    bins,total_n=aggregate_hit_days(kept)
+    doc={
+        "v":1,
+        "updated_utc":iso(now),
+        "window_days":HIT_KEEP_DAYS,
+        "threshold_tecu":5.0,
+        "all_valid_grid_cases_counted":True,
+        "first_date_utc":kept[0]["d"] if kept else None,
+        "last_date_utc":kept[-1]["d"] if kept else None,
+        "days_retained":len(kept),
+        "sample_count":total_n,
+        "days":kept,
+    }
+    HIT_ARCHIVE.write_text(
+        json.dumps(doc,ensure_ascii=False,separators=(",",":")),
+        encoding="utf-8",
+    )
+    return doc,bins
+
+
 def main():
     idx_path=TEC_ROOT/"index.json"
     if not idx_path.exists():
@@ -222,6 +310,13 @@ def main():
 
     overall=Agg()
     by_kp={label:Agg() for label,_,_ in KP_BINS}
+
+    # Lightweight 1-year hit archive:
+    # all grid cells, N + raw/corrected ±5 hit only.
+    daily_hit=defaultdict(lambda:{
+        label:{"n":0,"r":0,"c":0} for label,_,_ in KP_BINS
+    })
+
     recent=[]
     frames_scored=0
     frames_skipped_kp=0
@@ -290,7 +385,19 @@ def main():
             corr_term=np.clip(np.nan_to_num(corr_term,nan=0.0),-clip,clip)
             forecast_full=np.clip(raw_full+corr_term,0.0,300.0)
 
-            # Spatial sampling for speed; same stride for actual and forecast.
+            label=kp_bin_label(kp)
+
+            # ALL valid grid-cell cases go to the tiny 1-year hit archive.
+            full_mask=np.isfinite(actual_full)&np.isfinite(raw_full)&np.isfinite(forecast_full)
+            if np.any(full_mask):
+                raw_full_err=actual_full[full_mask]-raw_full[full_mask]
+                corr_full_err=actual_full[full_mask]-forecast_full[full_mask]
+                hit=daily_hit[t.date().isoformat()][label]
+                hit["n"] += int(raw_full_err.size)
+                hit["r"] += int(np.count_nonzero(np.abs(raw_full_err) <= 5.0))
+                hit["c"] += int(np.count_nonzero(np.abs(corr_full_err) <= 5.0))
+
+            # Existing detailed Bias/MAE/RMSE can stay sampled for speed.
             actual=actual_full[::GRID_STRIDE,::GRID_STRIDE]
             raw=raw_full[::GRID_STRIDE,::GRID_STRIDE]
             forecast=forecast_full[::GRID_STRIDE,::GRID_STRIDE]
@@ -301,7 +408,6 @@ def main():
             corr_err=actual[mask]-forecast[mask]
 
             overall.add(raw_err,corr_err)
-            label=kp_bin_label(kp)
             by_kp[label].add(raw_err,corr_err)
             frames_scored += 1
 
@@ -332,6 +438,8 @@ def main():
         }
 
     now=datetime.now(UTC)
+    hit_archive_doc,kp_bins_1y_hit=update_light_hit_archive(now,daily_hit)
+
     summary=overall.summary()
     summary.update({
         "frames_scored":frames_scored,
@@ -357,6 +465,17 @@ def main():
         "summary":summary,
         "thresholds":overall.thresholds(),
         "kp_bins":kp_bins,
+        "kp_bins_1y_hit":kp_bins_1y_hit,
+        "kp_hit_archive":{
+            "source":"kp_hit_archive_1y.json",
+            "window_days":HIT_KEEP_DAYS,
+            "threshold_tecu":5.0,
+            "all_valid_grid_cases_counted":True,
+            "days_retained":hit_archive_doc.get("days_retained"),
+            "first_date_utc":hit_archive_doc.get("first_date_utc"),
+            "last_date_utc":hit_archive_doc.get("last_date_utc"),
+            "sample_count":hit_archive_doc.get("sample_count"),
+        },
         "recent":recent[-120:],
     }
 
