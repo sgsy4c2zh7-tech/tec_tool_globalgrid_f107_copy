@@ -46,6 +46,7 @@
   let tecSmoothCache = new Map();
   let selectionVersion = 0;
   let isee10DayBaseForecastActive = false;
+  let iseeBaseKpDisplaySeries = []; // display only; never used to re-subtract Kp from Base10
 
   let kpAiCoefficients = null;
   let kpAiPerformance = null;
@@ -884,6 +885,11 @@
         grid: f.grid,
         gridMeta: gm,
         sourceFile: f.sourceFile || "ISEE Base10 Forecast",
+        // v8.13: preserve display-only Base10 metadata.
+        // v8.12 accidentally dropped these fields here, so KpB UI fell back to 3.00.
+        baseKpDisplay: Number(f.baseKpDisplay ?? f.base_kp_display ?? NaN),
+        baseDaysUsed: Number(f.baseDaysUsed ?? f.base_days_used ?? NaN),
+        baseSlotUtc: f.baseSlotUtc || f.base_slot_utc || "",
       };
     });
 
@@ -896,11 +902,21 @@
       }));
     }
 
-    // Base10 is already Kp-removed. Keep KpB display neutral instead of
-    // subtracting another historical Kp term.
+    // Base10 is already Kp-removed.
+    // Calculation-side KpB stays neutral (=3) so no historical Kp term is
+    // subtracted a second time.  UI-side KpB is stored separately as the
+    // weighted historical Kp actually used to create each Base10 slot.
     if (normalized.length) {
       gBaseKpSeries = normalized.map(f => ({ t: f.time, kp: 3.0 }));
       try { gBaseKpTod = buildTodSeriesFromTimeSeries(gBaseKpSeries, "kp", 30); } catch {}
+
+      iseeBaseKpDisplaySeries = normalized
+        .map(f => ({
+          t: f.time,
+          kp: Number(f.baseKpDisplay ?? f.base_kp_display ?? NaN),
+          daysUsed: Number(f.baseDaysUsed ?? f.base_days_used ?? NaN),
+        }))
+        .filter(r => r.t instanceof Date && !isNaN(r.t.getTime()) && Number.isFinite(r.kp));
     }
 
     setDisplayedFrames(normalized, "ISEE Base10 Forecast");
@@ -928,6 +944,7 @@
 
   window.swiftClearIsee10DayBaseForecastMode = function () {
     isee10DayBaseForecastActive = false;
+    iseeBaseKpDisplaySeries = [];
   };
 
   async function loadTecArchiveRange() {
@@ -4549,6 +4566,20 @@
 
   function kpBaseAtV56(t) {
     try {
+      // ISEE Base10 forecast:
+      // show the weighted historical Kp used to build Base10.
+      // This is DISPLAY ONLY. Forecast calculation uses the already
+      // Kp-removed Base10 grid and does not subtract this Kp again.
+      if (isee10DayBaseForecastActive && Array.isArray(iseeBaseKpDisplaySeries) && iseeBaseKpDisplaySeries.length) {
+        let best = null, bestDiff = Infinity;
+        for (const r of iseeBaseKpDisplaySeries) {
+          if (!(r?.t instanceof Date) || isNaN(r.t.getTime()) || !finite56(r.kp)) continue;
+          const d = Math.abs(r.t.getTime() - t.getTime());
+          if (d < bestDiff) { bestDiff = d; best = r; }
+        }
+        if (best && finite56(best.kp)) return Number(best.kp);
+      }
+
       const v = todValueAt(gBaseKpTod, t);
       return finite56(v) ? Number(v) : NaN;
     } catch {
@@ -4572,6 +4603,8 @@
     const set = (id, val) => { const el = q56(id); if (el) el.textContent = val; };
     set("swiftV56KpF", fmt56(kpF));
     set("swiftV56KpB", fmt56(kpB));
+    const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-box")?.querySelector(".swift-v56-kp-label");
+    if (kpBLabel) kpBLabel.textContent = isee10DayBaseForecastActive ? "KpB Base10加重平均（表示用）" : "KpB Base";
     set("swiftV56KpTime", iso56(t));
     const next = nextKpChangeV56(t);
     set("swiftV56KpNext", next ? `${iso56(next.t)} / KpF=${fmt56(next.kp)}` : "--");
