@@ -32,6 +32,11 @@ jobs:
           SWIFTTEC_ISEE_MAX_HOURLY_FILES: "240"
         run: python scripts/fetch_isee_japan_tec.py
 
+      - name: Update observed Kp archive for delayed ISEE verification
+        env:
+          SWIFTTEC_KP_ACTUAL_KEEP_DAYS: "120"
+        run: python scripts/update_isee_kp_actual_archive.py
+
       - name: Train Japan high-resolution Kp AI
         env:
           SWIFTTEC_TEC_ROOT: docs/data/isee_tec
@@ -56,6 +61,22 @@ jobs:
           SWIFTTEC_ISEE_MEAN_MIN_DAYS: "1"
         run: python scripts/build_isee_time_mean.py
 
+      - name: Score ISEE forecast against actual ISEE by Kp
+        env:
+          SWIFTTEC_ISEE_VERIFY_MEAN_DAYS: "10"
+          SWIFTTEC_ISEE_VERIFY_MIN_HISTORY_DAYS: "1"
+          SWIFTTEC_ISEE_VERIFY_DAYS: "14"
+          SWIFTTEC_ISEE_VERIFY_STEP_MIN: "30"
+          SWIFTTEC_ISEE_VERIFY_GRID_STRIDE: "4"
+        run: |
+          set +e
+          python scripts/score_isee_forecast_accuracy.py
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            echo "ISEE verification skipped during cold-start / Kp-history shortage."
+          fi
+          exit 0
+
       - name: Show status
         run: |
           python - <<'PY'
@@ -72,6 +93,13 @@ jobs:
           if b.exists():
               x=json.loads(b.read_text())
               print("ISEE mean slots:",len(x.get("slots",[])))
+          v=Path("docs/data/ai/isee_japan/forecast_verification.json")
+          if v.exists():
+              x=json.loads(v.read_text())
+              s=x.get("summary",{})
+              print("ISEE verification frames:",s.get("frames_scored"))
+              print("ISEE verification RMSE:",s.get("corrected_rmse"))
+              print("ISEE verification Bias:",s.get("corrected_bias"))
           PY
           git status --short
 
