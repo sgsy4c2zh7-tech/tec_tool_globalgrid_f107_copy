@@ -20,14 +20,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Train Kp model-rule AI corrector
         run: python scripts/train_kp_ai_corrector.py
+
+      - name: Update lightweight 1-year Kp hit-rate archive
+        env:
+          SWIFTTEC_KP_HIT_KEEP_DAYS: "365"
+          SWIFTTEC_KP_HIT_SCAN_DAYS: "10"
+          SWIFTTEC_KP_ACTUAL_KEEP_DAYS: "60"
+          SWIFTTEC_KP_HIT_THRESHOLD: "5"
+        run: python scripts/update_kp_hit_archive_1y.py
+
       - name: Show generated AI files
         run: |
           echo "--- docs/data/ai ---"
           find docs/data/ai -maxdepth 1 -type f -print | sort || true
-          echo "--- git status ---"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("docs/data/ai/kp_hit_archive_1y.json")
+          if p.exists():
+              d=json.loads(p.read_text())
+              print("Kp hit archive days:", d.get("days_retained"))
+              print("Kp hit archive N:", d.get("sample_count"))
+              print("Kp hit archive bytes:", p.stat().st_size)
+          PY
           git status --short
+
       - name: Commit AI updates
         run: |
           git config user.name "github-actions[bot]"
@@ -36,7 +56,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No AI changes to commit"
           else
-            git commit -m "data: update Kp model-rule AI corrector"
+            git commit -m "data: update Kp AI and lightweight 1-year hit archive"
             git pull --rebase
             git push
           fi
