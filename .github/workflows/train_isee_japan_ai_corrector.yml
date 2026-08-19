@@ -1,8 +1,6 @@
 name: Train ISEE Japan AI Corrector
 
 on:
-  schedule:
-    - cron: '45 4 * * *'
   workflow_dispatch:
 
 permissions:
@@ -27,7 +25,7 @@ jobs:
       - name: Refresh ISEE Japan VTEC + 72h backfill
         env:
           SWIFTTEC_ISEE_BACKFILL_HOURS: "72"
-          SWIFTTEC_ISEE_KEEP_DAYS: "14"
+          SWIFTTEC_ISEE_KEEP_DAYS: "30"
         run: python scripts/fetch_isee_japan_tec.py
 
       - name: Train Japan high-resolution Kp AI
