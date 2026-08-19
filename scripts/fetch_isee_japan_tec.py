@@ -8,7 +8,7 @@ The public AGRID2 directory is hourly NetCDF. This script:
 - crops Japan surroundings (24..46 N, 122..150 E),
 - writes 5-minute frames to docs/data/isee_tec/.
 
-This is intentionally independent from the NOAA/global forecast pipeline.
+v8.5 robustly handles ISEE coordinate aliases (lat/lon vars vs latitude/longitude dims).\n\nThis is intentionally independent from the NOAA/global forecast pipeline.
 """
 from __future__ import annotations
 import json, re, sys, tempfile
@@ -69,7 +69,35 @@ def coord_name(ds, kind):
             return n
     return None
 
-def tec_var_name(ds, latn, lonn):
+def coord_dim_name(ds, coord_var_name: str, kind: str) -> str | None:
+    """Resolve a coordinate variable (e.g. lat) to the actual data dimension
+    (e.g. latitude). ISEE AGRID2 uses aliases such as:
+      coord variable: lat / lon
+      TEC dims:       latitude / longitude / time
+    """
+    if coord_var_name in ds.variables:
+        dims = list(ds[coord_var_name].dims)
+        if len(dims) == 1:
+            return dims[0]
+
+    candidates = {
+        "lat": ["latitude", "lat", "glat", "gdlat"],
+        "lon": ["longitude", "lon", "glon", "gdlon"],
+        "time": ["time", "ut", "utc", "datetime"],
+    }[kind]
+
+    for d in ds.dims:
+        low = str(d).lower()
+        if low in candidates:
+            return d
+    for d in ds.dims:
+        low = str(d).lower()
+        if any(c in low for c in candidates):
+            return d
+    return None
+
+
+def tec_var_name(ds, latn, lonn, latdim=None, londim=None):
     scored = []
     for n, da in ds.data_vars.items():
         low = n.lower()
@@ -78,8 +106,8 @@ def tec_var_name(ds, latn, lonn):
         score = 0
         if "tec" in low: score += 100
         if "atec" in low: score += 30
-        if latn in da.dims: score += 20
-        if lonn in da.dims: score += 20
+        if latn in da.dims or (latdim and latdim in da.dims): score += 20
+        if lonn in da.dims or (londim and londim in da.dims): score += 20
         score += min(10, da.ndim)
         scored.append((score, n))
     if not scored:
@@ -104,8 +132,18 @@ def main():
         timen = coord_name(ds, "time")
         if not latn or not lonn:
             raise RuntimeError(f"lat/lon coordinate not detected. vars={list(ds.variables)}")
-        tecn = tec_var_name(ds, latn, lonn)
-        print("Detected:", {"lat":latn,"lon":lonn,"time":timen,"tec":tecn})
+
+        latdim = coord_dim_name(ds, latn, "lat")
+        londim = coord_dim_name(ds, lonn, "lon")
+        timedim = coord_dim_name(ds, timen, "time") if timen else None
+
+        tecn = tec_var_name(ds, latn, lonn, latdim, londim)
+        print("Detected:", {
+            "lat_var": latn, "lat_dim": latdim,
+            "lon_var": lonn, "lon_dim": londim,
+            "time_var": timen, "time_dim": timedim,
+            "tec": tecn, "tec_dims": tuple(ds[tecn].dims),
+        })
 
         lat = np.asarray(ds[latn].values, dtype=float).squeeze()
         lon0 = np.asarray(ds[lonn].values, dtype=float).squeeze()
@@ -120,19 +158,48 @@ def main():
 
         da = ds[tecn]
         # Arrange dimensions to [time?, lat, lon].
-        if latn not in da.dims or lonn not in da.dims:
-            raise RuntimeError(f"TEC variable dims do not contain lat/lon: {da.dims}")
+        # ISEE AGRID2 can expose coordinate vars named lat/lon while the actual
+        # TEC dimensions are latitude/longitude.
+        lat_dim = latdim if latdim in da.dims else (latn if latn in da.dims else None)
+        lon_dim = londim if londim in da.dims else (lonn if lonn in da.dims else None)
 
-        time_dim = timen if timen in da.dims else None
-        extra_dims = [d for d in da.dims if d not in {latn,lonn,time_dim}]
+        if lat_dim is None or lon_dim is None:
+            # Last-resort semantic match against the TEC variable dimensions.
+            for d in da.dims:
+                dl = str(d).lower()
+                if lat_dim is None and ("lat" in dl):
+                    lat_dim = d
+                if lon_dim is None and ("lon" in dl):
+                    lon_dim = d
+
+        if lat_dim is None or lon_dim is None:
+            raise RuntimeError(
+                f"TEC variable dims do not contain recognizable lat/lon dimensions: "
+                f"tec={tecn}, dims={da.dims}, lat_var={latn}, lon_var={lonn}"
+            )
+
+        time_dim = timedim if timedim in da.dims else (timen if timen in da.dims else None)
+        if time_dim is None:
+            for d in da.dims:
+                if "time" in str(d).lower():
+                    time_dim = d
+                    break
+
+        extra_dims = [d for d in da.dims if d not in {lat_dim, lon_dim, time_dim}]
         for d in extra_dims:
             da = da.isel({d:0})
 
         if time_dim:
-            da = da.transpose(time_dim, latn, lonn)
-            times = np.asarray(ds[timen].values)
+            da = da.transpose(time_dim, lat_dim, lon_dim)
+            # Use the coordinate attached to the actual time dimension where possible.
+            if timen and timen in ds.variables:
+                times = np.asarray(ds[timen].values)
+            elif time_dim in ds.variables:
+                times = np.asarray(ds[time_dim].values)
+            else:
+                times = np.arange(da.sizes[time_dim])
         else:
-            da = da.transpose(latn, lonn).expand_dims({"_time":[0]})
+            da = da.transpose(lat_dim, lon_dim).expand_dims({"_time":[0]})
             time_dim = "_time"
             # filename YYYYMMDDHH
             m = re.search(r"(\d{10})_atec", source_name)
