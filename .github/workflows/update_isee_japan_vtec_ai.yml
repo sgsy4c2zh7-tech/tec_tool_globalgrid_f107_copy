@@ -1,0 +1,89 @@
+name: Update ISEE Japan VTEC and AI
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-isee-japan-vtec-ai
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check numpy xarray netCDF4
+
+      - name: Fetch newest available ISEE VTEC and keep 30 days
+        env:
+          SWIFTTEC_ISEE_BACKFILL_HOURS: "240"
+          SWIFTTEC_ISEE_KEEP_DAYS: "30"
+          SWIFTTEC_ISEE_SEARCH_DAYS: "90"
+          SWIFTTEC_ISEE_MAX_HOURLY_FILES: "240"
+        run: python scripts/fetch_isee_japan_tec.py
+
+      - name: Train Japan high-resolution Kp AI
+        env:
+          SWIFTTEC_TEC_ROOT: docs/data/isee_tec
+          SWIFTTEC_AI_ROOT: docs/data/ai/isee_japan
+          SWIFTTEC_KP_AI_TRAIN_DAYS: "30"
+          SWIFTTEC_KP_AI_PAIR_HOURS: "24"
+          SWIFTTEC_KP_AI_PAIR_TOLERANCE_MIN: "10"
+          SWIFTTEC_KP_AI_MIN_CELL_SAMPLES: "6"
+          SWIFTTEC_KP_AI_BLEND_ALPHA: "0.20"
+        run: |
+          set +e
+          python scripts/train_isee_japan_ai_corrector.py
+          rc=$?
+          if [ $rc -ne 0 ]; then
+            echo "Japan AI training skipped/failed during cold-start; continuing to commit VTEC."
+          fi
+          exit 0
+
+      - name: Build same-UTC-time ISEE mean VTEC
+        env:
+          SWIFTTEC_ISEE_MEAN_DAYS: "10"
+          SWIFTTEC_ISEE_MEAN_MIN_DAYS: "1"
+        run: python scripts/build_isee_time_mean.py
+
+      - name: Show status
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("docs/data/isee_tec/index.json")
+          if p.exists():
+              d=json.loads(p.read_text())
+              print("VTEC frames:",len(d.get("frames",[])))
+              print("Latest source:",d.get("latest_source_hour_utc"))
+              print("Latency hours:",d.get("source_latency_hours_at_fetch"))
+              print("Units:",d.get("quantity"),d.get("units"))
+          b=Path("docs/data/isee_mean/index.json")
+          if b.exists():
+              x=json.loads(b.read_text())
+              print("ISEE mean slots:",len(x.get("slots",[])))
+          PY
+          git status --short
+
+      - name: Commit ISEE Japan updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs/data/isee_tec docs/data/ai/isee_japan docs/data/isee_mean
+          if git diff --cached --quiet; then
+            echo "No ISEE Japan changes"
+          else
+            git commit -m "data: update ISEE Japan VTEC AI and time-slot mean"
+            git pull --rebase
+            git push
+          fi
