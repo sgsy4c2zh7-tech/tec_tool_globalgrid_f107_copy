@@ -4768,8 +4768,8 @@
       // show the weighted historical Kp used to build Base10.
       // This is DISPLAY ONLY. Forecast calculation uses the already
       // Kp-removed Base10 grid and does not subtract this Kp again.
-      if (isee10DayBaseForecastActive) {
-        // ISEE v8.14 has no Base/KpB concept.
+      if (isee10DayBaseForecastActive || isIseeForecastV56()) {
+        // ISEE has no BaseTEC / KpB concept, even before forecast execution.
         return NaN;
       }
 
@@ -4811,15 +4811,22 @@
 
   function updateKpPanelV56(t, kpF, kpB) {
     const set = (id, val) => { const el = q56(id); if (el) el.textContent = val; };
+    const isIsee = isee10DayBaseForecastActive || isIseeForecastV56();
     set("swiftV56KpF", fmt56(kpF));
-    set("swiftV56KpB", fmt56(kpB));
-    const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-box")?.querySelector(".swift-v56-kp-label");
-    if (kpBLabel) kpBLabel.textContent = isee10DayBaseForecastActive ? "KpB（ISEEでは未使用）" : "KpB Base";
-    set("swiftV56KpTime", iso56(t));
+    set("swiftV56KpB", isIsee ? "なし" : fmt56(kpB));
+    const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-metric")?.querySelector(".swift-v56-kp-label");
+    if (kpBLabel) kpBLabel.textContent = isIsee ? "KpB（ISEEでは未使用）" : "KpB Base";
+    const hasForecastTimeline = Array.isArray(gForecastTimes) &&
+      gForecastTimes[currentStepIndex] instanceof Date &&
+      !isNaN(gForecastTimes[currentStepIndex].getTime());
+    set(
+      "swiftV56KpTime",
+      `${iso56(t)}${(!isIsee && !hasForecastTimeline) ? "（Base日・現在UTC時刻帯）" : ""}`
+    );
 
     const srcEl = q56("swiftV56KpBSource");
     if (srcEl) {
-      srcEl.textContent = isee10DayBaseForecastActive
+      srcEl.textContent = isIsee
         ? "KpB source: ISEEでは未使用"
         : `KpB source: ${noaaBaseKpStateV826.source || "--"}` +
           (noaaBaseKpStateV826.baseDayUtc ? ` / ${noaaBaseKpStateV826.baseDayUtc}` : "");
@@ -4827,8 +4834,8 @@
 
     const next = nextKpChangeV56(t);
     set("swiftV56KpNext", next ? `${iso56(next.t)} / KpF=${fmt56(next.kp)}` : "--");
-    const diff = finite56(kpF) && finite56(kpB) ? Number(kpF) - Number(kpB) : NaN;
-    set("swiftV56KpDiff", finite56(diff) ? `${diff >= 0 ? "+" : ""}${diff.toFixed(2)}` : "--");
+    const diff = (!isIsee && finite56(kpF) && finite56(kpB)) ? Number(kpF) - Number(kpB) : NaN;
+    set("swiftV56KpDiff", isIsee ? "なし" : (finite56(diff) ? `${diff >= 0 ? "+" : ""}${diff.toFixed(2)}` : "--"));
 
     const steps = q56("swiftV56KpSteps");
     if (steps && Array.isArray(gKpSeries) && gKpSeries.length) {
@@ -4845,17 +4852,69 @@
     }
   }
 
+  function kpDisplayTimeV828() {
+    // 1) Forecast/replay time takes priority once available.
+    const ft = Array.isArray(gForecastTimes) ? gForecastTimes[currentStepIndex] : null;
+    if (ft instanceof Date && !isNaN(ft.getTime())) return ft;
+
+    // 2) Before forecast execution, show NOAA KpB at the current UTC
+    //    time-of-day on the cached Base day.
+    //    Example: cache day=2026-08-18 and now=05:06Z -> 2026-08-18T05:06Z.
+    if (!isIseeForecastV56()) {
+      const day = String(noaaBaseKpStateV826.baseDayUtc || "");
+      const m = day.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (m) {
+        const now = new Date();
+        const t = new Date(Date.UTC(
+          Number(m[1]), Number(m[2]) - 1, Number(m[3]),
+          now.getUTCHours(), now.getUTCMinutes(), 0, 0
+        ));
+        if (!isNaN(t.getTime())) return t;
+      }
+
+      // If metadata is missing but rows are loaded, anchor to that Base row date.
+      if (Array.isArray(gBaseKpSeries) && gBaseKpSeries.length) {
+        const r = gBaseKpSeries.find(x => x?.t instanceof Date && !isNaN(x.t.getTime()));
+        if (r) {
+          const now = new Date();
+          const t = new Date(Date.UTC(
+            r.t.getUTCFullYear(), r.t.getUTCMonth(), r.t.getUTCDate(),
+            now.getUTCHours(), now.getUTCMinutes(), 0, 0
+          ));
+          if (!isNaN(t.getTime())) return t;
+        }
+      }
+    }
+
+    return null;
+  }
+
   function patchedUpdateKpLabelsV56() {
-    const t = Array.isArray(gForecastTimes) ? gForecastTimes[currentStepIndex] : null;
+    const t = kpDisplayTimeV828();
+
+    // Even before a forecast timeline exists, NOAA KpB must still be visible.
     if (!(t instanceof Date) || isNaN(t.getTime())) {
+      if (isIseeForecastV56()) {
+        const el = q56("kpNowLabel");
+        if (el) el.textContent = "KpF=-- / KpB=なし";
+        updateKpPanelV56(new Date(), NaN, NaN);
+        return;
+      }
       if (originalUpdateKpLabelsV56) return originalUpdateKpLabelsV56();
       return;
     }
 
-    const kpF = kpFromForecastSeriesAtV56(t);
+    const hasForecastKp = Array.isArray(gKpSeries) && gKpSeries.length > 0;
+    const kpF = hasForecastKp ? kpFromForecastSeriesAtV56(t) : NaN;
     const kpB = kpBaseAtV56(t);
+
     const el = q56("kpNowLabel");
-    if (el) el.textContent = `KpF=${fmt56(kpF)} / KpB=${fmt56(kpB)}`;
+    if (el) {
+      el.textContent = isIseeForecastV56()
+        ? `KpF=${fmt56(kpF)} / KpB=なし`
+        : `KpF=${fmt56(kpF)} / KpB=${fmt56(kpB)}`;
+    }
+
     updateKpPanelV56(t, kpF, kpB);
   }
 
@@ -5112,13 +5171,59 @@
     }
   }
 
+  async function hydrateBaseKpUiV827(force = false) {
+    try {
+      if (isIseeForecastV56()) {
+        patchedUpdateKpLabelsV56();
+        return false;
+      }
+
+      const ok = await ensureNoaaBaseKpStateV826(force);
+      if (ok) {
+        patchedUpdateKpLabelsV56();
+        const steps = q56("swiftV56KpSteps");
+        if (steps && (!Array.isArray(gKpSeries) || !gKpSeries.length)) {
+          steps.textContent = "KpBは読込済み / KpFは予報実行後に表示";
+        }
+      } else {
+        const src = q56("swiftV56KpBSource");
+        if (src) src.textContent = `KpB source: 読込失敗 / ${noaaBaseKpStateV826.error || "--"}`;
+      }
+      return ok;
+    } catch (e) {
+      console.warn("v8.27 Base Kp UI hydrate failed:", e);
+      return false;
+    }
+  }
+
+  function bindBaseKpAutoLoadV827() {
+    const src = q56("swiftV52TecSource");
+    if (src && !src.dataset.v827BaseKpBound) {
+      src.dataset.v827BaseKpBound = "1";
+      src.addEventListener("change", async () => {
+        if (isIseeForecastV56()) {
+          patchedUpdateKpLabelsV56();
+        } else {
+          await hydrateBaseKpUiV827(true);
+        }
+      });
+    }
+  }
+
   function bootV56() {
     injectStyleV56();
     for (const delay of [500, 1000, 1800]) {
-      setTimeout(() => {
+      setTimeout(async () => {
         installKpPanelV56();
         installKpLabelPatchV56();
-        try { patchedUpdateKpLabelsV56(); } catch {}
+        bindBaseKpAutoLoadV827();
+
+        // v8.27: NOAA KpB must appear immediately, not only after pressing forecast.
+        if (!isIseeForecastV56()) {
+          await hydrateBaseKpUiV827(false);
+        } else {
+          try { patchedUpdateKpLabelsV56(); } catch {}
+        }
       }, delay);
     }
   }
@@ -5126,6 +5231,8 @@
   window.swiftV56UpdateKpLabels = patchedUpdateKpLabelsV56;
   window.swiftEnsureNoaaBaseKpStateV826 = ensureNoaaBaseKpStateV826;
   window.swiftNoaaBaseKpStateV826 = () => ({...noaaBaseKpStateV826});
+  window.swiftHydrateBaseKpUiV827 = hydrateBaseKpUiV827;
+  window.swiftKpDisplayTimeV828 = kpDisplayTimeV828;
   readyV56(bootV56);
 })();
 
