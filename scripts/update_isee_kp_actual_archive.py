@@ -24,7 +24,7 @@ URL = os.environ.get(
     "SWIFTTEC_KP_ACTUAL_URL",
     "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
 )
-KEEP_DAYS = max(30, int(os.environ.get("SWIFTTEC_KP_ACTUAL_KEEP_DAYS", "120")))
+KEEP_DAYS = max(30, int(os.environ.get("SWIFTTEC_KP_ACTUAL_KEEP_DAYS", "90")))
 
 def iso(t):
     return t.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
