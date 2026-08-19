@@ -1,4 +1,4 @@
-name: Fetch ISEE Japan High-Res TEC
+name: Fetch ISEE Japan High-Res VTEC
 
 on:
   schedule:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: fetch-isee-japan-tec
+  group: fetch-isee-japan-vtec
   cancel-in-progress: false
 
 jobs:
@@ -20,18 +20,43 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install NetCDF dependencies
         run: pip install --disable-pip-version-check numpy xarray netCDF4
-      - name: Fetch and crop ISEE TEC
+
+      - name: Fetch latest ISEE VTEC + 72h backfill
+        env:
+          SWIFTTEC_ISEE_BACKFILL_HOURS: "72"
+          SWIFTTEC_ISEE_KEEP_DAYS: "14"
+          SWIFTTEC_ISEE_SEARCH_DAYS: "90"
+          SWIFTTEC_ISEE_MAX_HOURLY_FILES: "96"
         run: python scripts/fetch_isee_japan_tec.py
-      - name: Commit Japan TEC updates
+
+      - name: Show ISEE VTEC status
+        run: |
+          echo "--- ISEE VTEC index ---"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("docs/data/isee_tec/index.json")
+          if p.exists():
+              d=json.loads(p.read_text())
+              print("quantity=", d.get("quantity"), d.get("units"))
+              print("latest_source=", d.get("latest_source_hour_utc"))
+              print("source_latency_hours=", d.get("source_latency_hours_at_fetch"))
+              print("frames=", len(d.get("frames", [])))
+          PY
+          git status --short
+
+      - name: Commit ISEE VTEC updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/data/isee_tec
+          git add -A docs/data/isee_tec
           if git diff --cached --quiet; then
-            echo "No ISEE TEC changes"
+            echo "No ISEE VTEC changes"
           else
-            git commit -m "data: update ISEE Japan high-res TEC"
+            git commit -m "data: update ISEE Japan VTEC archive"
+            git pull --rebase
             git push
           fi
