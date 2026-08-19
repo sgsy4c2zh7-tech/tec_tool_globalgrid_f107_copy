@@ -956,6 +956,10 @@
     );
   };
 
+  window.swiftIsIseeForecastActiveV831 = function () {
+    return !!isee10DayBaseForecastActive;
+  };
+
   window.swiftClearIsee10DayBaseForecastMode = function () {
     isee10DayBaseForecastActive = false;
     iseeBaseKpDisplaySeries = [];
@@ -4818,7 +4822,7 @@
       // show the weighted historical Kp used to build Base10.
       // This is DISPLAY ONLY. Forecast calculation uses the already
       // Kp-removed Base10 grid and does not subtract this Kp again.
-      if (isee10DayBaseForecastActive || isIseeForecastV56()) {
+      if (isIseeForecastV56()) {
         // ISEE has no BaseTEC / KpB concept, even before forecast execution.
         return NaN;
       }
@@ -4861,7 +4865,7 @@
 
   function updateKpPanelV56(t, kpF, kpB) {
     const set = (id, val) => { const el = q56(id); if (el) el.textContent = val; };
-    const isIsee = isee10DayBaseForecastActive || isIseeForecastV56();
+    const isIsee = isIseeForecastV56();
     set("swiftV56KpF", fmt56(kpF));
     set("swiftV56KpB", isIsee ? "なし" : fmt56(kpB));
     const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-metric")?.querySelector(".swift-v56-kp-label");
