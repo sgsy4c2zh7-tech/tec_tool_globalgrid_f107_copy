@@ -3153,6 +3153,7 @@
   let histV52 = null;
   let tecIndexV52 = null;
   let selectedRegionV52 = "R01";
+  let lastMetricsSourceV52 = null;
 
   function readyV52(fn) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
@@ -3493,20 +3494,36 @@
   }
 
   async function loadV52Data() {
-    setV52Status("AI学習結果を読み込み中…");
+    const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
+    const isIsee = source === "isee_japan_highres";
+    const base = isIsee ? "data/ai/isee_japan/" : AI_BASE;
+    const tecIndexUrl = isIsee ? "data/isee_tec/index.json" : "data/tec/index.json";
+
+    setV52Status(isIsee ? "ISEE Japan AI学習・検証結果を読み込み中…" : "AI学習結果を読み込み中…");
     const results = await Promise.allSettled([
-      fetchJson52(AI_BASE + "kp_performance.json"),
-      fetchJson52(AI_BASE + "kp_coefficients.json"),
-      fetchJson52(AI_BASE + "kp_learning_history.json"),
-      fetchJson52("data/tec/index.json"),
+      fetchJson52(base + "kp_performance.json"),
+      fetchJson52(base + "kp_coefficients.json"),
+      fetchJson52(base + "kp_learning_history.json"),
+      fetchJson52(tecIndexUrl),
     ]);
     perfV52 = results[0].status === "fulfilled" ? results[0].value : null;
     coeffV52 = results[1].status === "fulfilled" ? results[1].value : null;
     histV52 = results[2].status === "fulfilled" ? results[2].value : null;
     tecIndexV52 = results[3].status === "fulfilled" ? results[3].value : null;
+
+    const note = q52("swiftV52HistoryNote");
+    if (note) {
+      note.textContent = isIsee
+        ? "ISEE Japan高解像度VTECの学習結果。下の実測検証では時間別平均予報と実測ISEEのずれをKp別に表示します。"
+        : "全格子で学習し、18地域に集約した的中率を過去2年分表示します。";
+    }
+
     try { await window.loadKpAiData?.(false); } catch {}
     renderV52All();
-    setV52Status(perfV52 ? "AI学習結果を読み込みました。" : "AI学習結果なし。Actionsで Train Kp AI Corrector を実行してください。");
+    try { await window.swiftLoadFailureAnalysis?.(true); } catch {}
+    setV52Status(perfV52
+      ? (isIsee ? "ISEE Japan AI学習・実測検証結果を読み込みました。" : "AI学習結果を読み込みました。")
+      : (isIsee ? "ISEE Japan AI学習結果がまだありません。日次ISEE Actionを実行してください。" : "AI学習結果なし。Actionsで Train Kp AI Corrector を実行してください。"));
   }
 
   function syncV52ForecastControls() {
@@ -3536,6 +3553,16 @@
     if (legacyClip) legacyClip.value = clip;
 
     try { localStorage.setItem("swift_v52_tec_source", source); } catch {}
+
+    if (lastMetricsSourceV52 !== source) {
+      lastMetricsSourceV52 = source;
+      setTimeout(() => {
+        loadV52Data().catch(e => {
+          console.warn("source metrics reload failed", e);
+          try { window.swiftLoadFailureAnalysis?.(true); } catch {}
+        });
+      }, 0);
+    }
   }
 
   async function v52LoadTec() {
@@ -5452,12 +5479,13 @@
 
 
 /* =========================================================
- * SWIFT-TEC v6.2 failure analysis UI
- * Shows hit-rate by TEC error threshold and by Kp bin.
- * Purpose: find conditions where forecast misses.
+ * SWIFT-TEC v8.16 source-aware forecast verification UI
+ * NOAA: existing kp_performance.json
+ * ISEE: forecast_verification.json using actual ISEE observations.
  * ========================================================= */
 (function () {
   let failPerfV62 = null;
+  let failSourceV62 = "";
 
   function readyV62(fn) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
@@ -5472,6 +5500,26 @@
     const n = Number(v);
     return Number.isFinite(n) ? n.toFixed(d) : "--";
   }
+  function isIseeV62() {
+    const compact = String(q62("swiftV52TecSource")?.value || "");
+    if (compact) return compact === "isee_japan_highres";
+    return String(q62("tecSourceSelect")?.value || "").toLowerCase() === "isee";
+  }
+  function sourceInfoV62() {
+    return isIseeV62()
+      ? {
+          key:"isee",
+          url:"data/ai/isee_japan/forecast_verification.json",
+          label:"ISEE Japan",
+          sub:"時間別平均 + Kp補正の予報を、後から取得できた実測ISEE VTECと比較",
+        }
+      : {
+          key:"global",
+          url:"data/ai/kp_performance.json",
+          label:"NOAA / Global",
+          sub:"TEC誤差閾値別・Kp帯別に的中率を見ることで、どの条件で外れるかを確認",
+        };
+  }
 
   function injectStyleV62() {
     if (q62("swiftFailAnalysisStyleV62")) return;
@@ -5485,188 +5533,215 @@
         padding: 10px;
         margin-top: 10px;
       }
-      .swift-v62-title {
-        font-size: 13px;
-        font-weight: 900;
-        color: #eaf2ff;
-        margin-bottom: 2px;
+      .swift-v62-title { font-size:13px;font-weight:900;color:#eaf2ff;margin-bottom:2px; }
+      .swift-v62-sub { font-size:10px;color:#9fb0cc;margin-bottom:8px;line-height:1.45; }
+      .swift-v62-source {
+        display:inline-flex;align-items:center;gap:5px;border:1px solid #315a93;
+        background:#081b37;border-radius:999px;padding:3px 8px;font-size:10px;color:#dbeafe;
       }
-      .swift-v62-sub {
-        font-size: 10px;
-        color: #9fb0cc;
-        margin-bottom: 8px;
+      .swift-v62-kpis {
+        display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 10px;
       }
+      .swift-v62-kpi {
+        border:1px solid #1f355a;border-radius:11px;background:#061020;padding:8px;
+      }
+      .swift-v62-kpi-label { color:#9fb0cc;font-size:9px; }
+      .swift-v62-kpi-value { color:#f8fafc;font-weight:850;font-size:17px;margin-top:3px; }
       .swift-v62-grid {
-        display: grid;
-        grid-template-columns: minmax(280px, .85fr) minmax(360px, 1.15fr);
-        gap: 10px;
+        display:grid;grid-template-columns:minmax(300px,.9fr) minmax(420px,1.1fr);gap:10px;
       }
-      .swift-v62-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 10px;
+      .swift-v62-table { width:100%;border-collapse:collapse;font-size:10px; }
+      .swift-v62-table th,.swift-v62-table td {
+        border:1px solid #1f355a;padding:5px 6px;text-align:right;
       }
-      .swift-v62-table th,
-      .swift-v62-table td {
-        border: 1px solid #1f355a;
-        padding: 5px 6px;
-        text-align: right;
-      }
-      .swift-v62-table th:first-child,
-      .swift-v62-table td:first-child {
-        text-align: left;
-      }
-      .swift-v62-table th {
-        background: #0b1730;
-        color: #bcd0ee;
-      }
-      .swift-v62-bad { color: #fecaca; font-weight: 850; }
-      .swift-v62-good { color: #bbf7d0; font-weight: 850; }
+      .swift-v62-table th:first-child,.swift-v62-table td:first-child { text-align:left; }
+      .swift-v62-table th { background:#0b1730;color:#bcd0ee; }
+      .swift-v62-bad { color:#fecaca;font-weight:850; }
+      .swift-v62-good { color:#bbf7d0;font-weight:850; }
       .swift-v62-barbox {
-        width: 100%;
-        height: 9px;
-        background: #020617;
-        border: 1px solid #1f355a;
-        border-radius: 99px;
-        overflow: hidden;
+        width:100%;height:9px;background:#020617;border:1px solid #1f355a;border-radius:99px;overflow:hidden;
       }
-      .swift-v62-bar {
-        height: 100%;
-        background: #60a5fa;
-        border-radius: 99px;
-      }
+      .swift-v62-bar { height:100%;background:#60a5fa;border-radius:99px; }
       .swift-v62-kp-row {
-        display: grid;
-        grid-template-columns: 42px 1fr 58px 58px 70px;
-        gap: 6px;
-        align-items: center;
-        font-size: 10px;
-        color: #dbeafe;
-        margin: 5px 0;
+        display:grid;grid-template-columns:42px 1fr 56px 62px 62px 62px 64px;
+        gap:5px;align-items:center;font-size:9.5px;color:#dbeafe;margin:5px 0;
       }
-      @media (max-width: 980px) {
-        .swift-v62-grid { grid-template-columns: 1fr; }
+      .swift-v62-recent { max-height:210px;overflow:auto;margin-top:8px; }
+      @media (max-width:980px) {
+        .swift-v62-grid{grid-template-columns:1fr}
+        .swift-v62-kpis{grid-template-columns:1fr 1fr}
+        .swift-v62-kp-row{grid-template-columns:42px 1fr 50px 55px 55px 55px}
+        .swift-v62-kp-row .ncol{display:none}
       }
     `;
     document.head.appendChild(st);
   }
 
-  async function loadFailPerfV62() {
+  async function loadFailPerfV62(force = false) {
+    const info = sourceInfoV62();
+    if (!force && failPerfV62 && failSourceV62 === info.key) {
+      renderFailPanelV62();
+      return failPerfV62;
+    }
+    failPerfV62 = null;
+    failSourceV62 = info.key;
+    renderFailPanelV62();
     try {
-      const res = await fetch("data/ai/kp_performance.json", { cache: "no-store" });
+      const res = await fetch(info.url, { cache:"no-store" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       failPerfV62 = await res.json();
     } catch (e) {
-      console.warn("failure analysis load failed", e);
+      console.warn("forecast verification load failed", info.url, e);
       failPerfV62 = null;
     }
     renderFailPanelV62();
+    return failPerfV62;
+  }
+
+  function renderSummaryKpisV62() {
+    const s = failPerfV62?.summary || {};
+    const bias = Number(s.corrected_bias ?? s.bias);
+    const mae = Number(s.corrected_mae ?? s.mae);
+    const rmse = Number(s.corrected_rmse ?? s.rmse);
+    const hit = Number(s.corrected_hit_rate ?? s.hit_rate);
+    const n = Number(s.sample_count || 0);
+    return `<div class="swift-v62-kpis">
+      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">実測−予報 Bias</div><div class="swift-v62-kpi-value">${num62(bias)} TECU</div></div>
+      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">MAE</div><div class="swift-v62-kpi-value">${num62(mae)} TECU</div></div>
+      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">RMSE</div><div class="swift-v62-kpi-value">${num62(rmse)} TECU</div></div>
+      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">±5 TECU Hit / N</div><div class="swift-v62-kpi-value">${pct62(hit)} / ${n || 0}</div></div>
+    </div>`;
   }
 
   function renderThresholdTableV62() {
     const th = failPerfV62?.thresholds || failPerfV62?.summary?.thresholds || {};
-    const keys = ["5", "10", "15", "20"];
+    const keys = ["5","10","15","20"];
     return `<table class="swift-v62-table">
-      <thead>
-        <tr><th>閾値</th><th>raw Hit</th><th>AI Hit</th><th>改善</th><th>AI RMSE</th><th>N</th></tr>
-      </thead>
-      <tbody>
-        ${keys.map(k => {
-          const r = th[k] || {};
-          const raw = Number(r.raw_hit_rate);
-          const corr = Number(r.corrected_hit_rate);
-          const imp = Number.isFinite(raw) && Number.isFinite(corr) ? corr - raw : NaN;
-          const cls = Number.isFinite(imp) && imp < 0 ? "swift-v62-bad" : "swift-v62-good";
-          return `<tr>
-            <td>±${k} TECU</td>
-            <td>${pct62(raw)}</td>
-            <td><b>${pct62(corr)}</b></td>
-            <td class="${cls}">${Number.isFinite(imp) ? (imp >= 0 ? "+" : "") + (imp * 100).toFixed(1) + "pt" : "--"}</td>
-            <td>${num62(r.corrected_rmse)}</td>
-            <td>${r.sample_count || 0}</td>
-          </tr>`;
-        }).join("")}
-      </tbody>
+      <thead><tr><th>閾値</th><th>平均のみ</th><th>Kp補正後</th><th>改善</th><th>RMSE</th><th>N</th></tr></thead>
+      <tbody>${keys.map(k => {
+        const r=th[k]||{};
+        const raw=Number(r.raw_hit_rate), corr=Number(r.corrected_hit_rate);
+        const imp=Number.isFinite(raw)&&Number.isFinite(corr)?corr-raw:NaN;
+        const cls=Number.isFinite(imp)&&imp<0?"swift-v62-bad":"swift-v62-good";
+        return `<tr>
+          <td>±${k} TECU</td><td>${pct62(raw)}</td><td><b>${pct62(corr)}</b></td>
+          <td class="${cls}">${Number.isFinite(imp)?(imp>=0?"+":"")+(imp*100).toFixed(1)+"pt":"--"}</td>
+          <td>${num62(r.corrected_rmse)}</td><td>${r.sample_count||0}</td>
+        </tr>`;
+      }).join("")}</tbody>
     </table>`;
   }
 
   function renderKpBinsV62() {
-    const bins = failPerfV62?.kp_bins || {};
-    const keys = ["0-2", "2-3", "3-4", "4-5", "5-6", "6-7", "7+"];
-    const rows = keys.map(k => {
-      const r = bins[k] || {};
-      const t = r.thresholds?.["5"] || r;
-      const corr = Number(t.corrected_hit_rate);
-      const n = Number(t.sample_count || 0);
-      return { k, corr, n, rmse: t.corrected_rmse };
+    const bins=failPerfV62?.kp_bins||{};
+    const keys=["0-2","2-3","3-4","4-5","5-6","6-7","7+"];
+    const rows=keys.map(k=>{
+      const r=bins[k]||{};
+      const t=r.thresholds?.["5"]||r;
+      return {
+        k,
+        hit:Number(t.corrected_hit_rate),
+        bias:Number(r.corrected_bias ?? t.corrected_bias),
+        mae:Number(r.corrected_mae ?? t.corrected_mae),
+        rmse:Number(r.corrected_rmse ?? t.corrected_rmse),
+        n:Number(r.sample_count ?? t.sample_count ?? 0),
+      };
     });
     return `<div>
-      <div class="swift-v62-sub">KpFごとの ±5 TECU 的中率。低いKp帯が外れやすい条件です。</div>
-      ${rows.map(r => `<div class="swift-v62-kp-row">
+      <div class="swift-v62-sub">KpF帯ごとの「実測TEC − 予報TEC」。Biasが＋なら予報が低すぎ、−なら予報が高すぎです。</div>
+      ${rows.map(r=>`<div class="swift-v62-kp-row">
         <div>Kp ${r.k}</div>
-        <div class="swift-v62-barbox"><div class="swift-v62-bar" style="width:${Math.max(0, Math.min(100, (r.corr || 0) * 100)).toFixed(1)}%"></div></div>
-        <div>${pct62(r.corr)}</div>
-        <div>N=${r.n}</div>
-        <div>RMSE ${num62(r.rmse)}</div>
+        <div class="swift-v62-barbox"><div class="swift-v62-bar" style="width:${Math.max(0,Math.min(100,(r.hit||0)*100)).toFixed(1)}%"></div></div>
+        <div>${pct62(r.hit)}</div>
+        <div>B ${num62(r.bias)}</div>
+        <div>MAE ${num62(r.mae)}</div>
+        <div>R ${num62(r.rmse)}</div>
+        <div class="ncol">N=${r.n}</div>
       </div>`).join("")}
     </div>`;
   }
 
+  function renderRecentV62() {
+    if (!isIseeV62()) return "";
+    const rows = Array.isArray(failPerfV62?.recent) ? failPerfV62.recent.slice(-12).reverse() : [];
+    if (!rows.length) return "";
+    return `<div style="margin-top:10px;">
+      <div class="swift-v62-title">最近の実測ISEEとの差</div>
+      <div class="swift-v62-recent">
+        <table class="swift-v62-table">
+          <thead><tr><th>UTC</th><th>Kp</th><th>実測平均</th><th>予報平均</th><th>Bias</th><th>MAE</th><th>RMSE</th></tr></thead>
+          <tbody>${rows.map(r=>`<tr>
+            <td>${String(r.time_utc||"").replace("T"," ").slice(0,16)}</td>
+            <td>${num62(r.kp,1)}</td>
+            <td>${num62(r.observed_mean_tecu)}</td>
+            <td>${num62(r.forecast_mean_tecu)}</td>
+            <td>${num62(r.bias_tecu)}</td>
+            <td>${num62(r.mae_tecu)}</td>
+            <td>${num62(r.rmse_tecu)}</td>
+          </tr>`).join("")}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
   function worstKpTextV62() {
-    const bins = failPerfV62?.kp_bins || {};
-    let worst = null;
-    for (const [k, r] of Object.entries(bins)) {
-      const t = r.thresholds?.["5"] || r;
-      const n = Number(t.sample_count || 0);
-      const hit = Number(t.corrected_hit_rate);
-      if (n < 100 || !Number.isFinite(hit)) continue;
-      if (!worst || hit < worst.hit) worst = { k, hit, n, rmse: t.corrected_rmse };
+    const bins=failPerfV62?.kp_bins||{};
+    let worst=null;
+    for (const [k,r] of Object.entries(bins)) {
+      const n=Number(r.sample_count ?? r.thresholds?.["5"]?.sample_count ?? 0);
+      const rmse=Number(r.corrected_rmse ?? r.thresholds?.["5"]?.corrected_rmse);
+      if (n<=0 || !Number.isFinite(rmse)) continue;
+      if (!worst || rmse>worst.rmse) worst={k,n,rmse,bias:r.corrected_bias};
     }
-    if (!worst) return "外れやすいKp帯はまだ判定できません。学習データが増えると表示が安定します。";
-    return `現時点で一番外れやすいKp帯: Kp ${worst.k} / Hit ${pct62(worst.hit)} / RMSE ${num62(worst.rmse)} / N=${worst.n}`;
+    if (!worst) return "Kp帯別の実測検証データはまだ不足しています。";
+    return `現在RMSEが最大のKp帯: Kp ${worst.k} / RMSE ${num62(worst.rmse)} TECU / Bias ${num62(worst.bias)} / N=${worst.n}`;
   }
 
   function ensureFailPanelV62() {
-    const main = q62("swiftAccuracyMain");
+    const main=q62("swiftAccuracyMain");
     if (!main || q62("swiftFailureAnalysisV62")) return null;
-    const panel = document.createElement("div");
-    panel.id = "swiftFailureAnalysisV62";
-    panel.className = "swift-v62-card";
-    panel.innerHTML = `<div class="swift-v62-title">外れやすさ分析</div>
-      <div class="swift-v62-sub">TEC誤差閾値別・Kp帯別に的中率を見ることで、どの条件で外れるかを確認します。</div>
-      <div id="swiftFailureAnalysisBodyV62">読み込み中…</div>`;
+    const panel=document.createElement("div");
+    panel.id="swiftFailureAnalysisV62";
+    panel.className="swift-v62-card";
     main.appendChild(panel);
     return panel;
   }
 
   function renderFailPanelV62() {
-    ensureFailPanelV62();
-    const body = q62("swiftFailureAnalysisBodyV62");
-    if (!body) return;
+    const panel=ensureFailPanelV62();
+    if (!panel) return;
+    const info=sourceInfoV62();
+
     if (!failPerfV62) {
-      body.innerHTML = `<div class="swift-v62-sub">まだ kp_performance.json を読めません。Train Kp AI Corrector を実行してください。</div>`;
+      panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
+        <div class="swift-v62-sub">${info.sub}</div>
+        <div class="swift-v62-sub">${isIseeV62()
+          ? "forecast_verification.json をまだ読めません。Update ISEE Japan VTEC and AI を実行すると生成されます。"
+          : "kp_performance.json をまだ読めません。Train Kp AI Corrector を実行してください。"}</div>`;
       return;
     }
-    body.innerHTML = `<div class="swift-v62-grid">
-      <div>
-        <div class="swift-v62-title">閾値別 的中率</div>
-        ${renderThresholdTableV62()}
+
+    const s=failPerfV62.summary||{};
+    const latest = s.latest_isee_time_utc ? ` / ISEE最新=${s.latest_isee_time_utc}` : "";
+    const note = failPerfV62.verification_note ? `<div class="swift-v62-sub">${failPerfV62.verification_note}</div>` : "";
+
+    panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
+      <div class="swift-v62-sub">${info.sub}${latest}</div>
+      ${renderSummaryKpisV62()}
+      <div class="swift-v62-grid">
+        <div><div class="swift-v62-title">誤差閾値別</div>${renderThresholdTableV62()}</div>
+        <div><div class="swift-v62-title">Kp別 予報のずれ</div>${renderKpBinsV62()}
+          <div class="swift-v62-sub" style="margin-top:8px;">${worstKpTextV62()}</div>
+        </div>
       </div>
-      <div>
-        <div class="swift-v62-title">Kp別 的中率</div>
-        ${renderKpBinsV62()}
-        <div class="swift-v62-sub" style="margin-top:8px;">${worstKpTextV62()}</div>
-      </div>
-    </div>`;
+      ${renderRecentV62()}
+      ${note}`;
   }
 
   function bootV62() {
     injectStyleV62();
-    for (const delay of [800, 1500, 2600]) {
-      setTimeout(() => {
-        ensureFailPanelV62();
-        if (!failPerfV62) loadFailPerfV62();
-      }, delay);
+    for (const delay of [800,1500,2600]) {
+      setTimeout(()=>{ ensureFailPanelV62(); loadFailPerfV62(false); },delay);
     }
   }
 
