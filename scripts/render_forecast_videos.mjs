@@ -101,7 +101,7 @@ async function setForecastSource(page, source) {
     timeout: 60000,
   });
 
-  const result = await page.evaluate((wantedValue, sourceName) => {
+  const result = await page.evaluate(({ wantedValue, sourceName }) => {
     const sel = document.getElementById("swiftV52TecSource");
     if (!sel) return { ok: false, reason: "swiftV52TecSource missing" };
 
@@ -128,7 +128,7 @@ async function setForecastSource(page, source) {
     sel.value = opt.value;
     sel.dispatchEvent(new Event("change", { bubbles: true }));
     return { ok: true, value: opt.value, text: opt.textContent };
-  }, wanted, source);
+  }, { wantedValue: wanted, sourceName: source });
 
   if (!result.ok) throw new Error(JSON.stringify(result));
   console.log(`${source}: selected ${result.value} / ${result.text}`);
@@ -223,7 +223,7 @@ async function ensureVideoOverlay(page, source) {
 }
 
 async function moveSliderAndStamp(page, index, source) {
-  await page.evaluate((idx, sourceName) => {
+  await page.evaluate(({ idx, sourceName }) => {
     const slider = document.getElementById("timeSlider");
     if (!slider) throw new Error("timeSlider missing");
 
@@ -247,7 +247,7 @@ async function moveSliderAndStamp(page, index, source) {
       const label = sourceName === "isee" ? "ISEE Japan" : "NOAA / Global";
       stamp.textContent = `${label}\n${t}\nKpF ${kpF} / KpB ${kpB}`;
     }
-  }, index, source);
+  }, { idx: index, sourceName: source });
 
   await page.waitForTimeout(FRAME_DELAY_MS);
 }
@@ -383,7 +383,21 @@ function buildIndex(results) {
   );
 }
 
+function assertNoMultiArgEvaluateV833() {
+  // Playwright page.evaluate supports exactly one serializable argument.
+  // This catches accidental reintroduction of the v8.32 bug in simple cases.
+  const src = fs.readFileSync(new URL(import.meta.url), "utf8");
+  const suspicious = [
+    /\},\s*wanted\s*,\s*source\s*\)/,
+    /\},\s*index\s*,\s*source\s*\)/,
+  ];
+  for (const re of suspicious) {
+    if (re.test(src)) throw new Error(`v8.33 self-check failed: ${re}`);
+  }
+}
+
 async function main() {
+  assertNoMultiArgEvaluateV833();
   ensureDirs();
   pruneArchives();
 
