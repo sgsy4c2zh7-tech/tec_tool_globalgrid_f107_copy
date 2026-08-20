@@ -49,6 +49,20 @@ const HEATMAP_STYLE = {
   vdopTecLimits: [3, 5, 10, 20],
 };
 
+// Video-only map camera.
+// Global: Greenwich-centered world so Americas are on the LEFT and Japan/Asia on the RIGHT.
+// ISEE: tighter Japan focus than the full 24–46N / 122–150E source grid.
+const VIDEO_CAMERA = {
+  global: {
+    center: [12.0, 0.0],
+    zoom: 2,
+  },
+  isee: {
+    bounds: [[27.0, 125.0], [46.5, 148.0]],
+    padding: [18, 18],
+  },
+};
+
 const MOVIE_TYPES = [
   {
     key: "l1",
@@ -440,11 +454,9 @@ async function applyRequestedVisualStyle(page, movieType) {
 }
 
 async function enterRequestedMapView(page, source) {
-  // ISEE forecast already fits Japan bounds in its forecast installer.
-  // NOAA remains in global view. Then use the existing "地図だけ拡大" mode,
-  // which matches the supplied screenshots: full viewport map + bottom dock.
-  await page.evaluate((sourceName) => {
-    // Ensure any forced-fullscreen mode is off; map-focus is the requested UI.
+  // Use the existing "地図だけ拡大" UI, then explicitly set the Leaflet camera.
+  // The actual map variable in index.html is `map` (not `gMap`).
+  await page.evaluate(() => {
     document.body.classList.remove("swift-map-fs-on");
 
     if (typeof window.swiftEnterMapFocusMode === "function") {
@@ -453,22 +465,124 @@ async function enterRequestedMapView(page, source) {
       document.documentElement.classList.add("swift-map-focus");
     }
 
-    // If the ISEE Japan button/fitBounds has not run yet, trigger the public
-    // loader's focus path when available without re-running forecast.
-    if (sourceName === "isee") {
-      try {
-        if (typeof gMap !== "undefined" && gMap?.fitBounds) {
-          gMap.fitBounds([[24, 122], [46, 150]], { padding: [8, 8] });
-        }
-      } catch {}
-    }
+    try { window.dispatchEvent(new Event("resize")); } catch {}
+  });
 
+  // Let the CSS layout settle before Leaflet recalculates its viewport.
+  await page.waitForTimeout(450);
+
+  const camera = await page.evaluate(({ sourceName, cameraConfig }) => {
+    try {
+      // `map` is declared by the original page script as a global lexical binding.
+      if (typeof map === "undefined" || !map?.setView || !map?.invalidateSize) {
+        return {
+          ok: false,
+          reason: "Leaflet map variable is unavailable",
+        };
+      }
+
+      map.invalidateSize({ pan: false });
+
+      if (sourceName === "isee") {
+        const b = cameraConfig.isee.bounds;
+        map.fitBounds(b, {
+          padding: cameraConfig.isee.padding,
+          animate: false,
+        });
+      } else {
+        // Requested orientation:
+        // America on the left, Japan on the right.
+        // Longitude 0° centered gives the conventional -180..+180 world view.
+        map.setView(
+          cameraConfig.global.center,
+          cameraConfig.global.zoom,
+          { animate: false }
+        );
+      }
+
+      map.invalidateSize({ pan: false });
+
+      const c = map.getCenter?.();
+      return {
+        ok: true,
+        center: c ? [Number(c.lat.toFixed(3)), Number(c.lng.toFixed(3))] : null,
+        zoom: map.getZoom?.(),
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        reason: String(e?.stack || e?.message || e),
+      };
+    }
+  }, {
+    sourceName: source,
+    cameraConfig: VIDEO_CAMERA,
+  });
+
+  console.log(`${source}: video camera`, camera);
+
+  if (!camera.ok) {
+    throw new Error(`${source}: map camera failed: ${camera.reason}`);
+  }
+
+  // Force TEC/DOP canvas redraw after the map move.
+  await page.evaluate(() => {
     try { window.dispatchEvent(new Event("resize")); } catch {}
     try { window.requestDraw?.(); } catch {}
-  }, source);
+    try { window.swiftResetHeatmapCacheV830?.(); } catch {}
+  });
 
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(900);
 }
+
+async function reapplyVideoCamera(page, source) {
+  // Some metric switches can cause Leaflet/canvas layout changes.
+  // Reapply only the camera without toggling the UI mode again.
+  const result = await page.evaluate(({ sourceName, cameraConfig }) => {
+    try {
+      if (typeof map === "undefined" || !map?.setView || !map?.invalidateSize) {
+        return { ok: false, reason: "Leaflet map unavailable" };
+      }
+
+      map.invalidateSize({ pan: false });
+
+      if (sourceName === "isee") {
+        map.fitBounds(cameraConfig.isee.bounds, {
+          padding: cameraConfig.isee.padding,
+          animate: false,
+        });
+      } else {
+        map.setView(
+          cameraConfig.global.center,
+          cameraConfig.global.zoom,
+          { animate: false }
+        );
+      }
+
+      map.invalidateSize({ pan: false });
+      return {
+        ok: true,
+        center: [map.getCenter().lat, map.getCenter().lng],
+        zoom: map.getZoom(),
+      };
+    } catch (e) {
+      return { ok: false, reason: String(e?.message || e) };
+    }
+  }, {
+    sourceName: source,
+    cameraConfig: VIDEO_CAMERA,
+  });
+
+  if (!result.ok) {
+    throw new Error(`${source}: reapply map camera failed: ${result.reason}`);
+  }
+
+  await page.evaluate(() => {
+    try { window.requestDraw?.(); } catch {}
+  });
+  await page.waitForTimeout(450);
+}
+
 
 function captureIndices(min, max) {
   const total = Math.max(0, max - min + 1);
@@ -530,6 +644,7 @@ async function renderOneSource(browser, source, archiveDayDir, password) {
       console.log(`${source}/${movieType.key}: preparing visual style`);
 
       await applyRequestedVisualStyle(page, movieType);
+      await reapplyVideoCamera(page, source);
       await ensureVideoOverlay(page, source, movieType);
 
       const slider = page.locator("#timeSlider");
@@ -644,6 +759,8 @@ function buildIndex(results) {
       vertical_limits_m: HEATMAP_STYLE.vdopTecLimits,
       gps_constellation_only: true,
       vertical_metric: "GPS VDOP × L1 ionospheric error",
+      global_camera: VIDEO_CAMERA.global,
+      isee_camera: VIDEO_CAMERA.isee,
     },
     latest: {
       noaa_l1_error: "data/videos/latest/noaa_l1_error.mp4",
