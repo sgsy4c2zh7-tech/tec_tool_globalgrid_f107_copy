@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - uses: actions/setup-python@v5
         with:
@@ -46,13 +46,26 @@ jobs:
         run: |
           python3 -m http.server 8000 --directory docs > /tmp/swifttec-http.log 2>&1 &
           echo $! > /tmp/swifttec-http.pid
+
+          # Give Python a moment to bind, then poll without printing the normal
+          # first-connection-refused message.
+          sleep 1
           for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8000/ >/dev/null; then
+            if curl --silent --show-error --fail http://127.0.0.1:8000/ >/dev/null 2>&1; then
               echo "Local server ready"
               exit 0
             fi
+
+            if ! kill -0 "$(cat /tmp/swifttec-http.pid)" 2>/dev/null; then
+              echo "Local server process exited unexpectedly"
+              cat /tmp/swifttec-http.log || true
+              exit 1
+            fi
+
             sleep 1
           done
+
+          echo "Local server did not become ready"
           cat /tmp/swifttec-http.log || true
           exit 1
 
