@@ -1,0 +1,38 @@
+{
+  "version": "swifttec-forecast-video-v1",
+  "updated_utc": "2026-08-20T11:29:24.778Z",
+  "keep_days": 3,
+  "latest": {
+    "noaa": "data/videos/latest/noaa_forecast.mp4",
+    "isee": "data/videos/latest/isee_forecast.mp4"
+  },
+  "current_run": [
+    {
+      "source": "noaa",
+      "file": "data/videos/archive/2026-08-20/noaa_forecast.mp4",
+      "latest": "data/videos/latest/noaa_forecast.mp4",
+      "frames": 121,
+      "slider_min": 0,
+      "slider_max": 240,
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 1309781
+    },
+    {
+      "source": "isee",
+      "file": "data/videos/archive/2026-08-20/isee_forecast.mp4",
+      "latest": "data/videos/latest/isee_forecast.mp4",
+      "frames": 193,
+      "slider_min": 0,
+      "slider_max": 192,
+      "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
+      "bytes": 386085
+    }
+  ],
+  "archive": [
+    {
+      "day_utc": "2026-08-20",
+      "noaa": "data/videos/archive/2026-08-20/noaa_forecast.mp4",
+      "isee": "data/videos/archive/2026-08-20/isee_forecast.mp4"
+    }
+  ]
+}
