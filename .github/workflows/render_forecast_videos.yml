@@ -1,0 +1,92 @@
+name: Render Daily Forecast Videos
+
+on:
+  schedule:
+    # ISEE daily update (04:17 UTC) and Kp AI training (03:45 UTC) after they finish.
+    # 05:30 UTC = 14:30 JST
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render-daily-forecast-videos
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Start local SWIFT-TEC server
+        run: |
+          python3 -m http.server 8000 --directory docs > /tmp/swifttec-http.log 2>&1 &
+          echo $! > /tmp/swifttec-http.pid
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/ >/dev/null; then
+              echo "Local server ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/swifttec-http.log || true
+          exit 1
+
+      - name: Render NOAA + ISEE forecast videos
+        env:
+          SWIFTTEC_RENDER_URL: http://127.0.0.1:8000/
+          SWIFTTEC_VIDEO_KEEP_DAYS: "3"
+          SWIFTTEC_VIDEO_MAX_FRAMES: "240"
+          SWIFTTEC_VIDEO_FRAME_DELAY_MS: "120"
+          SWIFTTEC_VIDEO_FPS: "6.6667"
+          SWIFTTEC_PAGE_PASSWORD: ${{ secrets.SWIFTTEC_PAGE_PASSWORD }}
+        run: node scripts/render_forecast_videos.mjs
+
+      - name: Show generated videos
+        run: |
+          echo "--- videos ---"
+          find docs/data/videos -maxdepth 3 -type f -print -exec du -h {} \; | sort
+          echo "--- index ---"
+          cat docs/data/videos/index.json
+          echo "--- git status ---"
+          git status --short
+
+      - name: Commit rolling 3-day videos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A docs/data/videos
+
+          if git diff --cached --quiet; then
+            echo "No video changes to commit"
+            exit 0
+          fi
+
+          git commit -m "data: update daily NOAA and ISEE forecast videos"
+          git pull --rebase
+          git push
