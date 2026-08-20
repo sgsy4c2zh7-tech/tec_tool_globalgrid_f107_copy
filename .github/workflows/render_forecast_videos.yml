@@ -17,7 +17,7 @@ concurrency:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
@@ -69,13 +69,15 @@ jobs:
           cat /tmp/swifttec-http.log || true
           exit 1
 
-      - name: Render NOAA + ISEE forecast videos
+      - name: Render NOAA + ISEE L1 / GPS vertical-error videos
         env:
           SWIFTTEC_RENDER_URL: http://127.0.0.1:8000/
           SWIFTTEC_VIDEO_KEEP_DAYS: "3"
-          SWIFTTEC_VIDEO_MAX_FRAMES: "240"
-          SWIFTTEC_VIDEO_FRAME_DELAY_MS: "120"
-          SWIFTTEC_VIDEO_FPS: "6.6667"
+          SWIFTTEC_VIDEO_MAX_FRAMES: "600"
+          SWIFTTEC_VIDEO_FRAME_DELAY_MS: "80"
+          SWIFTTEC_VIDEO_FPS: "10"
+          SWIFTTEC_VIDEO_WIDTH: "1700"
+          SWIFTTEC_VIDEO_HEIGHT: "900"
           SWIFTTEC_PAGE_PASSWORD: ${{ secrets.SWIFTTEC_PAGE_PASSWORD }}
         run: node scripts/render_forecast_videos.mjs
 
