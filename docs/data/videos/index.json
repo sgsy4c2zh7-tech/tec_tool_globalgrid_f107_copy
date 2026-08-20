@@ -1,38 +1,159 @@
 {
-  "version": "swifttec-forecast-video-v1",
-  "updated_utc": "2026-08-20T11:29:24.778Z",
+  "version": "swifttec-forecast-video-v2",
+  "updated_utc": "2026-08-20T12:06:27.174Z",
   "keep_days": 3,
+  "visual": {
+    "viewport": {
+      "width": 1700,
+      "height": 900
+    },
+    "heatmap_alpha": 0.4,
+    "palette": "classic",
+    "reverse": false,
+    "colors": [
+      "#0066ff",
+      "#00e5e5",
+      "#ff9f0a",
+      "#ff0000"
+    ],
+    "gps_limits_m": [
+      3,
+      5,
+      10,
+      20
+    ],
+    "vertical_limits_m": [
+      3,
+      5,
+      10,
+      20
+    ],
+    "gps_constellation_only": true,
+    "vertical_metric": "GPS VDOP × L1 ionospheric error"
+  },
   "latest": {
-    "noaa": "data/videos/latest/noaa_forecast.mp4",
-    "isee": "data/videos/latest/isee_forecast.mp4"
+    "noaa_l1_error": "data/videos/latest/noaa_l1_error.mp4",
+    "noaa_vertical_error": "data/videos/latest/noaa_vertical_error.mp4",
+    "isee_l1_error": "data/videos/latest/isee_l1_error.mp4",
+    "isee_vertical_error": "data/videos/latest/isee_vertical_error.mp4"
   },
   "current_run": [
     {
       "source": "noaa",
-      "file": "data/videos/archive/2026-08-20/noaa_forecast.mp4",
-      "latest": "data/videos/latest/noaa_forecast.mp4",
-      "frames": 121,
+      "movie": "l1",
+      "metric": "GNSS L1 ionospheric error",
+      "map_mode": "gps",
+      "file": "data/videos/archive/2026-08-20/noaa_l1_error.mp4",
+      "latest": "data/videos/latest/noaa_l1_error.mp4",
+      "frames": 241,
       "slider_min": 0,
       "slider_max": 240,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 1309781
+      "bytes": 1344037
+    },
+    {
+      "source": "noaa",
+      "movie": "vertical",
+      "metric": "GPS VDOP × L1 vertical error",
+      "map_mode": "vdoptec",
+      "file": "data/videos/archive/2026-08-20/noaa_vertical_error.mp4",
+      "latest": "data/videos/latest/noaa_vertical_error.mp4",
+      "frames": 361,
+      "slider_min": 0,
+      "slider_max": 720,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 5071378
     },
     {
       "source": "isee",
-      "file": "data/videos/archive/2026-08-20/isee_forecast.mp4",
-      "latest": "data/videos/latest/isee_forecast.mp4",
+      "movie": "l1",
+      "metric": "GNSS L1 ionospheric error",
+      "map_mode": "gps",
+      "file": "data/videos/archive/2026-08-20/isee_l1_error.mp4",
+      "latest": "data/videos/latest/isee_l1_error.mp4",
       "frames": 193,
       "slider_min": 0,
       "slider_max": 192,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
       "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
-      "bytes": 386085
+      "bytes": 182689
+    },
+    {
+      "source": "isee",
+      "movie": "vertical",
+      "metric": "GPS VDOP × L1 vertical error",
+      "map_mode": "vdoptec",
+      "file": "data/videos/archive/2026-08-20/isee_vertical_error.mp4",
+      "latest": "data/videos/latest/isee_vertical_error.mp4",
+      "frames": 577,
+      "slider_min": 0,
+      "slider_max": 576,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
+      "bytes": 794994
     }
   ],
   "archive": [
     {
       "day_utc": "2026-08-20",
-      "noaa": "data/videos/archive/2026-08-20/noaa_forecast.mp4",
-      "isee": "data/videos/archive/2026-08-20/isee_forecast.mp4"
+      "noaa_l1_error": "data/videos/archive/2026-08-20/noaa_l1_error.mp4",
+      "noaa_vertical_error": "data/videos/archive/2026-08-20/noaa_vertical_error.mp4",
+      "isee_l1_error": "data/videos/archive/2026-08-20/isee_l1_error.mp4",
+      "isee_vertical_error": "data/videos/archive/2026-08-20/isee_vertical_error.mp4"
     }
   ]
 }
