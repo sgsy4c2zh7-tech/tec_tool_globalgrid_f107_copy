@@ -663,7 +663,6 @@ function buildIndex(results) {
 }
 
 async function main() {
-  assertNoMultiArgEvaluateV833();
   ensureDirs();
   pruneArchives();
 
