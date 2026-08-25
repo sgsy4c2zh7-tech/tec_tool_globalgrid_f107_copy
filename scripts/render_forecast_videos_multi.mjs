@@ -47,7 +47,7 @@ const HEATMAP_STYLE = {
 };
 
 // Video camera presets.
-// Existing views plus the three newly requested regional views.
+// Keep the existing zoom level; only the map positions/bounds are shifted.
 const VIDEO_VIEWS = [
   // NOAA East Asia Wide
   {
@@ -56,7 +56,7 @@ const VIDEO_VIEWS = [
     label: "East Asia Wide",
     camera: {
       type: "fitBounds",
-      bounds: [[-10.0, 70.0], [60.0, 165.0]],
+      bounds: [[-5.0, 70.0], [65.0, 165.0]],
       padding: [12, 12],
       zoomDelta: 1,
     },
@@ -70,7 +70,7 @@ const VIDEO_VIEWS = [
     label: "Japan Close",
     camera: {
       type: "fitBounds",
-      bounds: [[22.0, 118.0], [47.0, 151.0]],
+      bounds: [[14.0, 118.0], [39.0, 151.0]],
       padding: [10, 10],
       zoomDelta: 1,
     },
@@ -84,7 +84,7 @@ const VIDEO_VIEWS = [
     label: "Philippines / South China Sea",
     camera: {
       type: "fitBounds",
-      bounds: [[-11.0, 103.0], [29.0, 146.0]],
+      bounds: [[-3.0, 103.0], [37.0, 146.0]],
       padding: [10, 10],
       zoomDelta: 1,
     },
