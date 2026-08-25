@@ -56,7 +56,7 @@ const VIDEO_VIEWS = [
     label: "East Asia Wide",
     camera: {
       type: "fitBounds",
-      bounds: [[-5.0, 70.0], [65.0, 165.0]],
+      bounds: [[-10.0, 70.0], [60.0, 165.0]],
       padding: [12, 12],
       zoomDelta: 1,
     },
@@ -70,7 +70,7 @@ const VIDEO_VIEWS = [
     label: "Japan Close",
     camera: {
       type: "fitBounds",
-      bounds: [[14.0, 118.0], [39.0, 151.0]],
+      bounds: [[20.0, 118.0], [45.0, 151.0]],
       padding: [10, 10],
       zoomDelta: 1,
     },
@@ -84,7 +84,7 @@ const VIDEO_VIEWS = [
     label: "Philippines / South China Sea",
     camera: {
       type: "fitBounds",
-      bounds: [[-3.0, 103.0], [37.0, 146.0]],
+      bounds: [[-7.0, 103.0], [33.0, 146.0]],
       padding: [10, 10],
       zoomDelta: 1,
     },
