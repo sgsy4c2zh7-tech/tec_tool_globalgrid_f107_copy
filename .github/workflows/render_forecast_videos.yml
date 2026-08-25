@@ -17,7 +17,7 @@ concurrency:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v4
@@ -69,10 +69,10 @@ jobs:
           cat /tmp/swifttec-http.log || true
           exit 1
 
-      - name: Render NOAA + ISEE L1 / GPS vertical-error videos
+      - name: Render NOAA + ISEE multi-region L1 / GPS vertical-error videos
         env:
           SWIFTTEC_RENDER_URL: http://127.0.0.1:8000/
-          SWIFTTEC_VIDEO_KEEP_DAYS: "3"
+          SWIFTTEC_VIDEO_KEEP_DAYS: "1"
           SWIFTTEC_VIDEO_MAX_FRAMES: "600"
           SWIFTTEC_VIDEO_FRAME_DELAY_MS: "80"
           SWIFTTEC_VIDEO_FPS: "10"
@@ -84,13 +84,13 @@ jobs:
       - name: Show generated videos
         run: |
           echo "--- videos ---"
-          find docs/data/videos -maxdepth 3 -type f -print -exec du -h {} \; | sort
+          find docs/data/videos -maxdepth 4 -type f -print -exec du -h {} \; | sort
           echo "--- index ---"
           cat docs/data/videos/index.json
           echo "--- git status ---"
           git status --short
 
-      - name: Commit rolling 3-day videos
+      - name: Commit rolling 1-day multi-region videos
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -102,6 +102,6 @@ jobs:
             exit 0
           fi
 
-          git commit -m "data: update daily NOAA and ISEE forecast videos"
+          git commit -m "data: update NOAA/ISEE multi-region forecast videos"
           git pull --rebase
           git push
