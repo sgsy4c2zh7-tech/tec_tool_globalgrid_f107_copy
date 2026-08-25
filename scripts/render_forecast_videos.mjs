@@ -1,17 +1,13 @@
 #!/usr/bin/env node
 /**
- * SWIFT-TEC daily forecast video renderer.
+ * SWIFT-TEC scheduled forecast video renderer — multi-region edition.
  *
- * Produces:
- *   docs/data/videos/latest/noaa_l1_error.mp4
- *   docs/data/videos/latest/noaa_vertical_error.mp4
- *   docs/data/videos/latest/isee_l1_error.mp4
- *   docs/data/videos/latest/isee_vertical_error.mp4
- *   docs/data/videos/archive/YYYY-MM-DD/<same four files>
- *   docs/data/videos/index.json
+ * Runs at 09:00 and 14:00 JST.
+ * Retention: one JST calendar day. Both runs are kept.
  *
- * Retention:
- *   current UTC day + previous 2 UTC days = 3 days total.
+ * Each configured view generates:
+ *   - TEC-based GNSS L1 ionospheric error [m]
+ *   - GPS-only VDOP × L1 vertical error [m]
  */
 
 import fs from "node:fs";
@@ -30,7 +26,7 @@ const BASE_URL = process.env.SWIFTTEC_RENDER_URL || "http://127.0.0.1:8000/";
 const MAX_CAPTURE_FRAMES = Math.max(24, Number(process.env.SWIFTTEC_VIDEO_MAX_FRAMES || 600));
 const FRAME_DELAY_MS = Math.max(30, Number(process.env.SWIFTTEC_VIDEO_FRAME_DELAY_MS || 80));
 const VIDEO_FPS = Math.max(1, Number(process.env.SWIFTTEC_VIDEO_FPS || 10));
-const KEEP_DAYS = Math.max(1, Number(process.env.SWIFTTEC_VIDEO_KEEP_DAYS || 3));
+const KEEP_DAYS = Math.max(1, Number(process.env.SWIFTTEC_VIDEO_KEEP_DAYS || 1));
 
 const VIDEO_VIEWPORT = {
   width: Math.max(1280, Number(process.env.SWIFTTEC_VIDEO_WIDTH || 1700)),
@@ -49,19 +45,72 @@ const HEATMAP_STYLE = {
   vdopTecLimits: [3, 5, 10, 20],
 };
 
-// Video-only map camera.
-// Global: Greenwich-centered world so Americas are on the LEFT and Japan/Asia on the RIGHT.
-// ISEE: tighter Japan focus than the full 24–46N / 122–150E source grid.
-const VIDEO_CAMERA = {
-  global: {
-    center: [12.0, 0.0],
-    zoom: 2,
+// Video camera presets.
+// Existing views plus the three newly requested regional views.
+const VIDEO_VIEWS = [
+  {
+    key: "global",
+    sources: ["noaa"],
+    label: "Global",
+    camera: {
+      type: "setView",
+      center: [12.0, 0.0],
+      zoom: 2,
+    },
+    thresholds: [3, 5, 10, 20],
   },
-  isee: {
-    bounds: [[27.0, 125.0], [46.5, 148.0]],
-    padding: [18, 18],
+  {
+    key: "japan",
+    sources: ["isee"],
+    label: "Japan",
+    camera: {
+      type: "fitBounds",
+      bounds: [[27.0, 125.0], [46.5, 148.0]],
+      padding: [18, 18],
+    },
+    thresholds: [3, 5, 10, 20],
   },
-};
+
+  // Added view 1: NOAA, roughly the first screenshot.
+  {
+    key: "east_asia",
+    sources: ["noaa"],
+    label: "East Asia Wide",
+    camera: {
+      type: "fitBounds",
+      bounds: [[-10.0, 70.0], [60.0, 165.0]],
+      padding: [12, 12],
+    },
+    thresholds: [3, 5, 10, 20],
+  },
+
+  // Added view 2: NOAA and ISEE, roughly the second screenshot.
+  {
+    key: "japan_close",
+    sources: ["noaa", "isee"],
+    label: "Japan Close",
+    camera: {
+      type: "fitBounds",
+      bounds: [[22.0, 118.0], [47.0, 151.0]],
+      padding: [10, 10],
+    },
+    thresholds: [3, 5, 10, 20],
+  },
+
+  // Added view 3: NOAA, roughly the third screenshot.
+  // Same colors and opacity. Only breakpoints change to 5/10/20/30.
+  {
+    key: "philippines",
+    sources: ["noaa"],
+    label: "Philippines / South China Sea",
+    camera: {
+      type: "fitBounds",
+      bounds: [[-11.0, 103.0], [29.0, 146.0]],
+      padding: [10, 10],
+    },
+    thresholds: [5, 10, 20, 30],
+  },
+];
 
 const MOVIE_TYPES = [
   {
@@ -88,6 +137,42 @@ function utcDayString(d = new Date()) {
   return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
+function jstParts(d = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(d);
+
+  const v = {};
+  for (const p of parts) {
+    if (p.type !== "literal") v[p.type] = p.value;
+  }
+
+  return {
+    day: `${v.year}-${v.month}-${v.day}`,
+    hhmm: `${v.hour}${v.minute}`,
+  };
+}
+
+function currentJstRunSlot(d = new Date()) {
+  const p = jstParts(d);
+  const hh = Number(p.hhmm.slice(0, 2));
+  const mm = Number(p.hhmm.slice(2, 4));
+  const total = hh * 60 + mm;
+
+  // GitHub cron can start a few minutes late.
+  if (Math.abs(total - 9 * 60) <= 30) return { day: p.day, slot: "0900" };
+  if (Math.abs(total - 14 * 60) <= 30) return { day: p.day, slot: "1400" };
+
+  // Manual workflow_dispatch: keep its real JST time.
+  return { day: p.day, slot: p.hhmm };
+}
+
 function parsePagePassword() {
   if (process.env.SWIFTTEC_PAGE_PASSWORD) return process.env.SWIFTTEC_PAGE_PASSWORD;
   try {
@@ -106,20 +191,27 @@ function ensureDirs() {
 
 function pruneArchives(now = new Date()) {
   ensureDirs();
-  const cutoff = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate() - (KEEP_DAYS - 1),
-    0, 0, 0, 0
-  ));
+
+  // Retention is counted in JST calendar days.
+  // KEEP_DAYS=1 means keep today's folder, including BOTH 0900 and 1400.
+  const today = jstParts(now).day;
+  const [y, m, d] = today.split("-").map(Number);
+
+  const keep = new Set();
+  for (let i = 0; i < KEEP_DAYS; i++) {
+    const x = new Date(Date.UTC(y, m - 1, d - i, 12, 0, 0));
+    keep.add(utcDayString(x));
+  }
 
   for (const name of fs.readdirSync(ARCHIVE_DIR)) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
-    const d = new Date(`${name}T00:00:00Z`);
-    if (!Number.isFinite(d.getTime())) continue;
-    if (d < cutoff) {
-      fs.rmSync(path.join(ARCHIVE_DIR, name), { recursive: true, force: true });
-      console.log(`Pruned old video archive: ${name}`);
+
+    if (!keep.has(name)) {
+      fs.rmSync(
+        path.join(ARCHIVE_DIR, name),
+        { recursive: true, force: true }
+      );
+      console.log(`Pruned old JST video archive: ${name}`);
     }
   }
 }
@@ -240,8 +332,8 @@ async function runForecast(page, source) {
   return state;
 }
 
-async function ensureVideoOverlay(page, source, movieType) {
-  await page.evaluate(({ sourceName, movieLabel }) => {
+async function ensureVideoOverlay(page, source, movieType, view) {
+  await page.evaluate(({ sourceName, movieLabel, viewLabel }) => {
     const map = document.getElementById("tecMap");
     if (!map) return;
 
@@ -269,11 +361,16 @@ async function ensureVideoOverlay(page, source, movieType) {
 
     el.dataset.source = sourceName;
     el.dataset.movieLabel = movieLabel;
-  }, { sourceName: source, movieLabel: movieType.label });
+    el.dataset.viewLabel = viewLabel;
+  }, {
+    sourceName: source,
+    movieLabel: movieType.label,
+    viewLabel: view.label,
+  });
 }
 
-async function moveSliderAndStamp(page, index, source, movieType) {
-  await page.evaluate(({ idx, sourceName, movieLabel }) => {
+async function moveSliderAndStamp(page, index, source, movieType, view) {
+  await page.evaluate(({ idx, sourceName, movieLabel, viewLabel }) => {
     const slider = document.getElementById("timeSlider");
     if (!slider) throw new Error("timeSlider missing");
 
@@ -300,12 +397,13 @@ async function moveSliderAndStamp(page, index, source, movieType) {
 
       const label = sourceName === "isee" ? "ISEE Japan" : "NOAA / Global";
       stamp.textContent =
-        `${label} / ${movieLabel}\n${t}\nKpF ${kpF} / KpB ${kpB}`;
+        `${label} / ${viewLabel} / ${movieLabel}\n${t}\nKpF ${kpF} / KpB ${kpB}`;
     }
   }, {
     idx: index,
     sourceName: source,
     movieLabel: movieType.label,
+    viewLabel: view.label,
   });
 
   await page.waitForTimeout(FRAME_DELAY_MS);
@@ -359,10 +457,8 @@ async function configureGpsOnlyDop(page) {
   await page.waitForTimeout(800);
 }
 
-async function applyRequestedVisualStyle(page, movieType) {
-  const limits = movieType.mapMode === "vdoptec"
-    ? HEATMAP_STYLE.vdopTecLimits
-    : HEATMAP_STYLE.gpsLimits;
+async function applyRequestedVisualStyle(page, movieType, view) {
+  const limits = [...view.thresholds];
 
   await page.evaluate(({ mapMode, style, limits }) => {
     // 1) Heatmap opacity
@@ -453,9 +549,70 @@ async function applyRequestedVisualStyle(page, movieType) {
   await page.waitForTimeout(700);
 }
 
-async function enterRequestedMapView(page, source) {
-  // Use the existing "地図だけ拡大" UI, then explicitly set the Leaflet camera.
-  // The actual map variable in index.html is `map` (not `gMap`).
+async function applyLeafletVideoCamera(page, view) {
+  const result = await page.evaluate(({ viewKey, camera }) => {
+    try {
+      if (typeof map === "undefined" || !map?.setView || !map?.invalidateSize) {
+        return {
+          ok: false,
+          reason: "Leaflet map variable is unavailable",
+        };
+      }
+
+      map.invalidateSize({ pan: false });
+
+      if (camera.type === "fitBounds") {
+        map.fitBounds(camera.bounds, {
+          padding: camera.padding || [10, 10],
+          animate: false,
+        });
+      } else {
+        map.setView(
+          camera.center,
+          camera.zoom,
+          { animate: false }
+        );
+      }
+
+      map.invalidateSize({ pan: false });
+
+      const center = map.getCenter();
+      return {
+        ok: true,
+        view: viewKey,
+        center: [
+          Number(center.lat.toFixed(3)),
+          Number(center.lng.toFixed(3)),
+        ],
+        zoom: map.getZoom(),
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        reason: String(e?.stack || e?.message || e),
+      };
+    }
+  }, {
+    viewKey: view.key,
+    camera: view.camera,
+  });
+
+  if (!result.ok) {
+    throw new Error(`${view.key}: map camera failed: ${result.reason}`);
+  }
+
+  console.log(`video camera ${view.key}:`, result);
+
+  await page.evaluate(() => {
+    try { window.dispatchEvent(new Event("resize")); } catch {}
+    try { window.requestDraw?.(); } catch {}
+    try { window.swiftResetHeatmapCacheV830?.(); } catch {}
+  });
+
+  await page.waitForTimeout(550);
+}
+
+async function enterRequestedMapView(page, view) {
   await page.evaluate(() => {
     document.body.classList.remove("swift-map-fs-on");
 
@@ -468,119 +625,12 @@ async function enterRequestedMapView(page, source) {
     try { window.dispatchEvent(new Event("resize")); } catch {}
   });
 
-  // Let the CSS layout settle before Leaflet recalculates its viewport.
   await page.waitForTimeout(450);
-
-  const camera = await page.evaluate(({ sourceName, cameraConfig }) => {
-    try {
-      // `map` is declared by the original page script as a global lexical binding.
-      if (typeof map === "undefined" || !map?.setView || !map?.invalidateSize) {
-        return {
-          ok: false,
-          reason: "Leaflet map variable is unavailable",
-        };
-      }
-
-      map.invalidateSize({ pan: false });
-
-      if (sourceName === "isee") {
-        const b = cameraConfig.isee.bounds;
-        map.fitBounds(b, {
-          padding: cameraConfig.isee.padding,
-          animate: false,
-        });
-      } else {
-        // Requested orientation:
-        // America on the left, Japan on the right.
-        // Longitude 0° centered gives the conventional -180..+180 world view.
-        map.setView(
-          cameraConfig.global.center,
-          cameraConfig.global.zoom,
-          { animate: false }
-        );
-      }
-
-      map.invalidateSize({ pan: false });
-
-      const c = map.getCenter?.();
-      return {
-        ok: true,
-        center: c ? [Number(c.lat.toFixed(3)), Number(c.lng.toFixed(3))] : null,
-        zoom: map.getZoom?.(),
-      };
-    } catch (e) {
-      return {
-        ok: false,
-        reason: String(e?.stack || e?.message || e),
-      };
-    }
-  }, {
-    sourceName: source,
-    cameraConfig: VIDEO_CAMERA,
-  });
-
-  console.log(`${source}: video camera`, camera);
-
-  if (!camera.ok) {
-    throw new Error(`${source}: map camera failed: ${camera.reason}`);
-  }
-
-  // Force TEC/DOP canvas redraw after the map move.
-  await page.evaluate(() => {
-    try { window.dispatchEvent(new Event("resize")); } catch {}
-    try { window.requestDraw?.(); } catch {}
-    try { window.swiftResetHeatmapCacheV830?.(); } catch {}
-  });
-
-  await page.waitForTimeout(900);
+  await applyLeafletVideoCamera(page, view);
 }
 
-async function reapplyVideoCamera(page, source) {
-  // Some metric switches can cause Leaflet/canvas layout changes.
-  // Reapply only the camera without toggling the UI mode again.
-  const result = await page.evaluate(({ sourceName, cameraConfig }) => {
-    try {
-      if (typeof map === "undefined" || !map?.setView || !map?.invalidateSize) {
-        return { ok: false, reason: "Leaflet map unavailable" };
-      }
-
-      map.invalidateSize({ pan: false });
-
-      if (sourceName === "isee") {
-        map.fitBounds(cameraConfig.isee.bounds, {
-          padding: cameraConfig.isee.padding,
-          animate: false,
-        });
-      } else {
-        map.setView(
-          cameraConfig.global.center,
-          cameraConfig.global.zoom,
-          { animate: false }
-        );
-      }
-
-      map.invalidateSize({ pan: false });
-      return {
-        ok: true,
-        center: [map.getCenter().lat, map.getCenter().lng],
-        zoom: map.getZoom(),
-      };
-    } catch (e) {
-      return { ok: false, reason: String(e?.message || e) };
-    }
-  }, {
-    sourceName: source,
-    cameraConfig: VIDEO_CAMERA,
-  });
-
-  if (!result.ok) {
-    throw new Error(`${source}: reapply map camera failed: ${result.reason}`);
-  }
-
-  await page.evaluate(() => {
-    try { window.requestDraw?.(); } catch {}
-  });
-  await page.waitForTimeout(450);
+async function reapplyVideoCamera(page, view) {
+  await applyLeafletVideoCamera(page, view);
 }
 
 
@@ -632,90 +682,108 @@ async function renderOneSource(browser, source, archiveDayDir, password) {
     await setForecastSource(page, source);
     const forecastState = await runForecast(page, source);
 
-    // GPS-only constellation is used for the vertical DOP×L1 movie.
-    // Loading it once also makes DOP status available in the dock.
+    // GPS-only constellation for VDOP × L1 vertical-error movies.
     await configureGpsOnlyDop(page);
 
-    await enterRequestedMapView(page, source);
+    const sourceViews = VIDEO_VIEWS.filter(v => v.sources.includes(source));
+    if (!sourceViews.length) {
+      throw new Error(`${source}: no configured video views`);
+    }
 
     const outputs = [];
+    let focusModeEntered = false;
 
-    for (const movieType of MOVIE_TYPES) {
-      console.log(`${source}/${movieType.key}: preparing visual style`);
-
-      await applyRequestedVisualStyle(page, movieType);
-      await reapplyVideoCamera(page, source);
-      await ensureVideoOverlay(page, source, movieType);
-
-      const slider = page.locator("#timeSlider");
-      const bounds = await slider.evaluate(el => ({
-        min: Number(el.min || 0),
-        max: Number(el.max || 0),
-      }));
-
-      const indices = captureIndices(bounds.min, bounds.max);
-      if (indices.length < 2) {
-        throw new Error(`${source}/${movieType.key}: too few frames (${indices.length})`);
+    for (const view of sourceViews) {
+      if (!focusModeEntered) {
+        await enterRequestedMapView(page, view);
+        focusModeEntered = true;
+      } else {
+        await reapplyVideoCamera(page, view);
       }
 
-      const tmp = fs.mkdtempSync(
-        path.join(os.tmpdir(), `swifttec-${source}-${movieType.key}-`)
-      );
+      for (const movieType of MOVIE_TYPES) {
+        console.log(`${source}/${view.key}/${movieType.key}: prepare`);
 
-      console.log(
-        `${source}/${movieType.key}: capture ${indices.length} frames ` +
-        `(slider ${bounds.min}..${bounds.max}, viewport ` +
-        `${VIDEO_VIEWPORT.width}x${VIDEO_VIEWPORT.height})`
-      );
+        await applyRequestedVisualStyle(page, movieType, view);
+        await reapplyVideoCamera(page, view);
+        await ensureVideoOverlay(page, source, movieType, view);
 
-      let frameNo = 0;
-      for (const idx of indices) {
-        await moveSliderAndStamp(page, idx, source, movieType);
+        const slider = page.locator("#timeSlider");
+        const bounds = await slider.evaluate(el => ({
+          min: Number(el.min || 0),
+          max: Number(el.max || 0),
+        }));
 
-        const framePath = path.join(
-          tmp,
-          `${String(frameNo).padStart(5, "0")}.png`
+        const indices = captureIndices(bounds.min, bounds.max);
+        if (indices.length < 2) {
+          throw new Error(
+            `${source}/${view.key}/${movieType.key}: too few frames ` +
+            `(${indices.length})`
+          );
+        }
+
+        const tmp = fs.mkdtempSync(
+          path.join(
+            os.tmpdir(),
+            `swifttec-${source}-${view.key}-${movieType.key}-`
+          )
         );
 
-        // Capture the full map-focus viewport, including the large UTC label,
-        // legend and bottom timeline dock shown in the user's screenshots.
-        await page.screenshot({
-          path: framePath,
-          type: "png",
-          fullPage: false,
+        console.log(
+          `${source}/${view.key}/${movieType.key}: ` +
+          `${indices.length} frames`
+        );
+
+        let frameNo = 0;
+        for (const idx of indices) {
+          await moveSliderAndStamp(page, idx, source, movieType, view);
+
+          const framePath = path.join(
+            tmp,
+            `${String(frameNo).padStart(5, "0")}.png`
+          );
+
+          await page.screenshot({
+            path: framePath,
+            type: "png",
+            fullPage: false,
+          });
+
+          frameNo++;
+        }
+
+        const fileName =
+          `${source}_${view.key}_${movieType.suffix}.mp4`;
+
+        const archiveOutput = path.join(archiveDayDir, fileName);
+        ffmpegEncode(tmp, archiveOutput);
+        fs.rmSync(tmp, { recursive: true, force: true });
+
+        const latestOutput = path.join(LATEST_DIR, fileName);
+        fs.copyFileSync(archiveOutput, latestOutput);
+
+        outputs.push({
+          source,
+          view: view.key,
+          view_label: view.label,
+          camera: view.camera,
+          movie: movieType.key,
+          metric: movieType.label,
+          map_mode: movieType.mapMode,
+          file: path.relative(DOCS, archiveOutput).replaceAll("\\", "/"),
+          latest: path.relative(DOCS, latestOutput).replaceAll("\\", "/"),
+          frames: indices.length,
+          slider_min: bounds.min,
+          slider_max: bounds.max,
+          heatmap_alpha: HEATMAP_STYLE.alpha,
+          palette: HEATMAP_STYLE.palette,
+          thresholds_m: [...view.thresholds],
+          colors: HEATMAP_STYLE.colors,
+          gps_only_for_vertical_error: movieType.key === "vertical",
+          status: forecastState.status || "",
+          bytes: fs.statSync(archiveOutput).size,
         });
-
-        frameNo++;
       }
-
-      const fileName = `${source}_${movieType.suffix}.mp4`;
-      const archiveOutput = path.join(archiveDayDir, fileName);
-      ffmpegEncode(tmp, archiveOutput);
-      fs.rmSync(tmp, { recursive: true, force: true });
-
-      const latestOutput = path.join(LATEST_DIR, fileName);
-      fs.copyFileSync(archiveOutput, latestOutput);
-
-      outputs.push({
-        source,
-        movie: movieType.key,
-        metric: movieType.label,
-        map_mode: movieType.mapMode,
-        file: path.relative(DOCS, archiveOutput).replaceAll("\\", "/"),
-        latest: path.relative(DOCS, latestOutput).replaceAll("\\", "/"),
-        frames: indices.length,
-        slider_min: bounds.min,
-        slider_max: bounds.max,
-        heatmap_alpha: HEATMAP_STYLE.alpha,
-        palette: HEATMAP_STYLE.palette,
-        thresholds_m:
-          movieType.mapMode === "vdoptec"
-            ? HEATMAP_STYLE.vdopTecLimits
-            : HEATMAP_STYLE.gpsLimits,
-        colors: HEATMAP_STYLE.colors,
-        status: forecastState.status || "",
-        bytes: fs.statSync(archiveOutput).size,
-      });
     }
 
     return outputs;
@@ -724,52 +792,68 @@ async function renderOneSource(browser, source, archiveDayDir, password) {
   }
 }
 
-function buildIndex(results) {
-  const fileFor = (day, source, suffix) => {
-    const p = path.join(ARCHIVE_DIR, day, `${source}_${suffix}.mp4`);
-    return fs.existsSync(p)
-      ? `data/videos/archive/${day}/${source}_${suffix}.mp4`
-      : null;
-  };
 
-  const days = fs.readdirSync(ARCHIVE_DIR)
-    .filter(name => /^\d{4}-\d{2}-\d{2}$/.test(name))
-    .sort()
-    .reverse()
-    .slice(0, KEEP_DAYS)
-    .map(day => ({
-      day_utc: day,
-      noaa_l1_error: fileFor(day, "noaa", "l1_error"),
-      noaa_vertical_error: fileFor(day, "noaa", "vertical_error"),
-      isee_l1_error: fileFor(day, "isee", "l1_error"),
-      isee_vertical_error: fileFor(day, "isee", "vertical_error"),
-    }));
+function buildIndex(results) {
+  const run = currentJstRunSlot();
+  const dayDir = path.join(ARCHIVE_DIR, run.day);
+
+  const archiveRunsToday = [];
+
+  if (fs.existsSync(dayDir)) {
+    for (const slot of fs.readdirSync(dayDir).sort()) {
+      const slotDir = path.join(dayDir, slot);
+      if (!fs.statSync(slotDir).isDirectory()) continue;
+
+      const files = fs.readdirSync(slotDir)
+        .filter(name => name.endsWith(".mp4"))
+        .sort()
+        .map(name =>
+          `data/videos/archive/${run.day}/${slot}/${name}`
+        );
+
+      archiveRunsToday.push({
+        day_jst: run.day,
+        slot_jst: slot,
+        files,
+      });
+    }
+  }
+
+  const latest = {};
+  for (const view of VIDEO_VIEWS) {
+    for (const source of view.sources) {
+      for (const movieType of MOVIE_TYPES) {
+        const fileName =
+          `${source}_${view.key}_${movieType.suffix}.mp4`;
+
+        latest[`${source}_${view.key}_${movieType.key}`] =
+          `data/videos/latest/${fileName}`;
+      }
+    }
+  }
 
   const doc = {
-    version: "swifttec-forecast-video-v2",
+    version: "swifttec-forecast-video-v3-multiregion",
     updated_utc: new Date().toISOString(),
-    keep_days: KEEP_DAYS,
+    schedule_jst: ["09:00", "14:00"],
+    keep_days_jst: KEEP_DAYS,
+    current_jst_day: run.day,
+    current_run_slot_jst: run.slot,
+
     visual: {
       viewport: VIDEO_VIEWPORT,
       heatmap_alpha: HEATMAP_STYLE.alpha,
       palette: HEATMAP_STYLE.palette,
       reverse: HEATMAP_STYLE.reverse,
       colors: HEATMAP_STYLE.colors,
-      gps_limits_m: HEATMAP_STYLE.gpsLimits,
-      vertical_limits_m: HEATMAP_STYLE.vdopTecLimits,
-      gps_constellation_only: true,
+      gps_constellation_only_for_vertical_error: true,
       vertical_metric: "GPS VDOP × L1 ionospheric error",
-      global_camera: VIDEO_CAMERA.global,
-      isee_camera: VIDEO_CAMERA.isee,
+      views: VIDEO_VIEWS,
     },
-    latest: {
-      noaa_l1_error: "data/videos/latest/noaa_l1_error.mp4",
-      noaa_vertical_error: "data/videos/latest/noaa_vertical_error.mp4",
-      isee_l1_error: "data/videos/latest/isee_l1_error.mp4",
-      isee_vertical_error: "data/videos/latest/isee_vertical_error.mp4",
-    },
+
+    latest,
     current_run: results,
-    archive: days,
+    archive_runs_today: archiveRunsToday,
   };
 
   fs.writeFileSync(
@@ -779,13 +863,22 @@ function buildIndex(results) {
   );
 }
 
+
 async function main() {
   ensureDirs();
   pruneArchives();
 
-  const today = utcDayString();
-  const archiveDayDir = path.join(ARCHIVE_DIR, today);
+  const run = currentJstRunSlot();
+  const archiveDayDir = path.join(
+    ARCHIVE_DIR,
+    run.day,
+    run.slot
+  );
   fs.mkdirSync(archiveDayDir, { recursive: true });
+
+  console.log(
+    `JST video run: ${run.day} ${run.slot}; retention=${KEEP_DAYS} day(s)`
+  );
 
   const password = parsePagePassword();
 
