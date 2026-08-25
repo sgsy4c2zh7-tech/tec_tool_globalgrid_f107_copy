@@ -1,7 +1,13 @@
 {
-  "version": "swifttec-forecast-video-v2",
-  "updated_utc": "2026-08-25T05:36:52.173Z",
-  "keep_days": 3,
+  "version": "swifttec-forecast-video-v3-multiregion",
+  "updated_utc": "2026-08-25T06:42:33.402Z",
+  "schedule_jst": [
+    "09:00",
+    "14:00"
+  ],
+  "keep_days_jst": 1,
+  "current_jst_day": "2026-08-25",
+  "current_run_slot_jst": "1542",
   "visual": {
     "viewport": {
       "width": 1700,
@@ -16,58 +22,185 @@
       "#ff9f0a",
       "#ff0000"
     ],
-    "gps_limits_m": [
-      3,
-      5,
-      10,
-      20
-    ],
-    "vertical_limits_m": [
-      3,
-      5,
-      10,
-      20
-    ],
-    "gps_constellation_only": true,
+    "gps_constellation_only_for_vertical_error": true,
     "vertical_metric": "GPS VDOP × L1 ionospheric error",
-    "global_camera": {
-      "center": [
-        12,
-        0
-      ],
-      "zoom": 2
-    },
-    "isee_camera": {
-      "bounds": [
-        [
-          27,
-          125
+    "views": [
+      {
+        "key": "global",
+        "sources": [
+          "noaa"
         ],
-        [
-          46.5,
-          148
+        "label": "Global",
+        "camera": {
+          "type": "setView",
+          "center": [
+            12,
+            0
+          ],
+          "zoom": 2
+        },
+        "thresholds": [
+          3,
+          5,
+          10,
+          20
         ]
-      ],
-      "padding": [
-        18,
-        18
-      ]
-    }
+      },
+      {
+        "key": "japan",
+        "sources": [
+          "isee"
+        ],
+        "label": "Japan",
+        "camera": {
+          "type": "fitBounds",
+          "bounds": [
+            [
+              27,
+              125
+            ],
+            [
+              46.5,
+              148
+            ]
+          ],
+          "padding": [
+            18,
+            18
+          ]
+        },
+        "thresholds": [
+          3,
+          5,
+          10,
+          20
+        ]
+      },
+      {
+        "key": "east_asia",
+        "sources": [
+          "noaa"
+        ],
+        "label": "East Asia Wide",
+        "camera": {
+          "type": "fitBounds",
+          "bounds": [
+            [
+              -10,
+              70
+            ],
+            [
+              60,
+              165
+            ]
+          ],
+          "padding": [
+            12,
+            12
+          ]
+        },
+        "thresholds": [
+          3,
+          5,
+          10,
+          20
+        ]
+      },
+      {
+        "key": "japan_close",
+        "sources": [
+          "noaa",
+          "isee"
+        ],
+        "label": "Japan Close",
+        "camera": {
+          "type": "fitBounds",
+          "bounds": [
+            [
+              22,
+              118
+            ],
+            [
+              47,
+              151
+            ]
+          ],
+          "padding": [
+            10,
+            10
+          ]
+        },
+        "thresholds": [
+          3,
+          5,
+          10,
+          20
+        ]
+      },
+      {
+        "key": "philippines",
+        "sources": [
+          "noaa"
+        ],
+        "label": "Philippines / South China Sea",
+        "camera": {
+          "type": "fitBounds",
+          "bounds": [
+            [
+              -11,
+              103
+            ],
+            [
+              29,
+              146
+            ]
+          ],
+          "padding": [
+            10,
+            10
+          ]
+        },
+        "thresholds": [
+          5,
+          10,
+          20,
+          30
+        ]
+      }
+    ]
   },
   "latest": {
-    "noaa_l1_error": "data/videos/latest/noaa_l1_error.mp4",
-    "noaa_vertical_error": "data/videos/latest/noaa_vertical_error.mp4",
-    "isee_l1_error": "data/videos/latest/isee_l1_error.mp4",
-    "isee_vertical_error": "data/videos/latest/isee_vertical_error.mp4"
+    "noaa_global_l1": "data/videos/latest/noaa_global_l1_error.mp4",
+    "noaa_global_vertical": "data/videos/latest/noaa_global_vertical_error.mp4",
+    "isee_japan_l1": "data/videos/latest/isee_japan_l1_error.mp4",
+    "isee_japan_vertical": "data/videos/latest/isee_japan_vertical_error.mp4",
+    "noaa_east_asia_l1": "data/videos/latest/noaa_east_asia_l1_error.mp4",
+    "noaa_east_asia_vertical": "data/videos/latest/noaa_east_asia_vertical_error.mp4",
+    "noaa_japan_close_l1": "data/videos/latest/noaa_japan_close_l1_error.mp4",
+    "noaa_japan_close_vertical": "data/videos/latest/noaa_japan_close_vertical_error.mp4",
+    "isee_japan_close_l1": "data/videos/latest/isee_japan_close_l1_error.mp4",
+    "isee_japan_close_vertical": "data/videos/latest/isee_japan_close_vertical_error.mp4",
+    "noaa_philippines_l1": "data/videos/latest/noaa_philippines_l1_error.mp4",
+    "noaa_philippines_vertical": "data/videos/latest/noaa_philippines_vertical_error.mp4"
   },
   "current_run": [
     {
       "source": "noaa",
+      "view": "global",
+      "view_label": "Global",
+      "camera": {
+        "type": "setView",
+        "center": [
+          12,
+          0
+        ],
+        "zoom": 2
+      },
       "movie": "l1",
       "metric": "GNSS L1 ionospheric error",
       "map_mode": "gps",
-      "file": "data/videos/archive/2026-08-25/noaa_l1_error.mp4",
-      "latest": "data/videos/latest/noaa_l1_error.mp4",
+      "file": "data/videos/archive/2026-08-25/1526/noaa_global_l1_error.mp4",
+      "latest": "data/videos/latest/noaa_global_l1_error.mp4",
       "frames": 241,
       "slider_min": 0,
       "slider_max": 240,
@@ -85,16 +218,27 @@
         "#ff9f0a",
         "#ff0000"
       ],
+      "gps_only_for_vertical_error": false,
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 1062689
+      "bytes": 1047665
     },
     {
       "source": "noaa",
+      "view": "global",
+      "view_label": "Global",
+      "camera": {
+        "type": "setView",
+        "center": [
+          12,
+          0
+        ],
+        "zoom": 2
+      },
       "movie": "vertical",
       "metric": "GPS VDOP × L1 vertical error",
       "map_mode": "vdoptec",
-      "file": "data/videos/archive/2026-08-25/noaa_vertical_error.mp4",
-      "latest": "data/videos/latest/noaa_vertical_error.mp4",
+      "file": "data/videos/archive/2026-08-25/1526/noaa_global_vertical_error.mp4",
+      "latest": "data/videos/latest/noaa_global_vertical_error.mp4",
       "frames": 361,
       "slider_min": 0,
       "slider_max": 720,
@@ -112,16 +256,318 @@
         "#ff9f0a",
         "#ff0000"
       ],
+      "gps_only_for_vertical_error": true,
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 5487667
+      "bytes": 5474923
     },
     {
-      "source": "isee",
+      "source": "noaa",
+      "view": "east_asia",
+      "view_label": "East Asia Wide",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            -10,
+            70
+          ],
+          [
+            60,
+            165
+          ]
+        ],
+        "padding": [
+          12,
+          12
+        ]
+      },
       "movie": "l1",
       "metric": "GNSS L1 ionospheric error",
       "map_mode": "gps",
-      "file": "data/videos/archive/2026-08-25/isee_l1_error.mp4",
-      "latest": "data/videos/latest/isee_l1_error.mp4",
+      "file": "data/videos/archive/2026-08-25/1526/noaa_east_asia_l1_error.mp4",
+      "latest": "data/videos/latest/noaa_east_asia_l1_error.mp4",
+      "frames": 241,
+      "slider_min": 0,
+      "slider_max": 240,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_vertical_error": false,
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 1469639
+    },
+    {
+      "source": "noaa",
+      "view": "east_asia",
+      "view_label": "East Asia Wide",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            -10,
+            70
+          ],
+          [
+            60,
+            165
+          ]
+        ],
+        "padding": [
+          12,
+          12
+        ]
+      },
+      "movie": "vertical",
+      "metric": "GPS VDOP × L1 vertical error",
+      "map_mode": "vdoptec",
+      "file": "data/videos/archive/2026-08-25/1526/noaa_east_asia_vertical_error.mp4",
+      "latest": "data/videos/latest/noaa_east_asia_vertical_error.mp4",
+      "frames": 361,
+      "slider_min": 0,
+      "slider_max": 720,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_vertical_error": true,
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 5587218
+    },
+    {
+      "source": "noaa",
+      "view": "japan_close",
+      "view_label": "Japan Close",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            22,
+            118
+          ],
+          [
+            47,
+            151
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "l1",
+      "metric": "GNSS L1 ionospheric error",
+      "map_mode": "gps",
+      "file": "data/videos/archive/2026-08-25/1526/noaa_japan_close_l1_error.mp4",
+      "latest": "data/videos/latest/noaa_japan_close_l1_error.mp4",
+      "frames": 241,
+      "slider_min": 0,
+      "slider_max": 240,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_vertical_error": false,
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 1617586
+    },
+    {
+      "source": "noaa",
+      "view": "japan_close",
+      "view_label": "Japan Close",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            22,
+            118
+          ],
+          [
+            47,
+            151
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "vertical",
+      "metric": "GPS VDOP × L1 vertical error",
+      "map_mode": "vdoptec",
+      "file": "data/videos/archive/2026-08-25/1526/noaa_japan_close_vertical_error.mp4",
+      "latest": "data/videos/latest/noaa_japan_close_vertical_error.mp4",
+      "frames": 361,
+      "slider_min": 0,
+      "slider_max": 720,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_vertical_error": true,
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 4412313
+    },
+    {
+      "source": "noaa",
+      "view": "philippines",
+      "view_label": "Philippines / South China Sea",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            -11,
+            103
+          ],
+          [
+            29,
+            146
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "l1",
+      "metric": "GNSS L1 ionospheric error",
+      "map_mode": "gps",
+      "file": "data/videos/archive/2026-08-25/1526/noaa_philippines_l1_error.mp4",
+      "latest": "data/videos/latest/noaa_philippines_l1_error.mp4",
+      "frames": 241,
+      "slider_min": 0,
+      "slider_max": 240,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        5,
+        10,
+        20,
+        30
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_vertical_error": false,
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 1043140
+    },
+    {
+      "source": "noaa",
+      "view": "philippines",
+      "view_label": "Philippines / South China Sea",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            -11,
+            103
+          ],
+          [
+            29,
+            146
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "vertical",
+      "metric": "GPS VDOP × L1 vertical error",
+      "map_mode": "vdoptec",
+      "file": "data/videos/archive/2026-08-25/1526/noaa_philippines_vertical_error.mp4",
+      "latest": "data/videos/latest/noaa_philippines_vertical_error.mp4",
+      "frames": 361,
+      "slider_min": 0,
+      "slider_max": 720,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        5,
+        10,
+        20,
+        30
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_vertical_error": true,
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 3992419
+    },
+    {
+      "source": "isee",
+      "view": "japan",
+      "view_label": "Japan",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            27,
+            125
+          ],
+          [
+            46.5,
+            148
+          ]
+        ],
+        "padding": [
+          18,
+          18
+        ]
+      },
+      "movie": "l1",
+      "metric": "GNSS L1 ionospheric error",
+      "map_mode": "gps",
+      "file": "data/videos/archive/2026-08-25/1526/isee_japan_l1_error.mp4",
+      "latest": "data/videos/latest/isee_japan_l1_error.mp4",
       "frames": 193,
       "slider_min": 0,
       "slider_max": 192,
@@ -139,16 +585,36 @@
         "#ff9f0a",
         "#ff0000"
       ],
+      "gps_only_for_vertical_error": false,
       "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
-      "bytes": 586533
+      "bytes": 591056
     },
     {
       "source": "isee",
+      "view": "japan",
+      "view_label": "Japan",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            27,
+            125
+          ],
+          [
+            46.5,
+            148
+          ]
+        ],
+        "padding": [
+          18,
+          18
+        ]
+      },
       "movie": "vertical",
       "metric": "GPS VDOP × L1 vertical error",
       "map_mode": "vdoptec",
-      "file": "data/videos/archive/2026-08-25/isee_vertical_error.mp4",
-      "latest": "data/videos/latest/isee_vertical_error.mp4",
+      "file": "data/videos/archive/2026-08-25/1526/isee_japan_vertical_error.mp4",
+      "latest": "data/videos/latest/isee_japan_vertical_error.mp4",
       "frames": 577,
       "slider_min": 0,
       "slider_max": 576,
@@ -166,31 +632,123 @@
         "#ff9f0a",
         "#ff0000"
       ],
+      "gps_only_for_vertical_error": true,
       "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
-      "bytes": 3508454
+      "bytes": 3503535
+    },
+    {
+      "source": "isee",
+      "view": "japan_close",
+      "view_label": "Japan Close",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            22,
+            118
+          ],
+          [
+            47,
+            151
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "l1",
+      "metric": "GNSS L1 ionospheric error",
+      "map_mode": "gps",
+      "file": "data/videos/archive/2026-08-25/1526/isee_japan_close_l1_error.mp4",
+      "latest": "data/videos/latest/isee_japan_close_l1_error.mp4",
+      "frames": 193,
+      "slider_min": 0,
+      "slider_max": 192,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_vertical_error": false,
+      "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
+      "bytes": 584394
+    },
+    {
+      "source": "isee",
+      "view": "japan_close",
+      "view_label": "Japan Close",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            22,
+            118
+          ],
+          [
+            47,
+            151
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "vertical",
+      "metric": "GPS VDOP × L1 vertical error",
+      "map_mode": "vdoptec",
+      "file": "data/videos/archive/2026-08-25/1526/isee_japan_close_vertical_error.mp4",
+      "latest": "data/videos/latest/isee_japan_close_vertical_error.mp4",
+      "frames": 577,
+      "slider_min": 0,
+      "slider_max": 576,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_vertical_error": true,
+      "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
+      "bytes": 3452321
     }
   ],
-  "archive": [
+  "archive_runs_today": [
     {
-      "day_utc": "2026-08-25",
-      "noaa_l1_error": "data/videos/archive/2026-08-25/noaa_l1_error.mp4",
-      "noaa_vertical_error": "data/videos/archive/2026-08-25/noaa_vertical_error.mp4",
-      "isee_l1_error": "data/videos/archive/2026-08-25/isee_l1_error.mp4",
-      "isee_vertical_error": "data/videos/archive/2026-08-25/isee_vertical_error.mp4"
-    },
-    {
-      "day_utc": "2026-08-24",
-      "noaa_l1_error": "data/videos/archive/2026-08-24/noaa_l1_error.mp4",
-      "noaa_vertical_error": "data/videos/archive/2026-08-24/noaa_vertical_error.mp4",
-      "isee_l1_error": "data/videos/archive/2026-08-24/isee_l1_error.mp4",
-      "isee_vertical_error": "data/videos/archive/2026-08-24/isee_vertical_error.mp4"
-    },
-    {
-      "day_utc": "2026-08-23",
-      "noaa_l1_error": "data/videos/archive/2026-08-23/noaa_l1_error.mp4",
-      "noaa_vertical_error": "data/videos/archive/2026-08-23/noaa_vertical_error.mp4",
-      "isee_l1_error": "data/videos/archive/2026-08-23/isee_l1_error.mp4",
-      "isee_vertical_error": "data/videos/archive/2026-08-23/isee_vertical_error.mp4"
+      "day_jst": "2026-08-25",
+      "slot_jst": "1526",
+      "files": [
+        "data/videos/archive/2026-08-25/1526/isee_japan_close_l1_error.mp4",
+        "data/videos/archive/2026-08-25/1526/isee_japan_close_vertical_error.mp4",
+        "data/videos/archive/2026-08-25/1526/isee_japan_l1_error.mp4",
+        "data/videos/archive/2026-08-25/1526/isee_japan_vertical_error.mp4",
+        "data/videos/archive/2026-08-25/1526/noaa_east_asia_l1_error.mp4",
+        "data/videos/archive/2026-08-25/1526/noaa_east_asia_vertical_error.mp4",
+        "data/videos/archive/2026-08-25/1526/noaa_global_l1_error.mp4",
+        "data/videos/archive/2026-08-25/1526/noaa_global_vertical_error.mp4",
+        "data/videos/archive/2026-08-25/1526/noaa_japan_close_l1_error.mp4",
+        "data/videos/archive/2026-08-25/1526/noaa_japan_close_vertical_error.mp4",
+        "data/videos/archive/2026-08-25/1526/noaa_philippines_l1_error.mp4",
+        "data/videos/archive/2026-08-25/1526/noaa_philippines_vertical_error.mp4"
+      ]
     }
   ]
 }
