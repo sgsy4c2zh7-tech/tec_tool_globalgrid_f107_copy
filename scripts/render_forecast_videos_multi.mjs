@@ -70,7 +70,7 @@ const VIDEO_VIEWS = [
     label: "Japan Close",
     camera: {
       type: "fitBounds",
-      bounds: [[23.0, 115.0], [45.5, 148.0]],
+      bounds: [[20.5, 115.0], [45.5, 148.0]],
       padding: [10, 10],
       zoomDelta: 1,
     },
