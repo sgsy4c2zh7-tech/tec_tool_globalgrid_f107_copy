@@ -1,4 +1,4 @@
-name: Render Forecast Videos - Legacy 4
+name: Render Forecast Videos - Legacy 6
 
 on:
   schedule:
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v4
