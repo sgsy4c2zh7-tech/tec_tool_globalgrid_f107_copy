@@ -1,4 +1,4 @@
-name: Render Daily Forecast Videos
+name: Render Forecast Videos - Legacy 4
 
 on:
   schedule:
@@ -11,13 +11,13 @@ permissions:
   contents: write
 
 concurrency:
-  group: render-daily-forecast-videos
+  group: render-forecast-videos-legacy
   cancel-in-progress: false
 
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v4
@@ -47,8 +47,6 @@ jobs:
           python3 -m http.server 8000 --directory docs > /tmp/swifttec-http.log 2>&1 &
           echo $! > /tmp/swifttec-http.pid
 
-          # Give Python a moment to bind, then poll without printing the normal
-          # first-connection-refused message.
           sleep 1
           for i in $(seq 1 30); do
             if curl --silent --show-error --fail http://127.0.0.1:8000/ >/dev/null 2>&1; then
@@ -69,39 +67,56 @@ jobs:
           cat /tmp/swifttec-http.log || true
           exit 1
 
-      - name: Render NOAA + ISEE multi-region L1 / GPS vertical-error videos
+      - name: Render legacy forecast videos
         env:
           SWIFTTEC_RENDER_URL: http://127.0.0.1:8000/
-          SWIFTTEC_VIDEO_KEEP_DAYS: "1"
+          SWIFTTEC_VIDEO_KEEP_DAYS: "2"
           SWIFTTEC_VIDEO_MAX_FRAMES: "600"
           SWIFTTEC_VIDEO_FRAME_DELAY_MS: "80"
           SWIFTTEC_VIDEO_FPS: "10"
           SWIFTTEC_VIDEO_WIDTH: "1700"
           SWIFTTEC_VIDEO_HEIGHT: "900"
           SWIFTTEC_PAGE_PASSWORD: ${{ secrets.SWIFTTEC_PAGE_PASSWORD }}
-        run: node scripts/render_forecast_videos.mjs
+        run: node scripts/render_forecast_videos_legacy.mjs
 
-      - name: Show generated videos
+      - name: Show legacy videos
         run: |
-          echo "--- videos ---"
-          find docs/data/videos -maxdepth 4 -type f -print -exec du -h {} \; | sort
+          echo "--- videos_legacy ---"
+          find docs/data/videos_legacy -maxdepth 4 -type f -print -exec du -h {} \; | sort
           echo "--- index ---"
-          cat docs/data/videos/index.json
+          cat docs/data/videos_legacy/index.json
           echo "--- git status ---"
           git status --short
 
-      - name: Commit rolling 1-day multi-region videos
+      - name: Commit legacy videos
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add -A docs/data/videos
+          git add -A docs/data/videos_legacy
 
           if git diff --cached --quiet; then
             echo "No video changes to commit"
             exit 0
           fi
 
-          git commit -m "data: update NOAA/ISEE multi-region forecast videos"
-          git pull --rebase
-          git push
+          git commit -m "data: update legacy forecast videos"
+
+          # Both video workflows run at the same scheduled time.
+          # Rebase immediately before push; retry if the other workflow wins the race.
+          for attempt in 1 2 3 4; do
+            echo "Push attempt $attempt"
+            git pull --rebase
+
+            if git push; then
+              echo "Push succeeded"
+              exit 0
+            fi
+
+            echo "Push race detected; retrying..."
+            sleep $((attempt * 8))
+          done
+
+          echo "Push failed after retries"
+          exit 1
+
