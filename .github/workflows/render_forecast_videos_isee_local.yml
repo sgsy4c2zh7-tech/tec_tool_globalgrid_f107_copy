@@ -1,0 +1,119 @@
+name: Render ISEE Local Close-up Videos
+
+on:
+  schedule:
+    # 21:00 UTC = 06:00 JST (next local day)
+    # 03:00 UTC = 12:00 JST
+    - cron: '0 3,21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render-isee-local-closeup-videos
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Start local SWIFT-TEC server
+        run: |
+          python3 -m http.server 8000 --directory docs > /tmp/swifttec-http.log 2>&1 &
+          echo $! > /tmp/swifttec-http.pid
+
+          sleep 1
+          for i in $(seq 1 30); do
+            if curl --silent --show-error --fail http://127.0.0.1:8000/ >/dev/null 2>&1; then
+              echo "Local server ready"
+              exit 0
+            fi
+
+            if ! kill -0 "$(cat /tmp/swifttec-http.pid)" 2>/dev/null; then
+              echo "Local server process exited unexpectedly"
+              cat /tmp/swifttec-http.log || true
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          echo "Local server did not become ready"
+          cat /tmp/swifttec-http.log || true
+          exit 1
+
+      - name: Render ISEE Hokkaido and Kyushu-Okinawa HDOP/VDOP videos
+        env:
+          SWIFTTEC_RENDER_URL: http://127.0.0.1:8000/
+          SWIFTTEC_VIDEO_KEEP_DAYS: "1"
+          SWIFTTEC_VIDEO_MAX_FRAMES: "600"
+          SWIFTTEC_VIDEO_FRAME_DELAY_MS: "80"
+          SWIFTTEC_VIDEO_FPS: "10"
+          SWIFTTEC_VIDEO_WIDTH: "1700"
+          SWIFTTEC_VIDEO_HEIGHT: "900"
+          SWIFTTEC_PAGE_PASSWORD: ${{ secrets.SWIFTTEC_PAGE_PASSWORD }}
+        run: node scripts/render_forecast_videos_isee_local.mjs
+
+      - name: Show generated videos
+        run: |
+          echo "--- videos_isee_local ---"
+          find docs/data/videos_isee_local -maxdepth 4 -type f -print -exec du -h {} \; | sort
+          echo "--- index ---"
+          cat docs/data/videos_isee_local/index.json
+          echo "--- git status ---"
+          git status --short
+
+      - name: Commit ISEE local close-up videos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A docs/data/videos_isee_local
+
+          if git diff --cached --quiet; then
+            echo "No video changes to commit"
+            exit 0
+          fi
+
+          git commit -m "data: update ISEE local close-up videos"
+
+          for attempt in 1 2 3 4; do
+            echo "Push attempt $attempt"
+            git pull --rebase
+
+            if git push; then
+              echo "Push succeeded"
+              exit 0
+            fi
+
+            echo "Push race detected; retrying..."
+            sleep $((attempt * 8))
+          done
+
+          echo "Push failed after retries"
+          exit 1
