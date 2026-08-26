@@ -1,0 +1,299 @@
+{
+  "version": "swifttec-forecast-video-v1-isee-local",
+  "updated_utc": "2026-08-26T06:46:54.118Z",
+  "schedule_jst": [
+    "06:00",
+    "12:00"
+  ],
+  "keep_days_jst": 1,
+  "current_jst_day": "2026-08-26",
+  "current_run_slot_jst": "1546",
+  "visual": {
+    "viewport": {
+      "width": 1700,
+      "height": 900
+    },
+    "heatmap_alpha": 0.4,
+    "palette": "classic",
+    "reverse": false,
+    "colors": [
+      "#0066ff",
+      "#00e5e5",
+      "#ff9f0a",
+      "#ff0000"
+    ],
+    "gps_constellation_only_for_dop_error": true,
+    "horizontal_metric": "GPS HDOP × L1 horizontal error",
+    "vertical_metric": "GPS VDOP × L1 vertical error",
+    "views": [
+      {
+        "key": "hokkaido_close",
+        "sources": [
+          "isee"
+        ],
+        "label": "Hokkaido Close",
+        "camera": {
+          "type": "fitBounds",
+          "bounds": [
+            [
+              40.5,
+              138
+            ],
+            [
+              46.5,
+              147
+            ]
+          ],
+          "padding": [
+            10,
+            10
+          ]
+        },
+        "thresholds": [
+          3,
+          5,
+          10,
+          20
+        ]
+      },
+      {
+        "key": "kyushu_okinawa_close",
+        "sources": [
+          "isee"
+        ],
+        "label": "Kyushu + Okinawa Close",
+        "camera": {
+          "type": "fitBounds",
+          "bounds": [
+            [
+              23.5,
+              121.5
+            ],
+            [
+              34.5,
+              135.5
+            ]
+          ],
+          "padding": [
+            10,
+            10
+          ]
+        },
+        "thresholds": [
+          3,
+          5,
+          10,
+          20
+        ]
+      }
+    ]
+  },
+  "latest": {
+    "isee_hokkaido_close_horizontal": "data/videos_isee_local/latest/isee_hokkaido_close_horizontal_error.mp4",
+    "isee_hokkaido_close_vertical": "data/videos_isee_local/latest/isee_hokkaido_close_vertical_error.mp4",
+    "isee_kyushu_okinawa_close_horizontal": "data/videos_isee_local/latest/isee_kyushu_okinawa_close_horizontal_error.mp4",
+    "isee_kyushu_okinawa_close_vertical": "data/videos_isee_local/latest/isee_kyushu_okinawa_close_vertical_error.mp4"
+  },
+  "current_run": [
+    {
+      "source": "isee",
+      "view": "hokkaido_close",
+      "view_label": "Hokkaido Close",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            40.5,
+            138
+          ],
+          [
+            46.5,
+            147
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "horizontal",
+      "metric": "GPS HDOP × L1 horizontal error",
+      "map_mode": "hdoptec",
+      "file": "data/videos_isee_local/archive/2026-08-26/1533/isee_hokkaido_close_horizontal_error.mp4",
+      "latest": "data/videos_isee_local/latest/isee_hokkaido_close_horizontal_error.mp4",
+      "frames": 577,
+      "slider_min": 0,
+      "slider_max": 576,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_dop_error": true,
+      "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
+      "bytes": 1519087
+    },
+    {
+      "source": "isee",
+      "view": "hokkaido_close",
+      "view_label": "Hokkaido Close",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            40.5,
+            138
+          ],
+          [
+            46.5,
+            147
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "vertical",
+      "metric": "GPS VDOP × L1 vertical error",
+      "map_mode": "vdoptec",
+      "file": "data/videos_isee_local/archive/2026-08-26/1533/isee_hokkaido_close_vertical_error.mp4",
+      "latest": "data/videos_isee_local/latest/isee_hokkaido_close_vertical_error.mp4",
+      "frames": 577,
+      "slider_min": 0,
+      "slider_max": 576,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_dop_error": true,
+      "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
+      "bytes": 2947396
+    },
+    {
+      "source": "isee",
+      "view": "kyushu_okinawa_close",
+      "view_label": "Kyushu + Okinawa Close",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            23.5,
+            121.5
+          ],
+          [
+            34.5,
+            135.5
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "horizontal",
+      "metric": "GPS HDOP × L1 horizontal error",
+      "map_mode": "hdoptec",
+      "file": "data/videos_isee_local/archive/2026-08-26/1533/isee_kyushu_okinawa_close_horizontal_error.mp4",
+      "latest": "data/videos_isee_local/latest/isee_kyushu_okinawa_close_horizontal_error.mp4",
+      "frames": 577,
+      "slider_min": 0,
+      "slider_max": 576,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_dop_error": true,
+      "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
+      "bytes": 2566124
+    },
+    {
+      "source": "isee",
+      "view": "kyushu_okinawa_close",
+      "view_label": "Kyushu + Okinawa Close",
+      "camera": {
+        "type": "fitBounds",
+        "bounds": [
+          [
+            23.5,
+            121.5
+          ],
+          [
+            34.5,
+            135.5
+          ]
+        ],
+        "padding": [
+          10,
+          10
+        ]
+      },
+      "movie": "vertical",
+      "metric": "GPS VDOP × L1 vertical error",
+      "map_mode": "vdoptec",
+      "file": "data/videos_isee_local/archive/2026-08-26/1533/isee_kyushu_okinawa_close_vertical_error.mp4",
+      "latest": "data/videos_isee_local/latest/isee_kyushu_okinawa_close_vertical_error.mp4",
+      "frames": 577,
+      "slider_min": 0,
+      "slider_max": 576,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        3,
+        5,
+        10,
+        20
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "gps_only_for_dop_error": true,
+      "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
+      "bytes": 4237647
+    }
+  ],
+  "archive_runs_today": [
+    {
+      "day_jst": "2026-08-26",
+      "slot_jst": "1533",
+      "files": [
+        "data/videos_isee_local/archive/2026-08-26/1533/isee_hokkaido_close_horizontal_error.mp4",
+        "data/videos_isee_local/archive/2026-08-26/1533/isee_hokkaido_close_vertical_error.mp4",
+        "data/videos_isee_local/archive/2026-08-26/1533/isee_kyushu_okinawa_close_horizontal_error.mp4",
+        "data/videos_isee_local/archive/2026-08-26/1533/isee_kyushu_okinawa_close_vertical_error.mp4"
+      ]
+    }
+  ]
+}
