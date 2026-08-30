@@ -1,94 +1,94 @@
 {
   "version": "swifttec-isee-japan-kp-model-rule-ai-performance-v1",
-  "updated_utc": "2026-08-27T15:15:55Z",
+  "updated_utc": "2026-08-30T09:57:28Z",
   "model_rule": "raw=PrevObservedTEC, corrected=PrevObservedTEC - F(KpB) + F(KpF)",
   "hit_threshold_tecu": 5.0,
   "summary": {
-    "sample_count": 46893,
-    "raw_rmse": 4.5296,
-    "corrected_rmse": 4.4606,
-    "raw_bias": 3.7835,
-    "corrected_bias": 3.798,
-    "raw_hit_rate": 0.6598,
-    "corrected_hit_rate": 0.6507,
+    "sample_count": 4209,
+    "raw_rmse": 4.3732,
+    "corrected_rmse": 13.5689,
+    "raw_bias": 4.1634,
+    "corrected_bias": 12.2966,
+    "raw_hit_rate": 0.7196,
+    "corrected_hit_rate": 0.1254,
     "threshold_tecu": 5.0,
-    "updated_cells": 2316,
-    "training_pairs": 24,
+    "updated_cells": 0,
+    "training_pairs": 2,
     "thresholds": {
       "5": {
-        "sample_count": 46893,
-        "raw_rmse": 4.5296,
-        "corrected_rmse": 4.4606,
-        "raw_bias": 3.7835,
-        "corrected_bias": 3.798,
-        "raw_hit_rate": 0.6598,
-        "corrected_hit_rate": 0.6507
+        "sample_count": 4209,
+        "raw_rmse": 4.3732,
+        "corrected_rmse": 13.5689,
+        "raw_bias": 4.1634,
+        "corrected_bias": 12.2966,
+        "raw_hit_rate": 0.7196,
+        "corrected_hit_rate": 0.1254
       },
       "10": {
-        "sample_count": 46893,
-        "raw_rmse": 4.5296,
-        "corrected_rmse": 4.4606,
-        "raw_bias": 3.7835,
-        "corrected_bias": 3.798,
-        "raw_hit_rate": 0.9972,
-        "corrected_hit_rate": 0.9985
+        "sample_count": 4209,
+        "raw_rmse": 4.3732,
+        "corrected_rmse": 13.5689,
+        "raw_bias": 4.1634,
+        "corrected_bias": 12.2966,
+        "raw_hit_rate": 1.0,
+        "corrected_hit_rate": 0.205
       },
       "15": {
-        "sample_count": 46893,
-        "raw_rmse": 4.5296,
-        "corrected_rmse": 4.4606,
-        "raw_bias": 3.7835,
-        "corrected_bias": 3.798,
+        "sample_count": 4209,
+        "raw_rmse": 4.3732,
+        "corrected_rmse": 13.5689,
+        "raw_bias": 4.1634,
+        "corrected_bias": 12.2966,
         "raw_hit_rate": 1.0,
-        "corrected_hit_rate": 1.0
+        "corrected_hit_rate": 0.6241
       },
       "20": {
-        "sample_count": 46893,
-        "raw_rmse": 4.5296,
-        "corrected_rmse": 4.4606,
-        "raw_bias": 3.7835,
-        "corrected_bias": 3.798,
+        "sample_count": 4209,
+        "raw_rmse": 4.3732,
+        "corrected_rmse": 13.5689,
+        "raw_bias": 4.1634,
+        "corrected_bias": 12.2966,
         "raw_hit_rate": 1.0,
-        "corrected_hit_rate": 1.0
+        "corrected_hit_rate": 0.9988
       }
     }
   },
   "thresholds": {
     "5": {
-      "sample_count": 46893,
-      "raw_rmse": 4.5296,
-      "corrected_rmse": 4.4606,
-      "raw_bias": 3.7835,
-      "corrected_bias": 3.798,
-      "raw_hit_rate": 0.6598,
-      "corrected_hit_rate": 0.6507
+      "sample_count": 4209,
+      "raw_rmse": 4.3732,
+      "corrected_rmse": 13.5689,
+      "raw_bias": 4.1634,
+      "corrected_bias": 12.2966,
+      "raw_hit_rate": 0.7196,
+      "corrected_hit_rate": 0.1254
     },
     "10": {
-      "sample_count": 46893,
-      "raw_rmse": 4.5296,
-      "corrected_rmse": 4.4606,
-      "raw_bias": 3.7835,
-      "corrected_bias": 3.798,
-      "raw_hit_rate": 0.9972,
-      "corrected_hit_rate": 0.9985
+      "sample_count": 4209,
+      "raw_rmse": 4.3732,
+      "corrected_rmse": 13.5689,
+      "raw_bias": 4.1634,
+      "corrected_bias": 12.2966,
+      "raw_hit_rate": 1.0,
+      "corrected_hit_rate": 0.205
     },
     "15": {
-      "sample_count": 46893,
-      "raw_rmse": 4.5296,
-      "corrected_rmse": 4.4606,
-      "raw_bias": 3.7835,
-      "corrected_bias": 3.798,
+      "sample_count": 4209,
+      "raw_rmse": 4.3732,
+      "corrected_rmse": 13.5689,
+      "raw_bias": 4.1634,
+      "corrected_bias": 12.2966,
       "raw_hit_rate": 1.0,
-      "corrected_hit_rate": 1.0
+      "corrected_hit_rate": 0.6241
     },
     "20": {
-      "sample_count": 46893,
-      "raw_rmse": 4.5296,
-      "corrected_rmse": 4.4606,
-      "raw_bias": 3.7835,
-      "corrected_bias": 3.798,
+      "sample_count": 4209,
+      "raw_rmse": 4.3732,
+      "corrected_rmse": 13.5689,
+      "raw_bias": 4.1634,
+      "corrected_bias": 12.2966,
       "raw_hit_rate": 1.0,
-      "corrected_hit_rate": 1.0
+      "corrected_hit_rate": 0.9988
     }
   },
   "kp_bins": {
@@ -145,98 +145,98 @@
       "kp_bin": "2-3",
       "thresholds": {
         "5": {
-          "sample_count": 13482,
-          "raw_rmse": 3.8768,
-          "corrected_rmse": 3.8768,
-          "raw_bias": 3.4894,
-          "corrected_bias": 3.4894,
-          "raw_hit_rate": 0.85,
-          "corrected_hit_rate": 0.85
+          "sample_count": 4209,
+          "raw_rmse": 4.3732,
+          "corrected_rmse": 13.5689,
+          "raw_bias": 4.1634,
+          "corrected_bias": 12.2966,
+          "raw_hit_rate": 0.7196,
+          "corrected_hit_rate": 0.1254
         },
         "10": {
-          "sample_count": 13482,
-          "raw_rmse": 3.8768,
-          "corrected_rmse": 3.8768,
-          "raw_bias": 3.4894,
-          "corrected_bias": 3.4894,
-          "raw_hit_rate": 0.9999,
-          "corrected_hit_rate": 0.9999
+          "sample_count": 4209,
+          "raw_rmse": 4.3732,
+          "corrected_rmse": 13.5689,
+          "raw_bias": 4.1634,
+          "corrected_bias": 12.2966,
+          "raw_hit_rate": 1.0,
+          "corrected_hit_rate": 0.205
         },
         "15": {
-          "sample_count": 13482,
-          "raw_rmse": 3.8768,
-          "corrected_rmse": 3.8768,
-          "raw_bias": 3.4894,
-          "corrected_bias": 3.4894,
+          "sample_count": 4209,
+          "raw_rmse": 4.3732,
+          "corrected_rmse": 13.5689,
+          "raw_bias": 4.1634,
+          "corrected_bias": 12.2966,
           "raw_hit_rate": 1.0,
-          "corrected_hit_rate": 1.0
+          "corrected_hit_rate": 0.6241
         },
         "20": {
-          "sample_count": 13482,
-          "raw_rmse": 3.8768,
-          "corrected_rmse": 3.8768,
-          "raw_bias": 3.4894,
-          "corrected_bias": 3.4894,
+          "sample_count": 4209,
+          "raw_rmse": 4.3732,
+          "corrected_rmse": 13.5689,
+          "raw_bias": 4.1634,
+          "corrected_bias": 12.2966,
           "raw_hit_rate": 1.0,
-          "corrected_hit_rate": 1.0
+          "corrected_hit_rate": 0.9988
         }
       },
-      "sample_count": 13482,
-      "raw_rmse": 3.8768,
-      "corrected_rmse": 3.8768,
-      "raw_bias": 3.4894,
-      "corrected_bias": 3.4894,
-      "raw_hit_rate": 0.85,
-      "corrected_hit_rate": 0.85,
+      "sample_count": 4209,
+      "raw_rmse": 4.3732,
+      "corrected_rmse": 13.5689,
+      "raw_bias": 4.1634,
+      "corrected_bias": 12.2966,
+      "raw_hit_rate": 0.7196,
+      "corrected_hit_rate": 0.1254,
       "threshold_tecu": 5.0
     },
     "3-4": {
       "kp_bin": "3-4",
       "thresholds": {
         "5": {
-          "sample_count": 33411,
-          "raw_rmse": 4.7678,
-          "corrected_rmse": 4.6756,
-          "raw_bias": 3.9021,
-          "corrected_bias": 3.9226,
-          "raw_hit_rate": 0.583,
-          "corrected_hit_rate": 0.5703
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
         },
         "10": {
-          "sample_count": 33411,
-          "raw_rmse": 4.7678,
-          "corrected_rmse": 4.6756,
-          "raw_bias": 3.9021,
-          "corrected_bias": 3.9226,
-          "raw_hit_rate": 0.9961,
-          "corrected_hit_rate": 0.9979
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
         },
         "15": {
-          "sample_count": 33411,
-          "raw_rmse": 4.7678,
-          "corrected_rmse": 4.6756,
-          "raw_bias": 3.9021,
-          "corrected_bias": 3.9226,
-          "raw_hit_rate": 1.0,
-          "corrected_hit_rate": 1.0
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
         },
         "20": {
-          "sample_count": 33411,
-          "raw_rmse": 4.7678,
-          "corrected_rmse": 4.6756,
-          "raw_bias": 3.9021,
-          "corrected_bias": 3.9226,
-          "raw_hit_rate": 1.0,
-          "corrected_hit_rate": 1.0
+          "sample_count": 0,
+          "raw_rmse": null,
+          "corrected_rmse": null,
+          "raw_bias": null,
+          "corrected_bias": null,
+          "raw_hit_rate": 0,
+          "corrected_hit_rate": 0
         }
       },
-      "sample_count": 33411,
-      "raw_rmse": 4.7678,
-      "corrected_rmse": 4.6756,
-      "raw_bias": 3.9021,
-      "corrected_bias": 3.9226,
-      "raw_hit_rate": 0.583,
-      "corrected_hit_rate": 0.5703,
+      "sample_count": 0,
+      "raw_rmse": null,
+      "corrected_rmse": null,
+      "raw_bias": null,
+      "corrected_bias": null,
+      "raw_hit_rate": 0,
+      "corrected_hit_rate": 0,
       "threshold_tecu": 5.0
     },
     "4-5": {
@@ -1851,13 +1851,13 @@
         "threshold_tecu": 5.0
       },
       "8": {
-        "sample_count": 11854,
-        "raw_rmse": 2.793,
-        "corrected_rmse": 2.821,
-        "raw_bias": 1.4416,
-        "corrected_bias": 1.697,
-        "raw_hit_rate": 0.945,
-        "corrected_hit_rate": 0.9369,
+        "sample_count": 1097,
+        "raw_rmse": 4.7807,
+        "corrected_rmse": 11.2505,
+        "raw_bias": 4.666,
+        "corrected_bias": 9.4715,
+        "raw_hit_rate": 0.6044,
+        "corrected_hit_rate": 0.268,
         "threshold_tecu": 5.0
       },
       "9": {
@@ -2583,13 +2583,13 @@
         "threshold_tecu": 5.0
       },
       "8": {
-        "sample_count": 35039,
-        "raw_rmse": 4.9819,
-        "corrected_rmse": 4.8924,
-        "raw_bias": 4.5758,
-        "corrected_bias": 4.5088,
-        "raw_hit_rate": 0.5633,
-        "corrected_hit_rate": 0.5539,
+        "sample_count": 3112,
+        "raw_rmse": 4.2202,
+        "corrected_rmse": 14.2968,
+        "raw_bias": 3.9862,
+        "corrected_bias": 13.2925,
+        "raw_hit_rate": 0.7603,
+        "corrected_hit_rate": 0.0752,
         "threshold_tecu": 5.0
       },
       "9": {
