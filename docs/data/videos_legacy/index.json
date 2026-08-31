@@ -1,6 +1,6 @@
 {
-  "version": "swifttec-forecast-video-legacy-v5-noaa-japan-wide",
-  "updated_utc": "2026-08-31T10:20:20.778Z",
+  "version": "swifttec-forecast-video-legacy-v6-noaa-japan-same-zoom-south1",
+  "updated_utc": "2026-08-31T11:15:28.260Z",
   "keep_days": 2,
   "visual": {
     "viewport": {
@@ -59,6 +59,24 @@
         18,
         18
       ]
+    },
+    "noaa_japan_camera": {
+      "referenceBounds": [
+        [
+          27,
+          125
+        ],
+        [
+          46.5,
+          148
+        ]
+      ],
+      "referencePadding": [
+        18,
+        18
+      ],
+      "shiftLat": -1,
+      "shiftLng": 0
     }
   },
   "latest": {
@@ -99,7 +117,7 @@
         "#ff0000"
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 486504
+      "bytes": 488355
     },
     {
       "target": "noaa_global",
@@ -129,7 +147,7 @@
         "#ff0000"
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 2338966
+      "bytes": 2342542
     },
     {
       "target": "isee_japan",
@@ -159,7 +177,7 @@
         "#ff0000"
       ],
       "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
-      "bytes": 256085
+      "bytes": 263553
     },
     {
       "target": "isee_japan",
@@ -189,12 +207,12 @@
         "#ff0000"
       ],
       "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
-      "bytes": 1606435
+      "bytes": 1698174
     },
     {
       "target": "noaa_japan",
       "source": "noaa",
-      "camera": "noaaJapanWide",
+      "camera": "noaaJapanSameZoomSouth1",
       "label": "NOAA Japan",
       "movie": "l1",
       "metric": "GNSS L1 ionospheric error",
@@ -219,12 +237,12 @@
         "#ff0000"
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 775657
+      "bytes": 580903
     },
     {
       "target": "noaa_japan",
       "source": "noaa",
-      "camera": "noaaJapanWide",
+      "camera": "noaaJapanSameZoomSouth1",
       "label": "NOAA Japan",
       "movie": "horizontal",
       "metric": "GPS HDOP × L1 horizontal error",
@@ -249,12 +267,12 @@
         "#ff0000"
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 1356105
+      "bytes": 1128542
     },
     {
       "target": "noaa_japan",
       "source": "noaa",
-      "camera": "noaaJapanWide",
+      "camera": "noaaJapanSameZoomSouth1",
       "label": "NOAA Japan",
       "movie": "vertical",
       "metric": "GPS VDOP × L1 vertical error",
@@ -279,7 +297,7 @@
         "#ff0000"
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 2940385
+      "bytes": 2544512
     }
   ],
   "archive": [
