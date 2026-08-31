@@ -1,4 +1,4 @@
-name: Render Forecast Videos - Legacy 6
+name: Render Forecast Videos - Legacy 8
 
 on:
   schedule:
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 150
 
     steps:
       - uses: actions/checkout@v4
@@ -67,7 +67,7 @@ jobs:
           cat /tmp/swifttec-http.log || true
           exit 1
 
-      - name: Render legacy forecast videos
+      - name: Render legacy videos incl NOAA Japan horizontal error
         env:
           SWIFTTEC_RENDER_URL: http://127.0.0.1:8000/
           SWIFTTEC_VIDEO_KEEP_DAYS: "2"
