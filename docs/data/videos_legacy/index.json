@@ -1,6 +1,6 @@
 {
-  "version": "swifttec-forecast-video-legacy-v3",
-  "updated_utc": "2026-08-31T03:31:17.444Z",
+  "version": "swifttec-forecast-video-legacy-v5-noaa-japan-wide",
+  "updated_utc": "2026-08-31T10:20:20.778Z",
   "keep_days": 2,
   "visual": {
     "viewport": {
@@ -22,6 +22,12 @@
       20,
       30
     ],
+    "horizontal_limits_m": [
+      5,
+      10,
+      20,
+      30
+    ],
     "vertical_limits_m": [
       5,
       10,
@@ -29,7 +35,8 @@
       30
     ],
     "gps_constellation_only": true,
-    "vertical_metric": "GPS VDOP × L1 ionospheric error",
+    "horizontal_metric": "GPS HDOP × L1 horizontal error",
+    "vertical_metric": "GPS VDOP × L1 vertical error",
     "global_camera": {
       "center": [
         12,
@@ -60,6 +67,7 @@
     "isee_l1_error": "data/videos_legacy/latest/isee_l1_error.mp4",
     "isee_vertical_error": "data/videos_legacy/latest/isee_vertical_error.mp4",
     "noaa_japan_l1_error": "data/videos_legacy/latest/noaa_japan_l1_error.mp4",
+    "noaa_japan_horizontal_error": "data/videos_legacy/latest/noaa_japan_horizontal_error.mp4",
     "noaa_japan_vertical_error": "data/videos_legacy/latest/noaa_japan_vertical_error.mp4"
   },
   "current_run": [
@@ -91,7 +99,7 @@
         "#ff0000"
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 484628
+      "bytes": 486504
     },
     {
       "target": "noaa_global",
@@ -121,7 +129,7 @@
         "#ff0000"
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 2346979
+      "bytes": 2338966
     },
     {
       "target": "isee_japan",
@@ -151,7 +159,7 @@
         "#ff0000"
       ],
       "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
-      "bytes": 260072
+      "bytes": 256085
     },
     {
       "target": "isee_japan",
@@ -181,12 +189,12 @@
         "#ff0000"
       ],
       "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
-      "bytes": 1639469
+      "bytes": 1606435
     },
     {
       "target": "noaa_japan",
       "source": "noaa",
-      "camera": "japan",
+      "camera": "noaaJapanWide",
       "label": "NOAA Japan",
       "movie": "l1",
       "metric": "GNSS L1 ionospheric error",
@@ -211,12 +219,42 @@
         "#ff0000"
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 574377
+      "bytes": 775657
     },
     {
       "target": "noaa_japan",
       "source": "noaa",
-      "camera": "japan",
+      "camera": "noaaJapanWide",
+      "label": "NOAA Japan",
+      "movie": "horizontal",
+      "metric": "GPS HDOP × L1 horizontal error",
+      "map_mode": "hdoptec",
+      "file": "data/videos_legacy/archive/2026-08-31/noaa_japan_horizontal_error.mp4",
+      "latest": "data/videos_legacy/latest/noaa_japan_horizontal_error.mp4",
+      "frames": 361,
+      "slider_min": 0,
+      "slider_max": 720,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        5,
+        10,
+        20,
+        30
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 1356105
+    },
+    {
+      "target": "noaa_japan",
+      "source": "noaa",
+      "camera": "noaaJapanWide",
       "label": "NOAA Japan",
       "movie": "vertical",
       "metric": "GPS VDOP × L1 vertical error",
@@ -241,7 +279,7 @@
         "#ff0000"
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 2505202
+      "bytes": 2940385
     }
   ],
   "archive": [
@@ -252,6 +290,7 @@
       "isee_l1_error": "data/videos_legacy/archive/2026-08-31/isee_l1_error.mp4",
       "isee_vertical_error": "data/videos_legacy/archive/2026-08-31/isee_vertical_error.mp4",
       "noaa_japan_l1_error": "data/videos_legacy/archive/2026-08-31/noaa_japan_l1_error.mp4",
+      "noaa_japan_horizontal_error": "data/videos_legacy/archive/2026-08-31/noaa_japan_horizontal_error.mp4",
       "noaa_japan_vertical_error": "data/videos_legacy/archive/2026-08-31/noaa_japan_vertical_error.mp4"
     },
     {
@@ -261,6 +300,7 @@
       "isee_l1_error": "data/videos_legacy/archive/2026-08-30/isee_l1_error.mp4",
       "isee_vertical_error": "data/videos_legacy/archive/2026-08-30/isee_vertical_error.mp4",
       "noaa_japan_l1_error": "data/videos_legacy/archive/2026-08-30/noaa_japan_l1_error.mp4",
+      "noaa_japan_horizontal_error": null,
       "noaa_japan_vertical_error": "data/videos_legacy/archive/2026-08-30/noaa_japan_vertical_error.mp4"
     }
   ]
