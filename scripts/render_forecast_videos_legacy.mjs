@@ -3,11 +3,9 @@
  * SWIFT-TEC legacy forecast video renderer.
  *
  * Produces:
- *   docs/data/videos_legacy/latest/noaa_l1_error.mp4
- *   docs/data/videos_legacy/latest/noaa_vertical_error.mp4
- *   docs/data/videos_legacy/latest/isee_l1_error.mp4
- *   docs/data/videos_legacy/latest/isee_vertical_error.mp4
- *   docs/data/videos_legacy/archive/YYYY-MM-DD/<same four files>
+ *   NOAA Global: L1 + VDOP×L1 vertical error
+ *   ISEE Japan: L1 + VDOP×L1 vertical error
+ *   NOAA Japan: L1 + HDOP×L1 horizontal error + VDOP×L1 vertical error
  *   docs/data/videos_legacy/index.json
  *
  * Retention:
@@ -45,7 +43,8 @@ const HEATMAP_STYLE = {
   colors: ["#0066ff", "#00e5e5", "#ff9f0a", "#ff0000"],
   // Legacy heatmap breakpoints unified to 5 / 10 / 20 / 30 m.
   gpsLimits: [5, 10, 20, 30],
-  // Use the same 5 / 10 / 20 / 30 m scale for vertical-error movie.
+  // DOP × L1 error scales.
+  hdopTecLimits: [5, 10, 20, 30],
   vdopTecLimits: [5, 10, 20, 30],
 };
 
@@ -61,6 +60,12 @@ const VIDEO_CAMERA = {
     bounds: [[27.0, 125.0], [46.5, 148.0]],
     padding: [18, 18],
   },
+  // Keep roughly the same magnification, but shift the NOAA Japan framing southward
+  // so Hokkaido through Taiwan fits in the frame.
+  noaaJapanWide: {
+    center: [33.8, 136.0],
+    zoom: 4,
+  },
 };
 
 const MOVIE_TYPES = [
@@ -70,6 +75,15 @@ const MOVIE_TYPES = [
     label: "GNSS L1 ionospheric error",
     suffix: "l1_error",
     needsGpsDop: false,
+  },
+  {
+    key: "horizontal",
+    mapMode: "hdoptec",
+    label: "GPS HDOP × L1 horizontal error",
+    suffix: "horizontal_error",
+    needsGpsDop: true,
+    // Add horizontal error only to the NOAA Japan target.
+    onlyTargets: ["noaa_japan"],
   },
   {
     key: "vertical",
@@ -99,7 +113,7 @@ const RENDER_TARGETS = [
     key: "noaa_japan",
     source: "noaa",
     label: "NOAA Japan",
-    cameraKey: "japan",
+    cameraKey: "noaaJapanWide",
     filePrefix: "noaa_japan",
   },
 ];
@@ -386,9 +400,12 @@ async function configureGpsOnlyDop(page) {
 }
 
 async function applyRequestedVisualStyle(page, movieType) {
-  const limits = movieType.mapMode === "vdoptec"
-    ? HEATMAP_STYLE.vdopTecLimits
-    : HEATMAP_STYLE.gpsLimits;
+  const limits =
+    movieType.mapMode === "hdoptec"
+      ? HEATMAP_STYLE.hdopTecLimits
+      : movieType.mapMode === "vdoptec"
+        ? HEATMAP_STYLE.vdopTecLimits
+        : HEATMAP_STYLE.gpsLimits;
 
   await page.evaluate(({ mapMode, style, limits }) => {
     // 1) Heatmap opacity
@@ -409,7 +426,7 @@ async function applyRequestedVisualStyle(page, movieType) {
         localStorage.getItem("swiftUnifiedHeatmapScaleV74") || "{}"
       );
 
-      const group = mapMode === "vdoptec" ? "doptec" : "gps";
+      const group = ["hdoptec", "vdoptec"].includes(mapMode) ? "doptec" : "gps";
       store[group] = {
         limits: [...limits],
         colors: [...style.colors],
@@ -434,7 +451,7 @@ async function applyRequestedVisualStyle(page, movieType) {
     if (legacyRev) legacyRev.checked = false;
 
     const groupSel = document.getElementById("swiftUnifiedGroupV74");
-    if (groupSel) groupSel.value = mapMode === "vdoptec" ? "doptec" : "gps";
+    if (groupSel) groupSel.value = ["hdoptec", "vdoptec"].includes(mapMode) ? "doptec" : "gps";
 
     for (let i = 0; i < 4; i++) {
       const c = document.getElementById(`swiftUnifiedColor${i + 1}V74`);
@@ -493,13 +510,15 @@ async function applyLegacyCamera(page, target) {
         return { ok: false, reason: `camera ${targetConfig.cameraKey} missing` };
       }
 
-      if (targetConfig.cameraKey === "global") {
+      if (Array.isArray(camera.center) && Number.isFinite(camera.zoom)) {
         map.setView(camera.center, camera.zoom, { animate: false });
-      } else {
+      } else if (camera.bounds) {
         map.fitBounds(camera.bounds, {
           padding: camera.padding || [10, 10],
           animate: false,
         });
+      } else {
+        return { ok: false, reason: `camera ${targetConfig.cameraKey} has no valid view settings` };
       }
 
       map.invalidateSize({ pan: false });
@@ -612,6 +631,13 @@ async function renderOneTarget(browser, target, archiveDayDir, password) {
     const outputs = [];
 
     for (const movieType of MOVIE_TYPES) {
+      if (
+        Array.isArray(movieType.onlyTargets) &&
+        !movieType.onlyTargets.includes(target.key)
+      ) {
+        continue;
+      }
+
       console.log(`${target.key}/${movieType.key}: preparing visual style`);
 
       await applyRequestedVisualStyle(page, movieType);
@@ -675,9 +701,11 @@ async function renderOneTarget(browser, target, archiveDayDir, password) {
         heatmap_alpha: HEATMAP_STYLE.alpha,
         palette: HEATMAP_STYLE.palette,
         thresholds_m:
-          movieType.mapMode === "vdoptec"
-            ? HEATMAP_STYLE.vdopTecLimits
-            : HEATMAP_STYLE.gpsLimits,
+          movieType.mapMode === "hdoptec"
+            ? HEATMAP_STYLE.hdopTecLimits
+            : movieType.mapMode === "vdoptec"
+              ? HEATMAP_STYLE.vdopTecLimits
+              : HEATMAP_STYLE.gpsLimits,
         colors: HEATMAP_STYLE.colors,
         status: forecastState.status || "",
         bytes: fs.statSync(archiveOutput).size,
@@ -710,11 +738,12 @@ function buildIndex(results) {
       isee_l1_error: fileFor(day, "isee", "l1_error"),
       isee_vertical_error: fileFor(day, "isee", "vertical_error"),
       noaa_japan_l1_error: fileFor(day, "noaa_japan", "l1_error"),
+      noaa_japan_horizontal_error: fileFor(day, "noaa_japan", "horizontal_error"),
       noaa_japan_vertical_error: fileFor(day, "noaa_japan", "vertical_error"),
     }));
 
   const doc = {
-    version: "swifttec-forecast-video-legacy-v3",
+    version: "swifttec-forecast-video-legacy-v5-noaa-japan-wide",
     updated_utc: new Date().toISOString(),
     keep_days: KEEP_DAYS,
     visual: {
@@ -724,9 +753,11 @@ function buildIndex(results) {
       reverse: HEATMAP_STYLE.reverse,
       colors: HEATMAP_STYLE.colors,
       gps_limits_m: HEATMAP_STYLE.gpsLimits,
+      horizontal_limits_m: HEATMAP_STYLE.hdopTecLimits,
       vertical_limits_m: HEATMAP_STYLE.vdopTecLimits,
       gps_constellation_only: true,
-      vertical_metric: "GPS VDOP × L1 ionospheric error",
+      horizontal_metric: "GPS HDOP × L1 horizontal error",
+      vertical_metric: "GPS VDOP × L1 vertical error",
       global_camera: VIDEO_CAMERA.global,
       japan_camera: VIDEO_CAMERA.japan,
     },
@@ -736,6 +767,7 @@ function buildIndex(results) {
       isee_l1_error: "data/videos_legacy/latest/isee_l1_error.mp4",
       isee_vertical_error: "data/videos_legacy/latest/isee_vertical_error.mp4",
       noaa_japan_l1_error: "data/videos_legacy/latest/noaa_japan_l1_error.mp4",
+      noaa_japan_horizontal_error: "data/videos_legacy/latest/noaa_japan_horizontal_error.mp4",
       noaa_japan_vertical_error: "data/videos_legacy/latest/noaa_japan_vertical_error.mp4",
     },
     current_run: results,
