@@ -50,7 +50,9 @@ const HEATMAP_STYLE = {
 
 // Video-only map camera.
 // Global: Greenwich-centered world so Americas are on the LEFT and Japan/Asia on the RIGHT.
-// ISEE: tighter Japan focus than the full 24–46N / 122–150E source grid.
+// ISEE: Japan-focused view.
+// NOAA Japan: make it feel close to ISEE Japan magnification,
+// but shifted a bit south so Hokkaido through Taiwan fits.
 const VIDEO_CAMERA = {
   global: {
     center: [12.0, 0.0],
@@ -60,11 +62,13 @@ const VIDEO_CAMERA = {
     bounds: [[27.0, 125.0], [46.5, 148.0]],
     padding: [18, 18],
   },
-  // Keep roughly the same magnification, but shift the NOAA Japan framing southward
-  // so Hokkaido through Taiwan fits in the frame.
   noaaJapanWide: {
-    center: [33.8, 136.0],
-    zoom: 4,
+    // Hokkaido ～ Taiwan が入るように south 側を広げる
+    // かつ ISEE Japan に近い倍率感になるよう fitBounds で最大限寄せる
+    bounds: [[21.5, 121.0], [46.7, 147.8]],
+    // 少しだけ南側を見やすく、かつ表示オーバーレイを避けやすくする
+    paddingTopLeft: [20, 20],
+    paddingBottomRight: [40, 80],
   },
 };
 
@@ -82,7 +86,6 @@ const MOVIE_TYPES = [
     label: "GPS HDOP × L1 horizontal error",
     suffix: "horizontal_error",
     needsGpsDop: true,
-    // Add horizontal error only to the NOAA Japan target.
     onlyTargets: ["noaa_japan"],
   },
   {
@@ -352,8 +355,6 @@ async function moveSliderAndStamp(page, index, target, movieType) {
 }
 
 async function configureGpsOnlyDop(page) {
-  // Wait for the visible GNSS panel when possible. The core old checkboxes are
-  // also set as a fallback.
   await page.waitForTimeout(500);
 
   const result = await page.evaluate(async () => {
@@ -380,8 +381,6 @@ async function configureGpsOnlyDop(page) {
 
     await window.loadGnssDopData();
 
-    // Apply saved GPS Almanac health if available. Unhealthy GPS satellites
-    // remain inactive and are not forced back on.
     try {
       await window.swiftApplySavedAlmanacHealthV66?.(false);
     } catch {}
@@ -408,7 +407,6 @@ async function applyRequestedVisualStyle(page, movieType) {
         : HEATMAP_STYLE.gpsLimits;
 
   await page.evaluate(({ mapMode, style, limits }) => {
-    // 1) Heatmap opacity
     const alpha = document.getElementById("tecAlpha");
     if (alpha) {
       alpha.value = String(style.alpha);
@@ -417,7 +415,6 @@ async function applyRequestedVisualStyle(page, movieType) {
       try { window.onTecAlphaChange?.(); } catch {}
     }
 
-    // 2) Classic palette / no reverse (legacy selectors + v7.4 unified editor)
     try {
       localStorage.setItem("swiftHeatmapPaletteV68", style.palette);
       localStorage.setItem("swiftHeatmapPaletteReverseV68", style.reverse ? "1" : "0");
@@ -462,7 +459,6 @@ async function applyRequestedVisualStyle(page, movieType) {
 
     try { window.swiftApplyUnifiedHeatmapScaleV74?.(); } catch {}
 
-    // 3) Requested map metric
     const mode = document.getElementById("mapModeSelect");
     if (!mode) throw new Error("mapModeSelect missing");
 
@@ -483,7 +479,6 @@ async function applyRequestedVisualStyle(page, movieType) {
       dockMode.value = mapMode;
     }
 
-    // 4) Redraw legend and map
     try { window.swiftRefreshHeatmapPaletteV68?.(); } catch {}
     try { window.updateLegend?.(); } catch {}
     try { window.requestDraw?.(); } catch {}
@@ -513,10 +508,19 @@ async function applyLegacyCamera(page, target) {
       if (Array.isArray(camera.center) && Number.isFinite(camera.zoom)) {
         map.setView(camera.center, camera.zoom, { animate: false });
       } else if (camera.bounds) {
-        map.fitBounds(camera.bounds, {
-          padding: camera.padding || [10, 10],
-          animate: false,
-        });
+        const fitOpts = { animate: false };
+
+        if (Array.isArray(camera.padding)) {
+          fitOpts.padding = camera.padding;
+        }
+        if (Array.isArray(camera.paddingTopLeft)) {
+          fitOpts.paddingTopLeft = camera.paddingTopLeft;
+        }
+        if (Array.isArray(camera.paddingBottomRight)) {
+          fitOpts.paddingBottomRight = camera.paddingBottomRight;
+        }
+
+        map.fitBounds(camera.bounds, fitOpts);
       } else {
         return { ok: false, reason: `camera ${targetConfig.cameraKey} has no valid view settings` };
       }
@@ -573,7 +577,6 @@ async function enterRequestedMapView(page, target) {
 async function reapplyVideoCamera(page, target) {
   await applyLegacyCamera(page, target);
 }
-
 
 function captureIndices(min, max) {
   const total = Math.max(0, max - min + 1);
@@ -743,7 +746,7 @@ function buildIndex(results) {
     }));
 
   const doc = {
-    version: "swifttec-forecast-video-legacy-v5-noaa-japan-wide",
+    version: "swifttec-forecast-video-legacy-v6-noaa-japan-hokkaido-taiwan",
     updated_utc: new Date().toISOString(),
     keep_days: KEEP_DAYS,
     visual: {
@@ -760,6 +763,7 @@ function buildIndex(results) {
       vertical_metric: "GPS VDOP × L1 vertical error",
       global_camera: VIDEO_CAMERA.global,
       japan_camera: VIDEO_CAMERA.japan,
+      noaa_japan_camera: VIDEO_CAMERA.noaaJapanWide,
     },
     latest: {
       noaa_l1_error: "data/videos_legacy/latest/noaa_l1_error.mp4",
