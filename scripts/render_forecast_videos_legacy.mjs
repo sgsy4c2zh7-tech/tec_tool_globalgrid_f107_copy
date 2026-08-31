@@ -50,25 +50,28 @@ const HEATMAP_STYLE = {
 
 // Video-only map camera.
 // Global: Greenwich-centered world so Americas are on the LEFT and Japan/Asia on the RIGHT.
-// ISEE: Japan-focused view.
-// NOAA Japan: make it feel close to ISEE Japan magnification,
-// but shifted a bit south so Hokkaido through Taiwan fits.
+// ISEE: tighter Japan focus than the full 24–46N / 122–150E source grid.
 const VIDEO_CAMERA = {
   global: {
     center: [12.0, 0.0],
     zoom: 2,
   },
+
+  // Existing ISEE Japan camera. Do not change.
   japan: {
     bounds: [[27.0, 125.0], [46.5, 148.0]],
     padding: [18, 18],
   },
-  noaaJapanWide: {
-    // Hokkaido ～ Taiwan が入るように south 側を広げる
-    // かつ ISEE Japan に近い倍率感になるよう fitBounds で最大限寄せる
-    bounds: [[21.5, 121.0], [46.7, 147.8]],
-    // 少しだけ南側を見やすく、かつ表示オーバーレイを避けやすくする
-    paddingTopLeft: [20, 20],
-    paddingBottomRight: [40, 80],
+
+  // NOAA Japan:
+  // 1) First calculate EXACTLY the same zoom as ISEE Japan
+  //    by fitting the same reference bounds with the same padding.
+  // 2) Then keep that zoom and move only the center 1.0 degree south.
+  noaaJapanSameZoomSouth1: {
+    referenceBounds: [[27.0, 125.0], [46.5, 148.0]],
+    referencePadding: [18, 18],
+    shiftLat: -1.0,
+    shiftLng: 0.0,
   },
 };
 
@@ -86,6 +89,7 @@ const MOVIE_TYPES = [
     label: "GPS HDOP × L1 horizontal error",
     suffix: "horizontal_error",
     needsGpsDop: true,
+    // Add horizontal error only to the NOAA Japan target.
     onlyTargets: ["noaa_japan"],
   },
   {
@@ -116,7 +120,7 @@ const RENDER_TARGETS = [
     key: "noaa_japan",
     source: "noaa",
     label: "NOAA Japan",
-    cameraKey: "noaaJapanWide",
+    cameraKey: "noaaJapanSameZoomSouth1",
     filePrefix: "noaa_japan",
   },
 ];
@@ -355,6 +359,8 @@ async function moveSliderAndStamp(page, index, target, movieType) {
 }
 
 async function configureGpsOnlyDop(page) {
+  // Wait for the visible GNSS panel when possible. The core old checkboxes are
+  // also set as a fallback.
   await page.waitForTimeout(500);
 
   const result = await page.evaluate(async () => {
@@ -381,6 +387,8 @@ async function configureGpsOnlyDop(page) {
 
     await window.loadGnssDopData();
 
+    // Apply saved GPS Almanac health if available. Unhealthy GPS satellites
+    // remain inactive and are not forced back on.
     try {
       await window.swiftApplySavedAlmanacHealthV66?.(false);
     } catch {}
@@ -407,6 +415,7 @@ async function applyRequestedVisualStyle(page, movieType) {
         : HEATMAP_STYLE.gpsLimits;
 
   await page.evaluate(({ mapMode, style, limits }) => {
+    // 1) Heatmap opacity
     const alpha = document.getElementById("tecAlpha");
     if (alpha) {
       alpha.value = String(style.alpha);
@@ -415,6 +424,7 @@ async function applyRequestedVisualStyle(page, movieType) {
       try { window.onTecAlphaChange?.(); } catch {}
     }
 
+    // 2) Classic palette / no reverse (legacy selectors + v7.4 unified editor)
     try {
       localStorage.setItem("swiftHeatmapPaletteV68", style.palette);
       localStorage.setItem("swiftHeatmapPaletteReverseV68", style.reverse ? "1" : "0");
@@ -459,6 +469,7 @@ async function applyRequestedVisualStyle(page, movieType) {
 
     try { window.swiftApplyUnifiedHeatmapScaleV74?.(); } catch {}
 
+    // 3) Requested map metric
     const mode = document.getElementById("mapModeSelect");
     if (!mode) throw new Error("mapModeSelect missing");
 
@@ -479,6 +490,7 @@ async function applyRequestedVisualStyle(page, movieType) {
       dockMode.value = mapMode;
     }
 
+    // 4) Redraw legend and map
     try { window.swiftRefreshHeatmapPaletteV68?.(); } catch {}
     try { window.updateLegend?.(); } catch {}
     try { window.requestDraw?.(); } catch {}
@@ -505,22 +517,33 @@ async function applyLegacyCamera(page, target) {
         return { ok: false, reason: `camera ${targetConfig.cameraKey} missing` };
       }
 
-      if (Array.isArray(camera.center) && Number.isFinite(camera.zoom)) {
+      if (Array.isArray(camera.referenceBounds)) {
+        // NOAA Japan special camera:
+        // derive the zoom from the exact same bounds/padding as ISEE Japan,
+        // then move only the center. This guarantees the same Leaflet zoom.
+        map.fitBounds(camera.referenceBounds, {
+          padding: camera.referencePadding || [10, 10],
+          animate: false,
+        });
+
+        const refCenter = map.getCenter();
+        const refZoom = map.getZoom();
+
+        map.setView(
+          [
+            refCenter.lat + Number(camera.shiftLat || 0),
+            refCenter.lng + Number(camera.shiftLng || 0),
+          ],
+          refZoom,
+          { animate: false }
+        );
+      } else if (Array.isArray(camera.center) && Number.isFinite(camera.zoom)) {
         map.setView(camera.center, camera.zoom, { animate: false });
       } else if (camera.bounds) {
-        const fitOpts = { animate: false };
-
-        if (Array.isArray(camera.padding)) {
-          fitOpts.padding = camera.padding;
-        }
-        if (Array.isArray(camera.paddingTopLeft)) {
-          fitOpts.paddingTopLeft = camera.paddingTopLeft;
-        }
-        if (Array.isArray(camera.paddingBottomRight)) {
-          fitOpts.paddingBottomRight = camera.paddingBottomRight;
-        }
-
-        map.fitBounds(camera.bounds, fitOpts);
+        map.fitBounds(camera.bounds, {
+          padding: camera.padding || [10, 10],
+          animate: false,
+        });
       } else {
         return { ok: false, reason: `camera ${targetConfig.cameraKey} has no valid view settings` };
       }
@@ -577,6 +600,7 @@ async function enterRequestedMapView(page, target) {
 async function reapplyVideoCamera(page, target) {
   await applyLegacyCamera(page, target);
 }
+
 
 function captureIndices(min, max) {
   const total = Math.max(0, max - min + 1);
@@ -746,7 +770,7 @@ function buildIndex(results) {
     }));
 
   const doc = {
-    version: "swifttec-forecast-video-legacy-v6-noaa-japan-hokkaido-taiwan",
+    version: "swifttec-forecast-video-legacy-v6-noaa-japan-same-zoom-south1",
     updated_utc: new Date().toISOString(),
     keep_days: KEEP_DAYS,
     visual: {
@@ -763,7 +787,7 @@ function buildIndex(results) {
       vertical_metric: "GPS VDOP × L1 vertical error",
       global_camera: VIDEO_CAMERA.global,
       japan_camera: VIDEO_CAMERA.japan,
-      noaa_japan_camera: VIDEO_CAMERA.noaaJapanWide,
+      noaa_japan_camera: VIDEO_CAMERA.noaaJapanSameZoomSouth1,
     },
     latest: {
       noaa_l1_error: "data/videos_legacy/latest/noaa_l1_error.mp4",
