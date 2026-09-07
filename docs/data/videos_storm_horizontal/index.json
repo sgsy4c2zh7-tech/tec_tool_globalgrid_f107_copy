@@ -1,6 +1,6 @@
 {
   "version": "swifttec-forecast-video-storm-horizontal-v1",
-  "updated_utc": "2026-09-07T13:42:45.209Z",
+  "updated_utc": "2026-09-07T23:53:11.414Z",
   "keep_days": 1,
   "visual": {
     "viewport": {
@@ -17,10 +17,10 @@
       "#ff0000"
     ],
     "horizontal_limits_m": [
+      3,
       5,
-      10,
-      20,
-      30
+      15,
+      20
     ],
     "gps_constellation_only": true,
     "horizontal_metric": "GPS HDOP × L1 horizontal error",
@@ -126,10 +126,10 @@
       "heatmap_alpha": 0.4,
       "palette": "classic",
       "thresholds_m": [
+        3,
         5,
-        10,
-        20,
-        30
+        15,
+        20
       ],
       "colors": [
         "#0066ff",
@@ -180,7 +180,7 @@
         }
       ],
       "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
-      "bytes": 924703
+      "bytes": 1954463
     },
     {
       "target": "noaa_japan",
@@ -198,10 +198,10 @@
       "heatmap_alpha": 0.4,
       "palette": "classic",
       "thresholds_m": [
+        3,
         5,
-        10,
-        20,
-        30
+        15,
+        20
       ],
       "colors": [
         "#0066ff",
@@ -252,7 +252,7 @@
         }
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 1340593
+      "bytes": 1877319
     }
   ],
   "archive": [
