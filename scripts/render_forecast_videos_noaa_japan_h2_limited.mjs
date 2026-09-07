@@ -41,10 +41,10 @@ const HEATMAP_STYLE = {
   reverse: false,
   colors: ["#0066ff", "#00e5e5", "#ff9f0a", "#ff0000"],
   // This limited edition uses 2 / 5 / 10 / 15 m.
-  gpsLimits: [2, 5, 10, 15],
+  gpsLimits: [3, 5, 10, 15],
   // DOP × L1 error scales.
-  hdopTecLimits: [2, 5, 10, 15],
-  vdopTecLimits: [2, 5, 10, 15],
+  hdopTecLimits: [3, 5, 10, 15],
+  vdopTecLimits: [3, 5, 10, 15],
 };
 
 // Video-only map camera.
