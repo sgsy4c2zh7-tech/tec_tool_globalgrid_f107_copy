@@ -1,0 +1,265 @@
+{
+  "version": "swifttec-forecast-video-storm-horizontal-v1",
+  "updated_utc": "2026-09-07T13:42:45.209Z",
+  "keep_days": 1,
+  "visual": {
+    "viewport": {
+      "width": 1700,
+      "height": 900
+    },
+    "heatmap_alpha": 0.4,
+    "palette": "classic",
+    "reverse": false,
+    "colors": [
+      "#0066ff",
+      "#00e5e5",
+      "#ff9f0a",
+      "#ff0000"
+    ],
+    "horizontal_limits_m": [
+      5,
+      10,
+      20,
+      30
+    ],
+    "gps_constellation_only": true,
+    "horizontal_metric": "GPS HDOP × L1 horizontal error",
+    "isee_japan_camera": {
+      "bounds": [
+        [
+          27,
+          125
+        ],
+        [
+          46.5,
+          148
+        ]
+      ],
+      "padding": [
+        18,
+        18
+      ]
+    },
+    "noaa_japan_camera": {
+      "referenceBounds": [
+        [
+          27,
+          125
+        ],
+        [
+          46.5,
+          148
+        ]
+      ],
+      "referencePadding": [
+        18,
+        18
+      ],
+      "shiftLat": -1,
+      "shiftLng": 0
+    }
+  },
+  "scenario": {
+    "kind": "synthetic_magnetic_storm",
+    "description": "KpF starts at 5, rises naturally to 8, then decays to 6",
+    "anchors": [
+      {
+        "hour": 0,
+        "kp": 5
+      },
+      {
+        "hour": 12,
+        "kp": 5.5
+      },
+      {
+        "hour": 24,
+        "kp": 6.2
+      },
+      {
+        "hour": 36,
+        "kp": 7.2
+      },
+      {
+        "hour": 48,
+        "kp": 8
+      },
+      {
+        "hour": 60,
+        "kp": 7.5
+      },
+      {
+        "hour": 72,
+        "kp": 7
+      },
+      {
+        "hour": 84,
+        "kp": 6.4
+      },
+      {
+        "hour": 96,
+        "kp": 6
+      },
+      {
+        "hour": 120,
+        "kp": 6
+      }
+    ]
+  },
+  "latest": {
+    "isee_japan_horizontal_error": "data/videos_storm_horizontal/latest/isee_japan_horizontal_error.mp4",
+    "noaa_japan_horizontal_error": "data/videos_storm_horizontal/latest/noaa_japan_horizontal_error.mp4"
+  },
+  "current_run": [
+    {
+      "target": "isee_japan",
+      "source": "isee",
+      "camera": "japan",
+      "label": "ISEE Japan",
+      "movie": "horizontal",
+      "metric": "GPS HDOP × L1 horizontal error",
+      "map_mode": "hdoptec",
+      "file": "data/videos_storm_horizontal/archive/2026-09-07/isee_japan_horizontal_error.mp4",
+      "latest": "data/videos_storm_horizontal/latest/isee_japan_horizontal_error.mp4",
+      "frames": 577,
+      "slider_min": 0,
+      "slider_max": 576,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        5,
+        10,
+        20,
+        30
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "kp_storm_anchors": [
+        {
+          "hour": 0,
+          "kp": 5
+        },
+        {
+          "hour": 12,
+          "kp": 5.5
+        },
+        {
+          "hour": 24,
+          "kp": 6.2
+        },
+        {
+          "hour": 36,
+          "kp": 7.2
+        },
+        {
+          "hour": 48,
+          "kp": 8
+        },
+        {
+          "hour": 60,
+          "kp": 7.5
+        },
+        {
+          "hour": 72,
+          "kp": 7
+        },
+        {
+          "hour": 84,
+          "kp": 6.4
+        },
+        {
+          "hour": 96,
+          "kp": 6
+        },
+        {
+          "hour": 120,
+          "kp": 6
+        }
+      ],
+      "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
+      "bytes": 924703
+    },
+    {
+      "target": "noaa_japan",
+      "source": "noaa",
+      "camera": "noaaJapanSameZoomSouth1",
+      "label": "NOAA Japan",
+      "movie": "horizontal",
+      "metric": "GPS HDOP × L1 horizontal error",
+      "map_mode": "hdoptec",
+      "file": "data/videos_storm_horizontal/archive/2026-09-07/noaa_japan_horizontal_error.mp4",
+      "latest": "data/videos_storm_horizontal/latest/noaa_japan_horizontal_error.mp4",
+      "frames": 361,
+      "slider_min": 0,
+      "slider_max": 720,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        5,
+        10,
+        20,
+        30
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "kp_storm_anchors": [
+        {
+          "hour": 0,
+          "kp": 5
+        },
+        {
+          "hour": 12,
+          "kp": 5.5
+        },
+        {
+          "hour": 24,
+          "kp": 6.2
+        },
+        {
+          "hour": 36,
+          "kp": 7.2
+        },
+        {
+          "hour": 48,
+          "kp": 8
+        },
+        {
+          "hour": 60,
+          "kp": 7.5
+        },
+        {
+          "hour": 72,
+          "kp": 7
+        },
+        {
+          "hour": 84,
+          "kp": 6.4
+        },
+        {
+          "hour": 96,
+          "kp": 6
+        },
+        {
+          "hour": 120,
+          "kp": 6
+        }
+      ],
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 1340593
+    }
+  ],
+  "archive": [
+    {
+      "day_utc": "2026-09-07",
+      "isee_japan_horizontal_error": "data/videos_storm_horizontal/archive/2026-09-07/isee_japan_horizontal_error.mp4",
+      "noaa_japan_horizontal_error": "data/videos_storm_horizontal/archive/2026-09-07/noaa_japan_horizontal_error.mp4"
+    }
+  ]
+}
