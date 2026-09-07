@@ -1,0 +1,99 @@
+{
+  "version": "swifttec-v8.50-noaa-japan-h2-limited",
+  "updated_utc": "2026-09-07T11:57:13.562Z",
+  "active_from_jst": "2026-09-07 00:00",
+  "active_until_exclusive_jst": "2026-09-14 00:00",
+  "schedule_jst": [
+    "09:00",
+    "14:00"
+  ],
+  "keep_days": 1,
+  "visual": {
+    "viewport": {
+      "width": 1700,
+      "height": 900
+    },
+    "heatmap_alpha": 0.4,
+    "palette": "classic",
+    "reverse": false,
+    "colors": [
+      "#0066ff",
+      "#00e5e5",
+      "#ff9f0a",
+      "#ff0000"
+    ],
+    "horizontal_limits_m": [
+      2,
+      5,
+      10,
+      15
+    ],
+    "gps_constellation_only": true,
+    "metric": "GPS HDOP × L1 horizontal error",
+    "source": "NOAA / archive_data_30m",
+    "camera": {
+      "referenceBounds": [
+        [
+          27,
+          125
+        ],
+        [
+          46.5,
+          148
+        ]
+      ],
+      "referencePadding": [
+        18,
+        18
+      ],
+      "shiftLat": -1,
+      "shiftLng": 0
+    }
+  },
+  "latest": {
+    "noaa_japan_horizontal_error": "data/videos_noaa_japan_h2_limited_202609/latest/noaa_japan_horizontal_error.mp4"
+  },
+  "current_run": [
+    {
+      "target": "noaa_japan",
+      "source": "noaa",
+      "camera": "noaaJapanSameZoomSouth1",
+      "label": "NOAA Japan",
+      "movie": "horizontal",
+      "metric": "GPS HDOP × L1 horizontal error",
+      "map_mode": "hdoptec",
+      "file": "data/videos_noaa_japan_h2_limited_202609/archive/2026-09-07/manual-205450/noaa_japan_horizontal_error.mp4",
+      "latest": "data/videos_noaa_japan_h2_limited_202609/latest/noaa_japan_horizontal_error.mp4",
+      "frames": 361,
+      "slider_min": 0,
+      "slider_max": 720,
+      "heatmap_alpha": 0.4,
+      "palette": "classic",
+      "thresholds_m": [
+        2,
+        5,
+        10,
+        15
+      ],
+      "colors": [
+        "#0066ff",
+        "#00e5e5",
+        "#ff9f0a",
+        "#ff0000"
+      ],
+      "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
+      "bytes": 2748645
+    }
+  ],
+  "archive": [
+    {
+      "day_jst": "2026-09-07",
+      "slots": [
+        {
+          "slot": "manual-205450",
+          "file": "data/videos_noaa_japan_h2_limited_202609/archive/2026-09-07/manual-205450/noaa_japan_horizontal_error.mp4"
+        }
+      ]
+    }
+  ]
+}
