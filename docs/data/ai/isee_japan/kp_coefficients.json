@@ -1,6 +1,6 @@
 {
   "version": "swifttec-isee-japan-kp-model-rule-ai-region-v1",
-  "updated_utc": "2026-09-07T14:19:07Z",
+  "updated_utc": "2026-09-08T08:52:52Z",
   "data_source": "ISEE Japan High-Res TEC",
   "model_rule": "BaseTEC = PrevObservedTEC - F(KpB); ForecastTEC = BaseTEC + F(KpF)",
   "formula": "F(Kp) = k0 + k1*(Kp-3) + k2*(Kp-3)^2 + k3*(Kp-3)^3",
@@ -1290,19 +1290,19 @@
       },
       "8": {
         "k0": 0.0,
-        "k1": 0.676666,
-        "k2": -0.568688,
-        "k3": -0.301299,
-        "sample_count": 12514,
-        "updated": true
-      },
-      "9": {
-        "k0": 0.0,
         "k1": 0.0,
         "k2": 0.0,
         "k3": 0.0,
         "sample_count": 0,
         "updated": false
+      },
+      "9": {
+        "k0": 0.0,
+        "k1": 0.766299,
+        "k2": -1.310686,
+        "k3": -0.565512,
+        "sample_count": 12514,
+        "updated": true
       },
       "10": {
         "k0": 0.0,
@@ -1878,19 +1878,19 @@
       },
       "8": {
         "k0": 0.0,
-        "k1": 0.350124,
-        "k2": -0.442624,
-        "k3": -0.496492,
-        "sample_count": 36151,
-        "updated": true
-      },
-      "9": {
-        "k0": 0.0,
         "k1": 0.0,
         "k2": 0.0,
         "k3": 0.0,
         "sample_count": 0,
         "updated": false
+      },
+      "9": {
+        "k0": 0.0,
+        "k1": 0.881085,
+        "k2": -1.510129,
+        "k3": -0.632612,
+        "sample_count": 36296,
+        "updated": true
       },
       "10": {
         "k0": 0.0,
