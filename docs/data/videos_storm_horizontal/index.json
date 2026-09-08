@@ -1,6 +1,6 @@
 {
   "version": "swifttec-forecast-video-storm-horizontal-v1",
-  "updated_utc": "2026-09-07T23:53:11.414Z",
+  "updated_utc": "2026-09-08T00:28:31.460Z",
   "keep_days": 1,
   "visual": {
     "viewport": {
@@ -19,8 +19,8 @@
     "horizontal_limits_m": [
       3,
       5,
-      15,
-      20
+      10,
+      15
     ],
     "gps_constellation_only": true,
     "horizontal_metric": "GPS HDOP × L1 horizontal error",
@@ -65,15 +65,15 @@
     "anchors": [
       {
         "hour": 0,
-        "kp": 5
+        "kp": 2
       },
       {
         "hour": 12,
-        "kp": 5.5
+        "kp": 3.5
       },
       {
         "hour": 24,
-        "kp": 6.2
+        "kp": 3.2
       },
       {
         "hour": 36,
@@ -93,7 +93,7 @@
       },
       {
         "hour": 84,
-        "kp": 6.4
+        "kp": 7.4
       },
       {
         "hour": 96,
@@ -118,7 +118,7 @@
       "movie": "horizontal",
       "metric": "GPS HDOP × L1 horizontal error",
       "map_mode": "hdoptec",
-      "file": "data/videos_storm_horizontal/archive/2026-09-07/isee_japan_horizontal_error.mp4",
+      "file": "data/videos_storm_horizontal/archive/2026-09-08/isee_japan_horizontal_error.mp4",
       "latest": "data/videos_storm_horizontal/latest/isee_japan_horizontal_error.mp4",
       "frames": 577,
       "slider_min": 0,
@@ -128,8 +128,8 @@
       "thresholds_m": [
         3,
         5,
-        15,
-        20
+        10,
+        15
       ],
       "colors": [
         "#0066ff",
@@ -140,15 +140,15 @@
       "kp_storm_anchors": [
         {
           "hour": 0,
-          "kp": 5
+          "kp": 2
         },
         {
           "hour": 12,
-          "kp": 5.5
+          "kp": 3.5
         },
         {
           "hour": 24,
-          "kp": 6.2
+          "kp": 3.2
         },
         {
           "hour": 36,
@@ -168,7 +168,7 @@
         },
         {
           "hour": 84,
-          "kp": 6.4
+          "kp": 7.4
         },
         {
           "hour": 96,
@@ -180,7 +180,7 @@
         }
       ],
       "status": "ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。",
-      "bytes": 1954463
+      "bytes": 2040740
     },
     {
       "target": "noaa_japan",
@@ -190,7 +190,7 @@
       "movie": "horizontal",
       "metric": "GPS HDOP × L1 horizontal error",
       "map_mode": "hdoptec",
-      "file": "data/videos_storm_horizontal/archive/2026-09-07/noaa_japan_horizontal_error.mp4",
+      "file": "data/videos_storm_horizontal/archive/2026-09-08/noaa_japan_horizontal_error.mp4",
       "latest": "data/videos_storm_horizontal/latest/noaa_japan_horizontal_error.mp4",
       "frames": 361,
       "slider_min": 0,
@@ -200,8 +200,8 @@
       "thresholds_m": [
         3,
         5,
-        15,
-        20
+        10,
+        15
       ],
       "colors": [
         "#0066ff",
@@ -212,15 +212,15 @@
       "kp_storm_anchors": [
         {
           "hour": 0,
-          "kp": 5
+          "kp": 2
         },
         {
           "hour": 12,
-          "kp": 5.5
+          "kp": 3.5
         },
         {
           "hour": 24,
-          "kp": 6.2
+          "kp": 3.2
         },
         {
           "hour": 36,
@@ -240,7 +240,7 @@
         },
         {
           "hour": 84,
-          "kp": 6.4
+          "kp": 7.4
         },
         {
           "hour": 96,
@@ -252,14 +252,14 @@
         }
       ],
       "status": "NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。",
-      "bytes": 1877319
+      "bytes": 2318360
     }
   ],
   "archive": [
     {
-      "day_utc": "2026-09-07",
-      "isee_japan_horizontal_error": "data/videos_storm_horizontal/archive/2026-09-07/isee_japan_horizontal_error.mp4",
-      "noaa_japan_horizontal_error": "data/videos_storm_horizontal/archive/2026-09-07/noaa_japan_horizontal_error.mp4"
+      "day_utc": "2026-09-08",
+      "isee_japan_horizontal_error": "data/videos_storm_horizontal/archive/2026-09-08/isee_japan_horizontal_error.mp4",
+      "noaa_japan_horizontal_error": "data/videos_storm_horizontal/archive/2026-09-08/noaa_japan_horizontal_error.mp4"
     }
   ]
 }
