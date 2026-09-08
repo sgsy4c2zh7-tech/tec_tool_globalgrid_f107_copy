@@ -93,14 +93,14 @@ const RENDER_TARGETS = [
 
 // 5 -> 8 -> 6 シナリオ
 const STORM_KP_ANCHORS = [
-  { hour: 0,   kp: 5.0 },
-  { hour: 12,  kp: 5.5 },
-  { hour: 24,  kp: 6.2 },
+  { hour: 0,   kp: 2.0 },
+  { hour: 12,  kp: 3.5 },
+  { hour: 24,  kp: 3.2 },
   { hour: 36,  kp: 7.2 },
   { hour: 48,  kp: 8.0 },
   { hour: 60,  kp: 7.5 },
   { hour: 72,  kp: 7.0 },
-  { hour: 84,  kp: 6.4 },
+  { hour: 84,  kp: 7.4 },
   { hour: 96,  kp: 6.0 },
   { hour: 120, kp: 6.0 },
 ];
