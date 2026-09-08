@@ -44,9 +44,9 @@ const HEATMAP_STYLE = {
   palette: "classic",
   reverse: false,
   colors: ["#0066ff", "#00e5e5", "#ff9f0a", "#ff0000"],
-  gpsLimits: [3, 5, 15, 20],
-  hdopTecLimits: [3, 5, 15, 20],
-  vdopTecLimits: [3, 5, 15, 20],
+  gpsLimits: [3, 5, 10, 15],
+  hdopTecLimits: [3, 5, 10, 15],
+  vdopTecLimits: [3, 5, 10, 15],
 };
 
 // ISEE Japan の従来倍率
