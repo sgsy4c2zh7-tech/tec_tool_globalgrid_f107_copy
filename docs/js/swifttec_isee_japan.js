@@ -7,6 +7,7 @@
   const MEAN_INDEX_URL = "data/isee_mean/index.json";
   const MEAN_ROOT_URL = "data/isee_mean/";
   const JAPAN_GRID_COEFF_URL = "data/ai/isee_japan/kp_grid_coefficients.json";
+  const JAPAN_BAND_RESIDUAL_DIR = "data/ai/isee_japan/kp_band_residual/";
 
   const FORECAST_STEP_MIN = 30;
   const FORECAST_HOURS = 96;
@@ -17,6 +18,7 @@
   const meanSlotCache = new Map();
   let meanIndexCache = null;
   let gridCoeffCache = null;
+  const bandResidualCache = new Map();
 
   function status(msg) {
     const el = document.getElementById("swiftV52Status") || document.getElementById("iseeTecStatus");
@@ -178,6 +180,51 @@
   async function loadGridCoefficients() {
     gridCoeffCache = await getJson(JAPAN_GRID_COEFF_URL);
     return gridCoeffCache;
+  }
+
+  function kpBandLabel(kp) {
+    const x = Number(kp);
+    if (!Number.isFinite(x) || x < 5) return "0-4";
+    if (x < 7) return "5-6";
+    if (x < 9) return "7-8";
+    return "9";
+  }
+
+  function kpBandFallback(label) {
+    if (label === "9") return ["9", "7-8", "5-6", "0-4"];
+    if (label === "7-8") return ["7-8", "5-6", "0-4"];
+    if (label === "5-6") return ["5-6", "0-4"];
+    return ["0-4"];
+  }
+
+  async function loadBandResidualMonth(month) {
+    const m = Number(month);
+    if (bandResidualCache.has(m)) return bandResidualCache.get(m);
+    const url = JAPAN_BAND_RESIDUAL_DIR + String(m).padStart(2, "0") + ".json";
+    try {
+      const doc = await getJson(url);
+      bandResidualCache.set(m, doc);
+      return doc;
+    } catch (e) {
+      console.warn("ISEE band residual not available:", url, e?.message || e);
+      bandResidualCache.set(m, null);
+      return null;
+    }
+  }
+
+  function bandResidualAt(doc, kp, i, j) {
+    if (!doc) return 0;
+    const bands = doc.bands || {};
+    const label = kpBandLabel(kp);
+    for (const bname of kpBandFallback(label)) {
+      const b = bands[bname];
+      if (!b) continue;
+      const n = Number(b.sample_count?.[i]?.[j] ?? 0);
+      const minApply = Number(b.min_apply_samples ?? 1);
+      const r = Number(b.residual?.[i]?.[j] ?? 0);
+      if (Number.isFinite(n) && n >= minApply && Number.isFinite(r)) return r;
+    }
+    return 0;
   }
 
   function monthGrid(coeffDoc, month) {
@@ -346,6 +393,14 @@
     const kpSeries = makeForecastKpSeries(startUtc);
     const nSteps = Math.round(FORECAST_HOURS * 60 / FORECAST_STEP_MIN);
 
+    // Month-split residual files keep Git history small. A 96h forecast can
+    // cross at most one month boundary, so preload start/end months only.
+    const endUtcForBand = new Date(startUtc.getTime() + FORECAST_HOURS * 3600000);
+    const bandDocs = {};
+    for (const m of new Set([startUtc.getUTCMonth() + 1, endUtcForBand.getUTCMonth() + 1])) {
+      bandDocs[m] = await loadBandResidualMonth(m);
+    }
+
     const frames = [];
     let gridMeta = null;
     let minDaysUsed = Infinity;
@@ -411,6 +466,10 @@
           }
 
           let kpTerm = useAi ? F(cf, kpF) : 0;
+          if (useAi) {
+            const bandDoc = bandDocs[t.getUTCMonth() + 1] || null;
+            kpTerm += bandResidualAt(bandDoc, kpF, i, j);
+          }
           if (!Number.isFinite(kpTerm)) kpTerm = 0;
           kpTerm = Math.max(-clip, Math.min(clip, kpTerm));
           minAppliedDelta = Math.min(minAppliedDelta, kpTerm);

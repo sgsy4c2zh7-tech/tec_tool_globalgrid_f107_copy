@@ -7,6 +7,7 @@
   const KP_AI_COEFF_URL = "data/ai/kp_coefficients.json";
   const KP_AI_PERF_URL = "data/ai/kp_performance.json";
   const KP_AI_GRID_COEFF_URL = "data/ai/kp_grid_coefficients.json";
+  const KP_AI_BAND_RESIDUAL_DIR = "data/ai/kp_band_residual/";
   const ISEE_KP_AI_COEFF_URL = "data/ai/isee_japan/kp_coefficients.json";
   const ISEE_KP_AI_PERF_URL = "data/ai/isee_japan/kp_performance.json";
   const ISEE_KP_AI_GRID_COEFF_URL = "data/ai/isee_japan/kp_grid_coefficients.json";
@@ -52,6 +53,7 @@
   let kpAiCoefficients = null;
   let kpAiPerformance = null;
   let kpAiGridCoefficients = null;
+  const kpBandResidualByMonth = new Map();
   let iseeKpAiCoefficients = null;
   let iseeKpAiPerformance = null;
   let iseeKpAiGridCoefficients = null;
@@ -683,6 +685,61 @@
     return Number(cf.k0 || 0) + Number(cf.k1 || 0) * x + Number(cf.k2 || 0) * x * x + Number(cf.k3 || 0) * x * x * x;
   }
 
+
+  function kpBandLabel(kp) {
+    const x = Number(kp);
+    if (!Number.isFinite(x) || x < 5) return "0-4";
+    if (x < 7) return "5-6";
+    if (x < 9) return "7-8";
+    return "9";
+  }
+
+  function kpBandFallback(label) {
+    if (label === "9") return ["9", "7-8", "5-6", "0-4"];
+    if (label === "7-8") return ["7-8", "5-6", "0-4"];
+    if (label === "5-6") return ["5-6", "0-4"];
+    return ["0-4"];
+  }
+
+  async function loadKpBandResidualMonth(month) {
+    const m = Number(month);
+    if (kpBandResidualByMonth.has(m)) return kpBandResidualByMonth.get(m);
+    const url = KP_AI_BAND_RESIDUAL_DIR + String(m).padStart(2, "0") + ".json";
+    try {
+      const r = await fetch(url, { cache: "no-store" });
+      const doc = r.ok ? await r.json() : null;
+      kpBandResidualByMonth.set(m, doc);
+      return doc;
+    } catch (e) {
+      console.warn("NOAA band residual not available:", url, e?.message || e);
+      kpBandResidualByMonth.set(m, null);
+      return null;
+    }
+  }
+
+  async function loadKpBandResidualCurrentMonths() {
+    const now = new Date();
+    const end = new Date(now.getTime() + 5 * 86400000);
+    const months = new Set([now.getUTCMonth() + 1, end.getUTCMonth() + 1]);
+    await Promise.all([...months].map(loadKpBandResidualMonth));
+  }
+
+  function kpBandResidualAt(monthKey, kp, i, j) {
+    const doc = kpBandResidualByMonth.get(Number(monthKey));
+    if (!doc) return 0;
+    const bands = doc.bands || {};
+    const label = kpBandLabel(kp);
+    for (const bname of kpBandFallback(label)) {
+      const b = bands[bname];
+      if (!b) continue;
+      const n = Number(b.sample_count?.[i]?.[j] ?? 0);
+      const minApply = Number(b.min_apply_samples ?? 1);
+      const r = Number(b.residual?.[i]?.[j] ?? 0);
+      if (Number.isFinite(n) && n >= minApply && Number.isFinite(r)) return r;
+    }
+    return 0;
+  }
+
   function applyKpAiCorrectionToGrid(grid, t) {
     if (!kpAiEnabled() || !grid || !gGrid) return grid;
 
@@ -714,7 +771,11 @@
         let corr = 0;
         if (cf && Number(cf.sample_count || 0) >= 4) {
           const y = kpAiFValue(cf, kpF) - kpAiFValue(cf, kpB);
-          corr = isFinite(y) ? c(y, -lim, lim) : 0;
+          // ISEE forecast frames already contain their dedicated Japan Kp term;
+          // apply this NOAA band residual only in the NOAA path.
+          const band = kpAiUsingIseeJapan() ? 0 : kpBandResidualAt(mk, kpF, i, j);
+          const total = y + band;
+          corr = isFinite(total) ? c(total, -lim, lim) : 0;
         }
         out[i][j] = Math.max(0, v + corr);
       }
@@ -737,6 +798,7 @@
       kpAiCoefficients = coeff;
       kpAiPerformance = perf;
       kpAiGridCoefficients = gridCoeff;
+      await loadKpBandResidualCurrentMonths();
       iseeKpAiCoefficients = iseeCoeff;
       iseeKpAiPerformance = iseePerf;
       iseeKpAiGridCoefficients = iseeGridCoeff;
