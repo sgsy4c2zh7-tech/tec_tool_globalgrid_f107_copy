@@ -1,0 +1,96 @@
+name: Kp Band AI and Monthly Excel
+
+on:
+  schedule:
+    # 14:15 JST. Runs after the existing NOAA/ISEE daily data workflows.
+    - cron: '15 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kp-band-ai-monthly-excel
+  cancel-in-progress: false
+
+jobs:
+  train-and-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install report dependencies
+        run: pip install --disable-pip-version-check numpy openpyxl
+
+      - name: Install Kp-band AI hooks into main forecast JS
+        run: python scripts/install_kp_band_ai_hooks.py
+
+      - name: Train NOAA + ISEE Kp-band residual AI
+        env:
+          SWIFTTEC_BAND_AI_TRAIN_DAYS: '30'
+          SWIFTTEC_BAND_AI_BLEND_ALPHA: '0.25'
+          SWIFTTEC_BAND_AI_ISEE_MEAN_DAYS: '10'
+          SWIFTTEC_BAND_AI_ISEE_STEP_MIN: '30'
+        run: python scripts/train_kp_band_residual_ai.py --source both
+
+      - name: Export latest observation month to Excel
+        run: python scripts/export_monthly_accuracy_xlsx.py --source both --month auto
+
+      - name: Upload Excel reports as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: swifttec-monthly-accuracy-${{ github.run_number }}
+          path: reports/monthly_accuracy/**/*.xlsx
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Publish/update month Excel as GitHub Release assets (no Git-history bloat)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for f in reports/monthly_accuracy/noaa/noaa_*.xlsx; do
+            base="$(basename "$f" .xlsx)"
+            month="${base#noaa_}"
+            tag="accuracy-noaa-${month}"
+            gh release view "$tag" >/dev/null 2>&1 || \
+              gh release create "$tag" --title "NOAA monthly accuracy ${month}" --notes "SWIFT-TEC monthly grid verification: Forecast vs observation and Kp-formula vs observation. Hit thresholds: ±5/±10/±15 TECU."
+            gh release upload "$tag" "$f" --clobber
+          done
+
+          for f in reports/monthly_accuracy/isee/isee_*.xlsx; do
+            base="$(basename "$f" .xlsx)"
+            month="${base#isee_}"
+            tag="accuracy-isee-${month}"
+            gh release view "$tag" >/dev/null 2>&1 || \
+              gh release create "$tag" --title "ISEE monthly accuracy ${month}" --notes "SWIFT-TEC monthly grid verification: Forecast vs observation and Kp-formula vs observation. Hit thresholds: ±5/±10/±15 TECU."
+            gh release upload "$tag" "$f" --clobber
+          done
+
+      - name: Commit only runtime band-AI data and JS hooks
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            scripts/train_kp_band_residual_ai.py \
+            scripts/export_monthly_accuracy_xlsx.py \
+            scripts/install_kp_band_ai_hooks.py \
+            docs/js/swifttec_isee_japan.js \
+            docs/js/swifttec_v4_archive_dop.js \
+            docs/data/ai/kp_band_residual \
+            docs/data/ai/isee_japan/kp_band_residual 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No Kp-band AI changes to commit"
+          else
+            git commit -m "ai: update Kp-band residual correction"
+            git pull --rebase
+            git push
+          fi
