@@ -35,7 +35,7 @@
   let originalBuildNoaaTecTodForForecastApi = null;
   let originalRunForecastForForecastApi = null;
   let forecastTecApiReady = false;
-  let forecastTecApiSourceLabel = "未取得";
+  let forecastTecApiSourceLabel = "Not fetched";
 
   // data/tecに保存されるTECはNOAA 30分値。UIではTEC系30分、DOP系10分へ展開する。
   const TEC_REPLAY_STEP_MIN = 30;
@@ -105,7 +105,7 @@
 
     const buf = await res.arrayBuffer();
     if (!("DecompressionStream" in window)) {
-      throw new Error("このブラウザは gzip 展開(DecompressionStream)に未対応です。json.gzではなくjson保存にしてください。: " + url);
+      throw new Error("This browser does not support gzip decompression (DecompressionStream). Save as json instead of json.gz: " + url);
     }
     const ds = new DecompressionStream("gzip");
     const stream = new Blob([buf]).stream().pipeThrough(ds);
@@ -151,8 +151,8 @@
     }
     if (info) {
       info.textContent = frames.length
-        ? `履歴 ${frames.length}枚 / ${frames[0].time_utc} 〜 ${frames[frames.length - 1].time_utc} / updated=${archiveIndex.updated_utc || "--"}`
-        : "履歴なし";
+        ? `History ${frames.length} frames / ${frames[0].time_utc} 〜 ${frames[frames.length - 1].time_utc} / updated=${archiveIndex.updated_utc || "--"}`
+        : "No history";
     }
   }
 
@@ -217,8 +217,8 @@
   }
 
   function getTimelineLabel() {
-    if (isDopLikeMode()) return `DOP系: ${DOP_REPLAY_STEP_MIN}分刻み`;
-    return `TEC系: ${TEC_REPLAY_STEP_MIN}分刻み`;
+    if (isDopLikeMode()) return `DOP:  ${DOP_REPLAY_STEP_MIN}-minute intervals`;
+    return `TEC:  ${TEC_REPLAY_STEP_MIN}-minute intervals`;
   }
 
   function adoptCurrentForecastAsRawFramesIfNeeded() {
@@ -840,16 +840,16 @@
     if (status) {
       if (kpAiLoaded) {
         const updated = kpAiCoefficients?.updated_utc || "--";
-        status.textContent = `AI係数読込OK: grid-cell + 18地域表示 / updated=${updated}`;
+        status.textContent = `AI coefficients loaded: grid cells + 18-region summary / updated=${updated}`;
       } else if (kpAiLoadError) {
-        status.textContent = `AI係数未読込: ${kpAiLoadError}`;
+        status.textContent = `AI coefficients not loaded: ${kpAiLoadError}`;
       } else {
-        status.textContent = "AI係数未読込。Train Kp AI Corrector workflow実行後に表示されます。";
+        status.textContent = "AI coefficients not loaded. Run the Train Kp AI Corrector workflow.";
       }
     }
     const rows = kpAiLatestMonthRows();
     if (bars) {
-      if (!rows.length) bars.innerHTML = '<div class="small">性能データなし</div>';
+      if (!rows.length) bars.innerHTML = '<div class="small">No performance data</div>';
       else bars.innerHTML = rows.map(r => {
         const hit = Number(r.corrected_hit_rate ?? r.hit_rate ?? 0) * 100;
         const raw = Number(r.raw_hit_rate ?? 0) * 100;
@@ -858,8 +858,8 @@
       }).join("");
     }
     if (table) {
-      if (!rows.length) table.innerHTML = '<div class="small">係数・性能データなし</div>';
-      else table.innerHTML = `<table><thead><tr><th>地域</th><th>月</th><th>N</th><th>Hit</th><th>RMSE</th><th>k0/k1/k2/k3</th></tr></thead><tbody>${rows.map(r => {
+      if (!rows.length) table.innerHTML = '<div class="small">No coefficient or performance data</div>';
+      else table.innerHTML = `<table><thead><tr><th>Region</th><th>Month</th><th>N</th><th>Hit</th><th>RMSE</th><th>k0/k1/k2/k3</th></tr></thead><tbody>${rows.map(r => {
         const cf = kpAiCoeffFor(r.region_id, String(r.month)) || {};
         const hit = Number(r.corrected_hit_rate ?? 0) * 100;
         const rmse = Number(r.corrected_rmse ?? r.rmse ?? NaN);
@@ -874,21 +874,21 @@
     card.className = "card";
     card.id = "kpAiCorrectorCard";
     card.innerHTML = `
-      <div class="card-header"><h2>8d. Kp Cubic AI Corrector</h2><span>全格子AI解析 / 18地域表示</span></div>
+      <div class="card-header"><h2>8d. Kp Cubic AI Corrector</h2><span>AI analysis of all grid cells / 18-region summary</span></div>
       <div class="small">
-        ・Kpによる残差だけを <b>k0 + k1(Kp-3) + k2(Kp-3)^2 + k3(Kp-3)^3</b> で補正します。<br>
-        ・係数は <b>全格子×12か月</b> で学習し、UIでは18地域に集約して表示します。
+        • Correct only Kp-related residuals using <b>k0 + k1(Kp-3) + k2(Kp-3)^2 + k3(Kp-3)^3</b>.<br>
+        • Coefficients are trained for <b>all grid cells × 12 months</b> and summarized in 18 regions in the UI.
       </div>
       <div class="row small" style="margin-top:6px;">
-        <label><input id="kpAiCorrectionEnabled" type="checkbox" onchange="tecInterpCache.clear(); requestDraw();"> AI Kp補正ON</label>
-        <div>補正上限[TECU]:<br><input id="kpAiCorrectionClip" type="number" value="20" min="1" max="60" step="1" style="width:80px;" onchange="tecInterpCache.clear(); requestDraw();"></div>
+        <label><input id="kpAiCorrectionEnabled" type="checkbox" onchange="tecInterpCache.clear(); requestDraw();"> Enable AI Kp correction</label>
+        <div>Correction limit [TECU]:<br><input id="kpAiCorrectionClip" type="number" value="20" min="1" max="60" step="1" style="width:80px;" onchange="tecInterpCache.clear(); requestDraw();"></div>
         <div>Fallback Kp:<br><input id="kpAiFallbackKp" type="number" value="3" min="0" max="9" step="0.33" style="width:80px;" onchange="tecInterpCache.clear(); requestDraw();"></div>
       </div>
       <div class="row">
-        <button onclick="loadKpAiData(true)">AI係数/的中率を読込</button>
-        <button class="secondary" onclick="renderKpAiPanel()">グラフ再表示</button>
+        <button onclick="loadKpAiData(true)">Load AI coefficients / hit rates</button>
+        <button class="secondary" onclick="renderKpAiPanel()">Refresh chart</button>
       </div>
-      <div class="small" id="kpAiStatus">AI係数未読込</div>
+      <div class="small" id="kpAiStatus">AI coefficients not loaded</div>
       <div id="kpAiHitRateBars" style="max-height:210px;overflow:auto;border:1px solid #222b3f;border-radius:6px;padding:4px;margin-top:4px;"></div>
       <div id="kpAiRegionTable" style="max-height:210px;overflow:auto;border:1px solid #222b3f;border-radius:6px;padding:4px;margin-top:4px;"></div>
     `;
@@ -929,7 +929,7 @@
   }
 
   function setDisplayedFrames(frames, sourceLabel) {
-    if (!frames.length) throw new Error("表示できるTECフレームがありません。期間を変えてください。");
+    if (!frames.length) throw new Error("No TEC frames to display. Select another time range.");
 
     const label = String(sourceLabel || "");
     if (!label.includes("ISEE Mean Forecast")) {
@@ -948,7 +948,7 @@
     if (typeof updateLegend === "function") updateLegend();
     applyTimelineForCurrentMode(true);
     if (typeof updateKpLabels === "function") updateKpLabels();
-    setV4Status(`${sourceLabel}: base ${rawDisplayFrames.length}枚を読み込み。表示=${getTimelineLabel()} / ${isoNoMs(rawDisplayFrames[0].time)} 〜 ${isoNoMs(rawDisplayFrames[rawDisplayFrames.length - 1].time)}`);
+    setV4Status(`${sourceLabel}: base ${rawDisplayFrames.length} frames loaded. Timeline=${getTimelineLabel()} / ${isoNoMs(rawDisplayFrames[0].time)} 〜 ${isoNoMs(rawDisplayFrames[rawDisplayFrames.length - 1].time)}`);
     maybeAutoPlayAfterLoad();
   }
 
@@ -1029,17 +1029,17 @@
 
   async function loadTecArchiveRange() {
     try {
-      setV4Status("TEC履歴indexを読み込み中…");
+      setV4Status("Loading TEC archive index…");
       await loadTecArchiveIndex();
       const entries = selectedArchiveEntries();
-      if (!entries.length) throw new Error("選択期間にTEC履歴がありません。GitHub Actions実行後に再確認してください。");
-      setV4Status(`TEC履歴を読み込み中… ${entries.length}枚`);
+      if (!entries.length) throw new Error("No archived TEC in the selected range. Run GitHub Actions and try again.");
+      setV4Status(`Loading TEC archive… ${entries.length} frames`);
       const frames = [];
       for (const e of entries) frames.push(await loadArchiveFrame(e));
-      setDisplayedFrames(frames, "過去TEC");
+      setDisplayedFrames(frames, "Historical TEC");
     } catch (e) {
       console.error(e);
-      setV4Status("TEC履歴読み込み失敗: " + e.message);
+      setV4Status("Failed to load TEC archive: " + e.message);
     }
   }
 
@@ -1062,10 +1062,10 @@
           }
         }
       }
-      setDisplayedFrames(combined, "過去TEC + 現在の予報");
+      setDisplayedFrames(combined, "Historical TEC + current forecast");
     } catch (e) {
       console.error(e);
-      setV4Status("過去+予報の読み込み失敗: " + e.message);
+      setV4Status("Failed to load history + forecast: " + e.message);
     }
   }
 
@@ -1081,7 +1081,7 @@
   }
 
   function buildTemporalFourierForecastFrames(historyFrames, forecastHours = TEC_FORECAST_HOURS, stepMinutes = 120) {
-    if (!historyFrames.length) throw new Error("予報に使えるTEC履歴がありません。");
+    if (!historyFrames.length) throw new Error("No archived TEC available for forecasting.");
     const frames = historyFrames.slice().sort((a, b) => a.time - b.time);
     const meta = frames[0].gridMeta;
     const nLat = meta.nLat, nLon = meta.nLon;
@@ -1139,10 +1139,10 @@
 
   async function loadTecDataDriven3DayForecast() {
     try {
-      setV4Status("data/tec履歴から3日TEC予報を作成中…");
+      setV4Status("Generating a 3-day TEC forecast from data/tec history…");
       await loadTecArchiveIndex();
       const frames = archiveIndex.frames || [];
-      if (!frames.length) throw new Error("data/tec/index.jsonに履歴がありません。先にNOAA TEC取得workflowを回してください。");
+      if (!frames.length) throw new Error("No history in data/tec/index.json. Run the NOAA TEC fetch workflow first.");
       const endVal = document.getElementById("archiveEndSelect")?.value || frames[frames.length - 1].time_utc;
       const endMs = new Date(endVal).getTime();
       const baseDays = getTecForecastBaseDays();
@@ -1151,8 +1151,8 @@
         const t = new Date(f.time_utc).getTime();
         return isFinite(t) && t >= startMs && t <= endMs;
       });
-      if (entries.length < 6) throw new Error("予報に使う履歴が少なすぎます。基準日数を増やすか、data/tecを蓄積してください。");
-      setV4Status(`TEC履歴読み込み中… 基準${baseDays}日 / ${entries.length}枚`);
+      if (entries.length < 6) throw new Error("Insufficient forecast history. Increase the baseline period or accumulate more data/tec.");
+      setV4Status(`Loading TEC history… baseline: ${baseDays} days / ${entries.length} frames`);
       const history = [];
       for (const e of entries) history.push(await loadArchiveFrame(e));
       history.sort((a, b) => a.time - b.time);
@@ -1160,10 +1160,10 @@
       // 表示は履歴末尾24h + 3日予報。計算用rawは2時間値、UIで30分/10分へ補間。
       const histTailStart = history[history.length - 1].time.getTime() - 24 * 3600000;
       const histTail = history.filter(f => f.time.getTime() >= histTailStart);
-      setDisplayedFrames(histTail.concat(forecast), `data基準3日TEC予報（Fourier日周期 / 基準${baseDays}日）`);
+      setDisplayedFrames(histTail.concat(forecast), `Data-based 3-day TEC forecast (Fourier daily cycle / baseline: ${baseDays} days）`);
     } catch (e) {
       console.error(e);
-      setV4Status("data基準3日TEC予報の作成失敗: " + e.message);
+      setV4Status("Data-based 3-day TEC forecast failed: " + e.message);
     }
   }
 
@@ -1203,7 +1203,7 @@
     const slider = document.getElementById("timeSlider");
     if (!slider) return;
     stopArchiveMovie();
-    setV4Status(`自動再生中: ${getTimelineLabel()} / speed x${speed}`);
+    setV4Status(`Autoplay: ${getTimelineLabel()} / speed x${speed}`);
     window._swiftTecV4Timer = setInterval(() => {
       const max = parseInt(slider.max || "0", 10) || 0;
       let v = parseInt(slider.value || "0", 10) || 0;
@@ -1239,7 +1239,7 @@
       const tryNext = () => {
         if (window.satellite) return resolve();
         if (idx >= urls.length) {
-          return reject(new Error("satellite.js の読み込みに失敗: " + errors.join(" / ")));
+          return reject(new Error("satellite.js  failed to load: " + errors.join(" / ")));
         }
         const src = urls[idx++];
         const s = document.createElement("script");
@@ -1322,11 +1322,11 @@
 
   async function loadGnssDopData() {
     try {
-      setV4Status("GNSS TLEを読み込み中… local data/gnss → 失敗時CelesTrak live");
+      setV4Status("Loading GNSS TLE… local data/gnss → CelesTrak live fallback");
       await loadScriptOnce(SATELLITE_JS_URL);
 
       const selectedConst = selectedConstellationsFromUi();
-      if (!selectedConst.length) throw new Error("GNSSコンステレーションが未選択です。GPSなどを選択してください。");
+      if (!selectedConst.length) throw new Error("No GNSS constellation selected. Select GPS or another constellation.");
 
       const previous = new Map(gnssSatList.map(s => [s.id, { selected: s.selected, active: s.active }]));
       const loaded = [];
@@ -1378,14 +1378,14 @@
 
       const byConst = summarizeByConstellation();
       const summary = Object.entries(byConst).map(([k, n]) => `${GNSS_SOURCES[k]?.label || k}=${n}`).join(" / ");
-      const warn = failed.length ? ` / 未取得: ${failed.join(", ")}` : "";
-      setV4Status(`GNSS DOP準備OK: ${gnssSatList.length}機 (${summary})${warn}`);
+      const warn = failed.length ? ` / Not fetched: ${failed.join(", ")}` : "";
+      setV4Status(`GNSS DOP ready: ${gnssSatList.length} satellites (${summary})${warn}`);
       updateGnssQuickStatus();
       if (typeof requestDraw === "function") requestDraw();
     } catch (e) {
       console.error(e);
       gnssLoaded = false;
-      setV4Status("GNSS DOP準備失敗: " + e.message);
+      setV4Status("GNSS DOP preparation failed: " + e.message);
     }
   }
 
@@ -1411,7 +1411,7 @@
     const active = selectedActiveSats().length;
     const inactive = total - gnssSatList.filter(s => s.active).length;
     const selected = gnssSatList.filter(s => s.selected).length;
-    el.textContent = `読込=${total} / 使用=${active} / 選択=${selected} / inactive=${inactive} / mask=${getElevationMaskDeg()}°`;
+    el.textContent = `Loaded=${total} / Use=${active} / Selected=${selected} / inactive=${inactive} / mask=${getElevationMaskDeg()}°`;
   }
 
   function renderSatelliteSelection() {
@@ -1419,7 +1419,7 @@
     if (!box) return;
 
     if (!gnssSatList.length) {
-      box.innerHTML = `<div class="small">未読込。まず「GNSS TLE読込 / DOP準備」を押してください。</div>`;
+      box.innerHTML = `<div class="small">Not loaded. Click Load GNSS TLE / Prepare DOP first.</div>`;
       updateGnssQuickStatus();
       return;
     }
@@ -1446,7 +1446,7 @@
       <div style="max-height:260px; overflow:auto; border:1px solid #222b3f; border-radius:6px;">
         <table>
           <thead>
-            <tr><th>使用</th><th>系</th><th>衛星</th><th>NORAD</th><th>状態</th></tr>
+            <tr><th>Use</th><th>System</th><th>Satellite</th><th>NORAD</th><th>Status</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
@@ -1967,7 +1967,7 @@
       applyTimelineForCurrentMode(false);
       if (typeof updateLegend === "function") updateLegend();
       if (typeof requestDraw === "function") requestDraw();
-      setV4Status(`表示モード変更: ${titleForMode()} / ${getTimelineLabel()}`);
+      setV4Status(`Display mode changed: ${titleForMode()} / ${getTimelineLabel()}`);
     };
 
     if (typeof drawTecOverlay === "function" && !originalDrawTecOverlay) originalDrawTecOverlay = drawTecOverlay;
@@ -2052,7 +2052,7 @@
 
     if (typeof sampleAtLatLon === "function" && !originalSampleAtLatLon) originalSampleAtLatLon = sampleAtLatLon;
     sampleAtLatLon = function (lat, lon) {
-      if (!gGrid || !gForecastTimes.length) return "未計算です。";
+      if (!gGrid || !gForecastTimes.length) return "No calculation yet.";
       let bestI = 0, bestJ = 0, bestD = 1e99;
       for (let i = 0; i < gGrid.nLat; i++) {
         const dLat = Math.abs(gGrid.latArr[i] - lat);
@@ -2100,19 +2100,19 @@
     const sel = document.getElementById("mapModeSelect");
     if (!sel) return;
     const opts = [
-      ["satcount", "可視GNSS衛星数"],
+      ["satcount", "Visible GNSS satellites"],
       ["gdop", "GDOP"],
       ["pdop", "PDOP"],
       ["hdop", "HDOP"],
       ["vdop", "VDOP"],
       ["tdop", "TDOP"],
-      ["gdoptec", "GDOP × TEC 測位誤差 [m]"],
-      ["pdoptec", "PDOP × TEC 測位誤差 [m]"],
-      ["hdoptec", "HDOP × TEC 水平誤差 [m]"],
-      ["vdoptec", "VDOP × TEC 垂直誤差 [m]"],
+      ["gdoptec", "GDOP × TEC positioning error [m]"],
+      ["pdoptec", "PDOP × TEC positioning error [m]"],
+      ["hdoptec", "HDOP × TEC horizontal error [m]"],
+      ["vdoptec", "VDOP × TEC vertical error [m]"],
       // 後方互換
-      ["dop", "GPS PDOP（旧）"],
-      ["doptec", "DOP × TEC（旧）"],
+      ["dop", "GPS PDOP (legacy)"],
+      ["doptec", "DOP × TEC (legacy)"],
     ];
     for (const [value, label] of opts) {
       if ([...sel.options].some(o => o.value === value)) continue;
@@ -2132,27 +2132,27 @@
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
-      <div class="card-header"><h2>8b. GNSS / DOP設定</h2><span>multi-GNSS / satellite select</span></div>
-      <div class="small">GPS / Galileo / GLONASS / BeiDou / QZSSを選択してDOPを計算します。</div>
+      <div class="card-header"><h2>8b. GNSS / DOP Settings</h2><span>multi-GNSS / satellite select</span></div>
+      <div class="small">Select GPS / Galileo / GLONASS / BeiDou / QZSS to calculate DOP.</div>
       <div class="row small" id="gnssConstellationBox"></div>
       <div class="row small">
-        <div>仰角マスク[deg]:<br><input id="dopElevationMaskDeg" type="number" value="10" min="0" max="45" step="1" style="width:80px;" onchange="markGnssSelectionChanged()"></div>
-        <div>描画品質:<br>
+        <div>Elevation mask[deg]:<br><input id="dopElevationMaskDeg" type="number" value="10" min="0" max="45" step="1" style="width:80px;" onchange="markGnssSelectionChanged()"></div>
+        <div>Rendering quality:<br>
           <select id="heatmapQualitySelect" onchange="requestDraw()">
-            <option value="0.45">軽量</option>
-            <option value="0.65" selected>標準</option>
-            <option value="1.0">高精細</option>
+            <option value="0.45">Lightweight</option>
+            <option value="0.65" selected>Standard</option>
+            <option value="1.0">High detail</option>
           </select>
         </div>
       </div>
       <div class="row">
-        <button onclick="loadGnssDopData()">GNSS TLE読込 / DOP準備</button>
-        <button class="secondary" onclick="setAllSatSelected(true)">全衛星使用</button>
-        <button class="secondary" onclick="setAllSatSelected(false)">全衛星解除</button>
-        <button class="secondary" onclick="setAllSatActive(true)">全Active</button>
-        <button class="secondary" onclick="setAllSatActive(false)">全Inactive</button>
+        <button onclick="loadGnssDopData()">Load GNSS TLE / Prepare DOP</button>
+        <button class="secondary" onclick="setAllSatSelected(true)">Select all satellites</button>
+        <button class="secondary" onclick="setAllSatSelected(false)">Deselect all satellites</button>
+        <button class="secondary" onclick="setAllSatActive(true)">All active</button>
+        <button class="secondary" onclick="setAllSatActive(false)">All inactive</button>
       </div>
-      <div class="small" id="gnssQuickStatus">GNSS未読込</div>
+      <div class="small" id="gnssQuickStatus">GNSS not loaded</div>
       <div id="satelliteSelectionList"></div>
     `;
     const sidebar = document.querySelector(".sidebar");
@@ -2302,33 +2302,33 @@
     card.className = "card";
     card.id = "forecastTecApiCard";
     card.innerHTML = `
-      <div class="card-header"><h2>8c. 予報用TEC API入力</h2><span>NOAA直取得 / data蓄積</span></div>
+      <div class="card-header"><h2>8c. Forecast TEC API Input</h2><span>Direct NOAA / archived data</span></div>
       <div class="small">
-        ・TEC予報計算に使う入力TECを、<b>NOAA API直取得</b> または <b>docs/data/tecの取りため済みAPI</b> から選べます。<br>
-        ・どちらも <b>過去24時間・30分間隔</b> を取得し、初期版SWIFT-TEC方式のBase抽出＋Kp/Flare加算モデルに渡します。
+        • Select forecast TEC input from <b>direct NOAA API</b> or <b>the docs/data/tec archive API</b>.<br>
+        • Both sources provide <b>the past 24 hours at 30-minute intervals</b> for the original SWIFT-TEC Base extraction + Kp/flare additive model.
       </div>
       <div class="row small" style="margin-top:6px;">
         <div style="flex:1.4;">
-          予報用TECソース:<br>
+          Forecast TEC source:<br>
           <select id="forecastTecApiSourceSelect" style="width:100%;" onchange="setForecastTecApiMode(this.value)">
-            <option value="noaa_direct_30m">NOAA APIから直取得（最新24h / 30分）</option>
-            <option value="archive_data_30m">取りため済みdata API（選択時刻まで24h / 30分）</option>
+            <option value="noaa_direct_30m">Direct NOAA API (latest 24 h / 30 min)</option>
+            <option value="archive_data_30m">Archived data API (24 h up to selected time / 30 min)</option>
           </select>
         </div>
         <div style="flex:1;">
-          data API終了UTC:<br>
+          data APIEnd UTC:<br>
           <select id="forecastTecArchiveEndSelect" style="width:100%;"></select>
         </div>
       </div>
       <div class="row" style="margin-top:4px;">
-        <button onclick="loadForecastTecFromSelectedApi(false)">予報用TECをAPI取得</button>
-        <button class="secondary" onclick="loadForecastTecFromSelectedApi(true)">再取得して予報計算</button>
+        <button onclick="loadForecastTecFromSelectedApi(false)">Fetch forecast TEC via API</button>
+        <button class="secondary" onclick="loadForecastTecFromSelectedApi(true)">Fetch again and run forecast</button>
       </div>
       <div class="row small" style="margin-top:4px;">
-        <label><input type="checkbox" id="forecastTecAutoFetch" checked> TEC予報計算前に、このソースから自動取得</label>
-        <span class="pill" id="forecastTecReadyPill">TEC入力: 未取得</span>
+        <label><input type="checkbox" id="forecastTecAutoFetch" checked> Automatically fetch this source before forecasting</label>
+        <span class="pill" id="forecastTecReadyPill">TEC input: not fetched</span>
       </div>
-      <div class="small" id="forecastTecApiStatus">予報用TEC API未取得</div>
+      <div class="small" id="forecastTecApiStatus">Forecast TEC API not fetched</div>
     `;
     const sidebar = document.querySelector(".sidebar");
     const target = document.getElementById("v4ArchiveStatus")?.closest(".card");
@@ -2341,49 +2341,49 @@
   }
 
   async function loadForecastTecFromNoaaDirectApi30m() {
-    setForecastTecApiStatus("NOAA APIから予報用TEC 30分値を取得中…");
+    setForecastTecApiStatus("Fetching forecast TEC at 30-minute intervals from NOAA API…");
     const idx = await fetch(NOAA_GLOTEC_INDEX_DIRECT_URL, { cache: "no-store" });
     if (!idx.ok) throw new Error(`NOAA index HTTP ${idx.status}`);
     const obj = await idx.json();
     const paths = normalizeNoaaGloTecIndexV48(obj);
-    if (!paths.length) throw new Error("NOAA GloTEC indexからgeojsonが見つかりません。");
+    if (!paths.length) throw new Error("No GeoJSON found in NOAA GloTEC index.");
 
     const entries = paths.map(p => {
       const fn = basenameV48(p);
       const time = parseUtcFromGloTecFilenameV48(fn) || parseUtcFromGloTecFilenameV48(p);
       return time ? { fn, time, url: asNoaaGloTecUrlV48(p) } : null;
     }).filter(Boolean).sort((a, b) => a.time - b.time);
-    if (!entries.length) throw new Error("NOAA GeoJSONファイル名からUTCを抽出できません。");
+    if (!entries.length) throw new Error("Cannot extract UTC from NOAA GeoJSON filenames.");
 
     const latest = entries[entries.length - 1].time;
     const targets = buildForecastTecTargetSlotsV48(latest, FORECAST_TEC_WINDOW_HOURS, FORECAST_TEC_SLOT_MIN);
     const picks = targets.map(slot => nearestEntryForSlotV48(entries, slot, FORECAST_TEC_MAX_DIFF_MIN));
     const miss = picks.filter(x => !x).length;
-    if (miss) throw new Error(`NOAA APIで30分枠が不足しています: ${miss}/${targets.length}枠`);
+    if (miss) throw new Error(`Missing 30-minute slots from NOAA API: ${miss}/${targets.length} slots`);
 
     const frames = [];
     for (let k = 0; k < picks.length; k++) {
       const p = picks[k];
-      setForecastTecApiStatus(`NOAA API取得中 ${k + 1}/${picks.length}: ${p.fn}`);
+      setForecastTecApiStatus(`NOAA API fetching ${k + 1}/${picks.length}: ${p.fn}`);
       const res = await fetch(p.url, { cache: "no-store" });
       if (!res.ok) throw new Error(`NOAA GeoJSON HTTP ${res.status}: ${p.fn}`);
       const txt = await res.text();
       const f = parseNoaaGloTecGeoJson(txt, targets[k], 2.0, 5.0);
       frames.push({ frame: f, time: targets[k], file: p.fn });
     }
-    installForecastTecFramesV48(frames, "NOAA API直取得 30分値");
+    installForecastTecFramesV48(frames, "direct NOAA API 30-minute values");
   }
 
   async function loadForecastTecFromArchiveDataApi30m() {
-    setForecastTecApiStatus("data/tec APIから予報用TEC 30分値を取得中…");
+    setForecastTecApiStatus("Fetching forecast TEC at 30-minute intervals from data/tec API…");
     await loadTecArchiveIndex(true);
     populateForecastTecArchiveEndSelect();
     const frames = archiveIndex?.frames || [];
-    if (!frames.length) throw new Error("data/tec/index.jsonに履歴がありません。Fetch NOAA TEC archiveを先に実行してください。");
+    if (!frames.length) throw new Error("No history in data/tec/index.json. Run Fetch NOAA TEC archive first.");
 
     const endSel = document.getElementById("forecastTecArchiveEndSelect");
     const endTime = endSel?.value ? new Date(endSel.value) : new Date(frames[frames.length - 1].time_utc);
-    if (isNaN(endTime.getTime())) throw new Error("data API終了UTCが不正です。");
+    if (isNaN(endTime.getTime())) throw new Error("Invalid data API end time (UTC).");
     const targets = buildForecastTecTargetSlotsV48(endTime, FORECAST_TEC_WINDOW_HOURS, FORECAST_TEC_SLOT_MIN);
 
     const entries = frames.map(f => ({
@@ -2394,12 +2394,12 @@
 
     const picks = targets.map(slot => nearestEntryForSlotV48(entries, slot, 16));
     const miss = picks.filter(x => !x).length;
-    if (miss) throw new Error(`data/tec APIで30分枠が不足しています: ${miss}/${targets.length}枠。archive workflowを回してください。`);
+    if (miss) throw new Error(`Missing 30-minute slots from data/tec API: ${miss}/${targets.length} slots. Run the archive workflow.`);
 
     const loaded = [];
     for (let k = 0; k < picks.length; k++) {
       const p = picks[k];
-      setForecastTecApiStatus(`data API取得中 ${k + 1}/${picks.length}: ${p.file}`);
+      setForecastTecApiStatus(`data API fetching ${k + 1}/${picks.length}: ${p.file}`);
       const fr = await loadArchiveFrame(p.raw);
       loaded.push({
         frame: {
@@ -2414,11 +2414,11 @@
         file: p.file,
       });
     }
-    installForecastTecFramesV48(loaded, "data/tec取りためAPI 30分値");
+    installForecastTecFramesV48(loaded, "data/tec archive API, 30-minute values");
   }
 
   function installForecastTecFramesV48(items, label) {
-    if (!items.length) throw new Error("予報用TECフレームが空です。");
+    if (!items.length) throw new Error("Forecast TEC frames are empty.");
     gNoaaDayFrames = items.map(x => x.frame);
     gNoaaDayTimes = items.map(x => x.time);
     gNoaaDayFiles = items.map(x => x.file || "");
@@ -2430,11 +2430,11 @@
     const tecSel = document.getElementById("tecSourceSelect");
     if (tecSel) tecSel.value = "noaa";
     const pill = document.getElementById("forecastTecReadyPill");
-    if (pill) pill.textContent = `TEC入力: ${label} / ${items.length}枚`;
+    if (pill) pill.textContent = `TEC input: ${label} / ${items.length} frames`;
 
     if (typeof renderNoaa12Table === "function") renderNoaa12Table();
     if (typeof fillForecastStartCandidates === "function") fillForecastStartCandidates();
-    setForecastTecApiStatus(`${label}: ${items.length}枚取得OK / ${isoNoMs(gNoaaDayTimes[0])} 〜 ${isoNoMs(gNoaaDayTimes[gNoaaDayTimes.length - 1])}`);
+    setForecastTecApiStatus(`${label}: ${items.length} framesFetch complete / ${isoNoMs(gNoaaDayTimes[0])} 〜 ${isoNoMs(gNoaaDayTimes[gNoaaDayTimes.length - 1])}`);
   }
 
   async function loadForecastTecFromSelectedApi(runAfter = false) {
@@ -2508,7 +2508,7 @@
         const src = document.getElementById("tecSourceSelect")?.value || "noaa";
         if (src === "noaa") {
           if (!gNoaaDayFrames || gNoaaDayFrames.length < 2) {
-            throw new Error("NOAA入力が未取得です。8cの『予報用TECをAPI取得』を押すか、自動取得をONにしてください。");
+            throw new Error("NOAA input is missing. Fetch forecast TEC in section 8c or enable automatic fetching.");
           }
           return { source: "noaa", frames: gNoaaDayFrames, times: gNoaaDayTimes || [], gridMeta: gNoaaDayFrames[0] };
         }
@@ -2542,8 +2542,8 @@
           return originalRunForecastForForecastApi();
         } catch (e) {
           console.error(e);
-          setForecastTecApiStatus("予報用TEC API取得/予報計算失敗: " + e.message);
-          if (typeof logInfo === "function") logInfo("予報計算失敗: " + e.message);
+          setForecastTecApiStatus("Forecast TEC API fetch / forecast failed: " + e.message);
+          if (typeof logInfo === "function") logInfo("Forecast calculation failed: " + e.message);
         }
       };
     }
@@ -2561,7 +2561,7 @@
       populateForecastTecArchiveEndSelect();
     }).catch(() => {
       const info = document.getElementById("archiveIndexInfo");
-      if (info) info.textContent = "TEC履歴index未作成。GitHub Actionsを実行すると表示されます。";
+      if (info) info.textContent = "TEC archive index not created. Run GitHub Actions to generate it.";
       populateForecastTecArchiveEndSelect();
     });
   }
@@ -2609,16 +2609,16 @@
   function buildPointDopSeries(lat, lon, opts = {}) {
     const stepMin = Math.max(1, Number(opts.stepMin || 5));
     const metric = String(opts.metric || "pdop");
-    if (!gGrid || !gForecastTimes.length) throw new Error("先にTEC/予報ヒートマップを作成してください。");
-    if (!gnssLoaded || !gnssSatList.length) throw new Error("先にGNSS TLE読込 / DOP準備を実行してください。");
+    if (!gGrid || !gForecastTimes.length) throw new Error("Generate a TEC / forecast heatmap first.");
+    if (!gnssLoaded || !gnssSatList.length) throw new Error("Load GNSS TLE / Prepare DOP first.");
 
     const cell = nearestGridCellForPointSeries(Number(lat), Number(lon));
-    if (!cell) throw new Error("選択地点に対応する格子を取得できません。");
+    if (!cell) throw new Error("Cannot find the grid cell for the selected point.");
 
     const start = gForecastTimes[0];
     const end = gForecastTimes[gForecastTimes.length - 1];
     if (!(start instanceof Date) || isNaN(start.getTime()) || !(end instanceof Date) || isNaN(end.getTime())) {
-      throw new Error("予報時刻列がありません。");
+      throw new Error("No forecast timeline available.");
     }
 
     const cfg = (typeof getConfigFromUI === "function") ? getConfigFromUI() : { kL1: 0.162 };
@@ -2895,7 +2895,7 @@
 (function () {
   const AI_BASE = "data/ai/";
   const REGION_LABELS = (() => {
-    const latBands = ["南緯帯", "赤道帯", "北緯帯"];
+    const latBands = ["Southern latitudes", "Equatorial band", "Northern latitudes"];
     const lonBands = ["180W-120W", "120W-60W", "60W-0", "0-60E", "60E-120E", "120E-180E"];
     const out = [];
     let id = 1;
@@ -3020,23 +3020,23 @@
 
   async function cleanLoadForecastTec() {
     syncForecastSourceToLegacy();
-    setStatus("予報用TECを読み込み中…");
+    setStatus("Loading forecast TEC…");
     await window.loadForecastTecFromSelectedApi?.(false);
-    setStatus("予報用TECを読み込みました。続けて『予報実行』できます。");
+    setStatus("Forecast TEC loaded. You can now run the forecast.");
   }
 
   async function cleanRunForecast() {
     syncForecastSourceToLegacy();
     syncAiControlsToLegacy();
-    setStatus("TEC予報を計算中…");
+    setStatus("Calculating TEC forecast…");
     const auto = q("forecastTecAutoFetch");
     if (auto) auto.checked = true;
     await window.runForecast?.();
-    setStatus("予報を実行しました。地図とスライダーで確認してください。");
+    setStatus("Forecast complete. Explore the results using the map and timeline.");
   }
 
   async function cleanLoadAiData() {
-    setStatus("AI学習結果を読み込み中…");
+    setStatus("Loading AI training results…");
     const results = await Promise.allSettled([
       fetchJsonSafe(AI_BASE + "kp_performance.json"),
       fetchJsonSafe(AI_BASE + "kp_coefficients.json"),
@@ -3050,7 +3050,7 @@
     try { await window.loadKpAiData?.(false); } catch {}
     updateCleanStats();
     renderCleanLearning();
-    setStatus(cleanAiPerf ? "AI学習結果を読み込みました。" : "AI学習結果はまだありません。Actionsで Train Kp AI Corrector を実行してください。");
+    setStatus(cleanAiPerf ? "AI training results loaded." : "No AI training results yet. Run Train Kp AI Corrector in Actions.");
   }
 
   function monthValue() {
@@ -3190,7 +3190,7 @@
     const m = row.metrics || {}, k = row.coeff || {};
     box.innerHTML = `<table class="swift-clean-table">
       <tbody>
-        <tr><th>地域</th><td>${row.id} / ${row.label}</td></tr>
+        <tr><th>Region</th><td>${row.id} / ${row.label}</td></tr>
         <tr><th>Hit</th><td>${pct(m.raw_hit_rate)} → <b>${pct(m.corrected_hit_rate)}</b></td></tr>
         <tr><th>RMSE</th><td>${num(m.raw_rmse)} → <b>${num(m.corrected_rmse)}</b></td></tr>
         <tr><th>Bias</th><td>${num(m.raw_bias)} → <b>${num(m.corrected_bias)}</b></td></tr>
@@ -3209,7 +3209,7 @@
     renderRegionGrid(rows);
     renderRegionDetail(window.swiftCleanSelectedRegion || "R01", month);
     const updated = q("cleanLearningUpdated");
-    if (updated) updated.textContent = cleanAiPerf?.updated_utc ? `updated: ${cleanAiPerf.updated_utc}` : "AI学習データなし";
+    if (updated) updated.textContent = cleanAiPerf?.updated_utc ? `updated: ${cleanAiPerf.updated_utc}` : "No AI training data";
   }
 
   window.swiftCleanSelectRegion = function (rid) {
@@ -3237,87 +3237,87 @@
       <div class="swift-clean-hero">
         <div>
           <div class="swift-clean-title">SWIFT-TEC AI Forecast</div>
-          <div class="swift-clean-sub">NOAA 30分TEC / GNSS DOP / Kp Cubic AI Corrector</div>
+          <div class="swift-clean-sub">NOAA 30-minute TEC / GNSS DOP / Kp Cubic AI Corrector</div>
         </div>
-        <span class="swift-clean-pill"><span id="cleanAiDot" class="swift-dot warn"></span><span id="cleanAiUpdated">AI未読込</span></span>
+        <span class="swift-clean-pill"><span id="cleanAiDot" class="swift-dot warn"></span><span id="cleanAiUpdated">AI not loaded</span></span>
       </div>
       <div class="swift-clean-stats">
-        <div class="swift-stat"><div class="swift-stat-label">的中率</div><div id="cleanStatHit" class="swift-stat-value">--</div><div class="swift-stat-note">raw → AI補正後</div></div>
-        <div class="swift-stat"><div class="swift-stat-label">RMSE</div><div id="cleanStatRmse" class="swift-stat-value">--</div><div class="swift-stat-note">raw → AI補正後</div></div>
+        <div class="swift-stat"><div class="swift-stat-label">Hit rate</div><div id="cleanStatHit" class="swift-stat-value">--</div><div class="swift-stat-note">raw → AI-corrected</div></div>
+        <div class="swift-stat"><div class="swift-stat-label">RMSE</div><div id="cleanStatRmse" class="swift-stat-value">--</div><div class="swift-stat-note">raw → AI-corrected</div></div>
         <div class="swift-stat"><div class="swift-stat-label">TEC data</div><div id="cleanStatData" class="swift-stat-value">--</div><div id="cleanStatDataNote" class="swift-stat-note">NOAA archive</div></div>
-        <div class="swift-stat"><div class="swift-stat-label">学習更新</div><div id="cleanStatGroups" class="swift-stat-value">--</div><div class="swift-stat-note">18地域×月別</div></div>
+        <div class="swift-stat"><div class="swift-stat-label">Training update</div><div id="cleanStatGroups" class="swift-stat-value">--</div><div class="swift-stat-note">18 regions by month</div></div>
       </div>
       <div class="swift-clean-tabs">
-        <button class="swift-clean-tab active" data-tab="forecast">予報</button>
-        <button class="swift-clean-tab" data-tab="learning">的中率</button>
-        <button class="swift-clean-tab" data-tab="region">18地域</button>
+        <button class="swift-clean-tab active" data-tab="forecast">Forecast</button>
+        <button class="swift-clean-tab" data-tab="learning">Hit rate</button>
+        <button class="swift-clean-tab" data-tab="region">18 regions</button>
         <button class="swift-clean-tab" data-tab="gnss">GNSS</button>
-        <button class="swift-clean-tab" data-tab="advanced">設定</button>
+        <button class="swift-clean-tab" data-tab="advanced">Settings</button>
       </div>
       <div class="swift-clean-panel active" data-panel="forecast">
         <div class="swift-clean-row">
-          <div><div class="swift-mini-label">予報TECソース</div><select id="cleanForecastTecSource" class="swift-clean-select"><option value="archive_data_30m">取りため済み data/tec</option><option value="noaa_direct_30m">NOAA API直取得</option></select></div>
-          <div><div class="swift-mini-label">AI補正</div><label class="swift-clean-pill" style="width:100%;justify-content:center;"><input id="cleanAiEnabled" type="checkbox"> Kp AI ON</label></div>
+          <div><div class="swift-mini-label">Forecast TEC source</div><select id="cleanForecastTecSource" class="swift-clean-select"><option value="archive_data_30m">Archived data/tec</option><option value="noaa_direct_30m">direct NOAA API</option></select></div>
+          <div><div class="swift-mini-label">AI correction</div><label class="swift-clean-pill" style="width:100%;justify-content:center;"><input id="cleanAiEnabled" type="checkbox"> Kp AI ON</label></div>
         </div>
         <div class="swift-clean-row">
-          <div><div class="swift-mini-label">補正上限[TECU]</div><input id="cleanAiClip" class="swift-clean-input" type="number" value="20" min="1" max="60" step="1"></div>
-          <div><div class="swift-mini-label">表示モード</div><select id="cleanMapMode" class="swift-clean-select"><option value="tec">TEC</option><option value="gps">GPS L1誤差</option><option value="pdoptec">PDOP×TEC</option><option value="hdoptec">HDOP×TEC</option><option value="satcount">可視衛星数</option></select></div>
+          <div><div class="swift-mini-label">Correction limit [TECU]</div><input id="cleanAiClip" class="swift-clean-input" type="number" value="20" min="1" max="60" step="1"></div>
+          <div><div class="swift-mini-label">Display mode</div><select id="cleanMapMode" class="swift-clean-select"><option value="tec">TEC</option><option value="gps">GPS L1 error</option><option value="pdoptec">PDOP×TEC</option><option value="hdoptec">HDOP×TEC</option><option value="satcount">Visible satellites</option></select></div>
         </div>
         <div class="swift-clean-row">
-          <button class="swift-clean-btn" id="cleanRunForecastBtn">予報実行</button>
-          <button class="swift-clean-btn secondary" id="cleanLoadForecastTecBtn">TEC入力取得</button>
-          <button class="swift-clean-btn secondary" onclick="loadTecArchiveRange()">過去TEC表示</button>
+          <button class="swift-clean-btn" id="cleanRunForecastBtn">Run forecast</button>
+          <button class="swift-clean-btn secondary" id="cleanLoadForecastTecBtn">Fetch TEC input</button>
+          <button class="swift-clean-btn secondary" onclick="loadTecArchiveRange()">Show historical TEC</button>
         </div>
         <div class="swift-clean-row">
-          <button class="swift-clean-btn ghost" onclick="loadTecDataDriven3DayForecast()">data基準3日予報</button>
-          <button class="swift-clean-btn ghost" onclick="loadTecArchivePlusCurrentForecast()">過去+予報接続</button>
-          <button class="swift-clean-btn ghost" onclick="playArchiveMovie()">▶ 再生</button>
-          <button class="swift-clean-btn ghost" onclick="stopArchiveMovie()">停止</button>
+          <button class="swift-clean-btn ghost" onclick="loadTecDataDriven3DayForecast()">Data-based 3-day forecast</button>
+          <button class="swift-clean-btn ghost" onclick="loadTecArchivePlusCurrentForecast()">Combine history + forecast</button>
+          <button class="swift-clean-btn ghost" onclick="playArchiveMovie()">▶ Play</button>
+          <button class="swift-clean-btn ghost" onclick="stopArchiveMovie()">Stop</button>
         </div>
       </div>
       <div class="swift-clean-panel" data-panel="learning">
         <div class="swift-clean-row">
-          <button class="swift-clean-btn" id="cleanReloadAiBtn">学習結果読込</button>
-          <div><div class="swift-mini-label">対象月</div><select id="cleanAiMonth" class="swift-clean-select">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${(i+1)===(new Date()).getUTCMonth()+1?"selected":""}>${i+1}月</option>`).join("")}</select></div>
+          <button class="swift-clean-btn" id="cleanReloadAiBtn">Load training results</button>
+          <div><div class="swift-mini-label">Month</div><select id="cleanAiMonth" class="swift-clean-select">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${(i+1)===(new Date()).getUTCMonth()+1?"selected":""}>${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i]}</option>`).join("")}</select></div>
         </div>
-        <div class="swift-clean-status" id="cleanLearningUpdated">AI学習データ未読込</div>
+        <div class="swift-clean-status" id="cleanLearningUpdated">AI training data not loaded</div>
         <canvas id="cleanTrendChart" class="swift-clean-chart"></canvas>
         <div style="height:8px"></div>
         <canvas id="cleanRegionBarChart" class="swift-clean-chart"></canvas>
       </div>
       <div class="swift-clean-panel" data-panel="region">
-        <div class="swift-clean-row"><button class="swift-clean-btn secondary" onclick="window.swiftCleanRefreshLearning()">更新</button><span class="swift-clean-status">地域をクリックすると係数と精度を表示</span></div>
+        <div class="swift-clean-row"><button class="swift-clean-btn secondary" onclick="window.swiftCleanRefreshLearning()">Refresh</button><span class="swift-clean-status">Click a region to view coefficients and accuracy</span></div>
         <div id="cleanRegionGrid" class="swift-region-grid"></div>
         <div style="height:8px"></div>
         <div id="cleanRegionDetail"></div>
       </div>
       <div class="swift-clean-panel" data-panel="gnss">
         <div class="swift-clean-row">
-          <button class="swift-clean-btn" onclick="loadGnssDopData()">GNSS TLE読込</button>
-          <button class="swift-clean-btn secondary" onclick="setAllSatSelected(true)">全衛星使用</button>
-          <button class="swift-clean-btn secondary" onclick="setAllSatSelected(false)">全解除</button>
+          <button class="swift-clean-btn" onclick="loadGnssDopData()">Load GNSS TLE</button>
+          <button class="swift-clean-btn secondary" onclick="setAllSatSelected(true)">Select all satellites</button>
+          <button class="swift-clean-btn secondary" onclick="setAllSatSelected(false)">Deselect all</button>
         </div>
         <div class="swift-clean-row">
-          <button class="swift-clean-btn ghost" onclick="setAllSatActive(true)">全Active</button>
-          <button class="swift-clean-btn ghost" onclick="setAllSatActive(false)">全Inactive</button>
+          <button class="swift-clean-btn ghost" onclick="setAllSatActive(true)">All active</button>
+          <button class="swift-clean-btn ghost" onclick="setAllSatActive(false)">All inactive</button>
         </div>
-        <div class="swift-clean-status" id="cleanGnssNote">詳細な衛星ON/OFFは設定タブで旧UIを表示して調整できます。</div>
+        <div class="swift-clean-status" id="cleanGnssNote">Open the legacy UI from Settings to toggle individual satellites.</div>
       </div>
       <div class="swift-clean-panel" data-panel="advanced">
         <div class="swift-clean-row">
-          <button class="swift-clean-btn secondary" id="cleanToggleLegacyBtn">旧UI/詳細設定を表示</button>
-          <button class="swift-clean-btn ghost" onclick="loadTecArchiveIndex(true)">index再読込</button>
+          <button class="swift-clean-btn secondary" id="cleanToggleLegacyBtn">Show legacy UI / advanced settings</button>
+          <button class="swift-clean-btn ghost" onclick="loadTecArchiveIndex(true)">indexReload</button>
         </div>
-        <div class="swift-clean-status">詳細係数、手動Kp、色設定などは旧UIを開いて調整。</div>
+        <div class="swift-clean-status">Open the legacy UI to adjust coefficients, manual Kp and color settings.</div>
       </div>
       <div id="cleanDashboardStatus" class="swift-clean-status">Ready</div>
     `;
     sidebar.insertBefore(dash, sidebar.firstChild);
 
     dash.querySelectorAll(".swift-clean-tab").forEach(btn => btn.addEventListener("click", () => setTab(btn.dataset.tab)));
-    q("cleanLoadForecastTecBtn")?.addEventListener("click", () => cleanLoadForecastTec().catch(e => setStatus("TEC入力取得失敗: " + e.message)));
-    q("cleanRunForecastBtn")?.addEventListener("click", () => cleanRunForecast().catch(e => setStatus("予報実行失敗: " + e.message)));
-    q("cleanReloadAiBtn")?.addEventListener("click", () => cleanLoadAiData().catch(e => setStatus("AI読込失敗: " + e.message)));
+    q("cleanLoadForecastTecBtn")?.addEventListener("click", () => cleanLoadForecastTec().catch(e => setStatus("TEC input fetch failed: " + e.message)));
+    q("cleanRunForecastBtn")?.addEventListener("click", () => cleanRunForecast().catch(e => setStatus("Forecast failed: " + e.message)));
+    q("cleanReloadAiBtn")?.addEventListener("click", () => cleanLoadAiData().catch(e => setStatus("AI loading failed: " + e.message)));
     q("cleanAiMonth")?.addEventListener("change", renderCleanLearning);
     q("cleanAiEnabled")?.addEventListener("change", syncAiControlsToLegacy);
     q("cleanAiClip")?.addEventListener("change", syncAiControlsToLegacy);
@@ -3329,7 +3329,7 @@
       const open = !document.body.classList.contains("swift-advanced-open");
       document.body.classList.toggle("swift-advanced-open", open);
       setHiddenLegacy(!open);
-      q("cleanToggleLegacyBtn").textContent = open ? "旧UI/詳細設定を隠す" : "旧UI/詳細設定を表示";
+      q("cleanToggleLegacyBtn").textContent = open ? "Hide legacy UI / advanced settings" : "Show legacy UI / advanced settings";
     });
 
     window.swiftCleanRefreshLearning = () => { updateCleanStats(); renderCleanLearning(); };
@@ -3355,9 +3355,9 @@
 
   const REGION_LABELS_V52 = (() => {
     const latBands = [
-      { key: "S", label: "南緯帯" },
-      { key: "E", label: "赤道帯" },
-      { key: "N", label: "北緯帯" },
+      { key: "S", label: "Southern latitudes" },
+      { key: "E", label: "Equatorial band" },
+      { key: "N", label: "Northern latitudes" },
     ];
     const lonBands = ["180W-120W", "120W-60W", "60W-0", "0-60E", "60E-120E", "120E-180E"];
     const out = [];
@@ -3733,7 +3733,7 @@
     const base = isIsee ? "data/ai/isee_japan/" : AI_BASE;
     const tecIndexUrl = isIsee ? "data/isee_tec/index.json" : "data/tec/index.json";
 
-    setV52Status(isIsee ? "ISEE Japan AI学習・実測検証結果を読み込み中…" : "NOAA / Global AI学習・検証結果を読み込み中…");
+    setV52Status(isIsee ? "Loading ISEE Japan AI training and observation validation results…" : "Loading NOAA / Global AI training and validation results…");
     const results = await Promise.allSettled([
       fetchJson52(base + "kp_performance.json"),
       fetchJson52(base + "kp_coefficients.json"),
@@ -3748,16 +3748,16 @@
     const note = q52("swiftV52HistoryNote");
     if (note) {
       note.textContent = isIsee
-        ? "ISEE Japan高解像度VTECの学習結果。下の実測検証では時間別平均予報と実測ISEEのずれをKp別に表示します。"
-        : "全格子で学習し、18地域に集約した的中率を過去2年分表示します。";
+        ? "ISEE Japan high-resolution VTEC training results. Validation below shows differences between time-of-day mean forecasts and observed ISEE by Kp."
+        : "Training covers all grid cells. Hit rates are summarized across 18 regions for the past two years.";
     }
 
     try { await window.loadKpAiData?.(false); } catch {}
     renderV52All();
     try { await window.swiftLoadFailureAnalysis?.(true); } catch {}
     setV52Status(perfV52
-      ? (isIsee ? "ISEE Japan AI学習・実測検証結果を読み込みました。" : "AI学習結果を読み込みました。")
-      : (isIsee ? "ISEE Japan AI学習結果がまだありません。日次ISEE Actionを実行してください。" : "AI学習結果なし。Actionsで Train Kp AI Corrector を実行してください。"));
+      ? (isIsee ? "ISEE Japan AI training and observation validation results loaded." : "AI training results loaded.")
+      : (isIsee ? "No ISEE Japan AI training results yet. Run the daily ISEE Action." : "No AI training results. Run Train Kp AI Corrector in Actions."));
   }
 
   function syncV52ForecastControls() {
@@ -3798,14 +3798,14 @@
     syncV52ForecastControls();
     const source = q52("swiftV52TecSource")?.value || "archive_data_30m";
     if (source === "isee_japan_highres") {
-      setV52Status("ISEE Japan High-Res VTEC [TECU]を取得中…");
+      setV52Status("Fetching ISEE Japan High-Res VTEC [TECU]…");
       await window.swiftIseeLoadLatest?.(false);
-      setV52Status("ISEE Japan High-Res VTEC [TECU]を取得しました。");
+      setV52Status("ISEE Japan High-Res VTEC [TECU] fetched.");
       return;
     }
-    setV52Status("予報用TECを取得中…");
+    setV52Status("Fetching forecast TEC…");
     await window.loadForecastTecFromSelectedApi?.(false);
-    setV52Status("予報用TECを取得しました。");
+    setV52Status("Forecast TEC fetched.");
   }
 
 
@@ -3834,11 +3834,11 @@
     const status = q52("swiftV52Status");
     if (status) {
       status.textContent =
-        `NOAA BaseTEC動的予報: ${result.frames} frames / ` +
-        `BaseTEC=実測TEC−F(KpB), Forecast=BaseTEC+F(KpF)` +
-        ` / KpB=${result.baseKpReady ? "実測" : "KpF代用"}` +
+        `NOAA dynamic BaseTEC forecast: ${result.frames} frames / ` +
+        `BaseTEC=observed TEC−F(KpB), Forecast=BaseTEC+F(KpF)` +
+        ` / KpB=${result.baseKpReady ? "Observed" : "KpF fallback"}` +
         (result.baseDayUtc ? `(${result.baseDayUtc})` : "") +
-        ` / ヒートマップ=30分ごと再計算`;
+        ` / heatmap=recalculated every 30 minutes`;
     }
 
     return true;
@@ -3851,18 +3851,18 @@
 
     if (source === "isee_japan_highres") {
       window.swiftNoaaBaseTecForecastActiveV830 = false;
-      if (auto) auto.checked = false; // NOAA/data TEC自動取得を止める
+      if (auto) auto.checked = false; // NOAA/data TECAutomatic fetchを止める
       const legacyTecSource = q52("tecSourceSelect");
       if (legacyTecSource) legacyTecSource.value = "isee";
 
-      setV52Status("ISEE時間別平均VTEC + 予報Kp + Japan格子別AIで4日予報を計算中…");
+      setV52Status("Calculating a 4-day forecast with ISEE time-of-day mean VTEC + forecast Kp + Japan grid-cell AI…");
       await (window.swiftIseeRunMeanForecast || window.swiftIseeRun10DayBaseForecast)?.();
-      setV52Status("ISEE Japan 時間別平均予報を実行しました。VTEC [TECU]を日本高解像度で表示しています。");
+      setV52Status("ISEE Japan time-of-day mean forecast complete. Showing high-resolution VTEC [TECU] for Japan.");
       return;
     } else {
       if (auto) auto.checked = true;
       try { window.swiftClearIsee10DayBaseForecastMode?.(); } catch {}
-      setV52Status("AI設定を反映してTEC予報を計算中…");
+      setV52Status("Calculating TEC forecast with current AI settings…");
     }
 
     await window.runForecast?.();
@@ -3875,9 +3875,9 @@
     const rebuilt = await rebuildNoaaBaseTecForecastV825();
 
     if (rebuilt) {
-      setV52Status("NOAA BaseTEC動的予報を実行しました。ヒートマップは30分時刻ごとに再計算します。");
+      setV52Status("NOAA dynamic BaseTEC forecast complete. The heatmap is recalculated for each 30-minute time step.");
     } else {
-      setV52Status("NOAA予報を実行しました（BaseTEC再構成は利用可能データ不足のため未適用）。");
+      setV52Status("NOAA forecast complete (BaseTEC reconstruction unavailable due to insufficient data).");
     }
   }
 
@@ -3919,13 +3919,13 @@
     const plot = { x0: 44 * dpr, y0: 26 * dpr, x1: w - 16 * dpr, y1: h - 34 * dpr };
     ctx.fillStyle = "#dbeafe";
     ctx.font = `${13 * dpr}px system-ui`;
-    ctx.fillText(`的中率推移（過去${span >= 730 ? "2年" : span + "日"}）`, 14 * dpr, 17 * dpr);
+    ctx.fillText(`Hit-rate trend (past ${span >= 730 ? "2 years" : span + " days"}）`, 14 * dpr, 17 * dpr);
     drawAxes52(ctx, w, h, plot, "pct");
 
     if (!rows.length) {
       ctx.fillStyle = "#94a3b8";
       ctx.font = `${13 * dpr}px system-ui`;
-      ctx.fillText("まだ学習履歴がありません。Train Kp AI Corrector を実行してください。", plot.x0, (plot.y0 + plot.y1) / 2);
+      ctx.fillText("No training history yet. Run Train Kp AI Corrector.", plot.x0, (plot.y0 + plot.y1) / 2);
       return;
     }
 
@@ -3959,7 +3959,7 @@
     ctx.fillStyle = "#64748b";
     ctx.fillText(`raw ${pct52(latest.raw_hit_rate)}`, plot.x0, h - 13 * dpr);
     ctx.fillStyle = "#60a5fa";
-    ctx.fillText(`AI補正後 ${pct52(latest.corrected_hit_rate)}`, plot.x0 + 85 * dpr, h - 13 * dpr);
+    ctx.fillText(`AI-corrected ${pct52(latest.corrected_hit_rate)}`, plot.x0 + 85 * dpr, h - 13 * dpr);
     ctx.fillStyle = "#94a3b8";
     ctx.fillText(`${isoDate52(rows[0].time_utc)} 〜 ${isoDate52(latest.time_utc)}`, plot.x1 - 155 * dpr, h - 13 * dpr);
   }
@@ -3972,7 +3972,7 @@
     const plot = { x0: 44 * dpr, y0: 24 * dpr, x1: w - 12 * dpr, y1: h - 26 * dpr };
     ctx.fillStyle = "#dbeafe";
     ctx.font = `${12 * dpr}px system-ui`;
-    ctx.fillText("RMSE推移", 14 * dpr, 16 * dpr);
+    ctx.fillText("RMSE trend", 14 * dpr, 16 * dpr);
     if (!rows.length) {
       ctx.fillStyle = "#94a3b8";
       ctx.fillText("No data", plot.x0, (plot.y0 + plot.y1) / 2);
@@ -4006,7 +4006,7 @@
     const plot = { x0: 42 * dpr, y0: 22 * dpr, x1: w - 12 * dpr, y1: h - 16 * dpr };
     ctx.fillStyle = "#dbeafe";
     ctx.font = `${12 * dpr}px system-ui`;
-    ctx.fillText(`${monthV52()}月 18地域 的中率`, 12 * dpr, 15 * dpr);
+    ctx.fillText(`${monthV52()}: hit rate across 18 regions`, 12 * dpr, 15 * dpr);
     const gap = 2 * dpr;
     const barH = Math.max(3 * dpr, (plot.y1 - plot.y0 - gap * 17) / 18);
     rows.forEach((r, i) => {
@@ -4051,7 +4051,7 @@
     box.innerHTML = `
       <table class="swift-v52-table">
         <tbody>
-          <tr><th>地域</th><td>${r.id} / ${r.label}</td></tr>
+          <tr><th>Region</th><td>${r.id} / ${r.label}</td></tr>
           <tr><th>Hit</th><td>${pct52(m.raw_hit_rate)} → <b>${pct52(m.corrected_hit_rate)}</b></td></tr>
           <tr><th>RMSE</th><td>${num52(m.raw_rmse)} → <b>${num52(m.corrected_rmse)}</b></td></tr>
           <tr><th>Bias</th><td>${num52(m.raw_bias)} → <b>${num52(m.corrected_bias)}</b></td></tr>
@@ -4072,8 +4072,8 @@
     set("swiftV52KpiRuns", String(rows.length || "--"));
     const note = q52("swiftV52HistoryNote");
     if (note) note.textContent = rows.length
-      ? `学習履歴: ${isoDate52(rows[0].time_utc)} 〜 ${isoDate52(rows[rows.length - 1].time_utc)} / 最大2年表示 / 係数は全格子学習`
-      : "学習履歴なし";
+      ? `Training history: ${isoDate52(rows[0].time_utc)} 〜 ${isoDate52(rows[rows.length - 1].time_utc)} / up to 2 years / coefficients trained on all grid cells`
+      : "No training history";
     const dot = q52("swiftV52AiDot");
     if (dot) dot.className = "swift-v52-dot " + (perfV52 ? "ok" : "warn");
 
@@ -4089,7 +4089,7 @@
     if (!box) return;
     const rows = historyRowsV52(TWO_YEARS_DAYS).slice(-8).reverse();
     if (!rows.length) {
-      box.innerHTML = `<div class="swift-v52-sub">まだ学習履歴がありません。</div>`;
+      box.innerHTML = `<div class="swift-v52-sub">No training history yet.</div>`;
       return;
     }
     box.innerHTML = `<table class="swift-v52-table">
@@ -4126,77 +4126,77 @@
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div>
           <div class="swift-v52-title">SWIFT-TEC AI</div>
-          <div class="swift-v52-sub">全格子AIで育てるTEC予報</div>
+          <div class="swift-v52-sub">TEC forecasting with AI trained on every grid cell</div>
         </div>
         <span class="swift-v52-pill"><span id="swiftV52AiDot" class="swift-v52-dot warn"></span> AI</span>
       </div>
 
       <div class="swift-v52-mini-stats">
         <div class="swift-v52-mini">
-          <div class="swift-v52-mini-label">最新Hit raw→AI</div>
+          <div class="swift-v52-mini-label">Latest hit rate: raw → AI</div>
           <div class="swift-v52-mini-value" id="swiftV52KpiHit">--</div>
-          <div class="swift-v52-mini-note">±5 TECU以内</div>
+          <div class="swift-v52-mini-note">Within ±5 TECU</div>
         </div>
         <div class="swift-v52-mini">
-          <div class="swift-v52-mini-label">最新RMSE raw→AI</div>
+          <div class="swift-v52-mini-label">Latest RMSE: raw → AI</div>
           <div class="swift-v52-mini-value" id="swiftV52KpiRmse">--</div>
-          <div class="swift-v52-mini-note">小さいほど良い</div>
+          <div class="swift-v52-mini-note">Lower is better</div>
         </div>
         <div class="swift-v52-mini">
-          <div class="swift-v52-mini-label">学習サンプル</div>
+          <div class="swift-v52-mini-label">Training samples</div>
           <div class="swift-v52-mini-value" id="swiftV52KpiSamples">--</div>
-          <div class="swift-v52-mini-note">直近学習回</div>
+          <div class="swift-v52-mini-note">Latest training run</div>
         </div>
         <div class="swift-v52-mini">
-          <div class="swift-v52-mini-label">2年内学習回数</div>
+          <div class="swift-v52-mini-label">Training runs in 2 years</div>
           <div class="swift-v52-mini-value" id="swiftV52KpiRuns">--</div>
-          <div class="swift-v52-mini-note">最大730日分</div>
+          <div class="swift-v52-mini-note">Up to 730 days</div>
         </div>
       </div>
 
       <div class="swift-v52-controls">
         <div>
-          <div class="swift-v52-label">予報用TEC</div>
+          <div class="swift-v52-label">Forecast TEC</div>
           <select id="swiftV52TecSource" class="swift-v52-select" onchange="window.swiftV52SyncForecastControls()">
-            <option value="archive_data_30m" selected>取りため済みdata API</option>
-            <option value="noaa_direct_30m">NOAA API直取得</option>
+            <option value="archive_data_30m" selected>Archived data API</option>
+            <option value="noaa_direct_30m">direct NOAA API</option>
             <option value="isee_japan_highres">🇯🇵 ISEE Japan High-Res VTEC</option>
           </select>
           <div id="swiftV52IseeActions" class="swift-v52-row" style="display:none;margin-top:6px;">
-            <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(false)">ISEE読込</button>
-            <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(true)">🇯🇵 日本表示</button>
+            <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(false)">Load ISEE</button>
+            <button class="swift-v52-btn secondary" onclick="window.swiftIseeLoadLatest?.(true)">🇯🇵 Show Japan</button>
           </div>
           <div id="swiftV52IseeNote" class="swift-v52-sub" style="display:none;margin-top:4px;">
-            日本高解像度 VTEC [TECU] / 30日保存 / 時間別平均 + 予報Kp + Japan格子別AI
+            Japan high-resolution VTEC [TECU] / 30-day archive / time-of-day mean + forecast Kp + Japan grid-cell AI
           </div>
         </div>
         <div class="swift-v52-row">
           <label class="swift-v52-pill" style="justify-content:center;cursor:pointer;">
             <input id="swiftV52AiEnabled" type="checkbox" onchange="window.swiftV52SyncForecastControls()" checked>
-            AI Kp補正ON
+            Enable AI Kp correction
           </label>
           <div>
-            <div class="swift-v52-label">補正上限[TECU]</div>
+            <div class="swift-v52-label">Correction limit [TECU]</div>
             <input id="swiftV52AiClip" class="swift-v52-input" type="number" value="20" min="0" max="50" step="1" onchange="window.swiftV52SyncForecastControls()">
           </div>
         </div>
         <div class="swift-v52-row">
-          <button class="swift-v52-btn secondary" onclick="window.swiftV52LoadData()">AI読込</button>
-          <button class="swift-v52-btn secondary" onclick="window.swiftV52LoadTec()">TEC取得</button>
+          <button class="swift-v52-btn secondary" onclick="window.swiftV52LoadData()">Load AI</button>
+          <button class="swift-v52-btn secondary" onclick="window.swiftV52LoadTec()">Fetch TEC</button>
         </div>
-        <button class="swift-v52-btn" onclick="window.swiftV52RunForecast()">予報実行</button>
+        <button class="swift-v52-btn" onclick="window.swiftV52RunForecast()">Run forecast</button>
         <div class="swift-v52-row">
-          <button class="swift-v52-btn secondary" onclick="window.playArchiveMovie?.()">▶ 再生</button>
-          <button class="swift-v52-btn secondary" onclick="window.stopArchiveMovie?.()">⏸ 停止</button>
+          <button class="swift-v52-btn secondary" onclick="window.playArchiveMovie?.()">▶ Play</button>
+          <button class="swift-v52-btn secondary" onclick="window.stopArchiveMovie?.()">⏸ Stop</button>
         </div>
         <div class="swift-v52-row">
-          <button class="swift-v52-btn ghost" onclick="window.loadGnssDopData?.()">GNSS読込</button>
-          <button class="swift-v52-btn ghost" onclick="document.body.classList.toggle('swift-advanced-open')">詳細設定</button>
+          <button class="swift-v52-btn ghost" onclick="window.loadGnssDopData?.()">Load GNSS</button>
+          <button class="swift-v52-btn ghost" onclick="document.body.classList.toggle('swift-advanced-open')">Advanced settings</button>
         </div>
       </div>
 
       <div class="swift-v52-mini" style="margin-top:10px;">
-        <div class="swift-v52-mini-label">TEC蓄積</div>
+        <div class="swift-v52-mini-label">TEC Archive</div>
         <div class="swift-v52-mini-value" id="swiftV52DataCount">--</div>
         <div class="swift-v52-mini-note" id="swiftV52DataNote">--</div>
       </div>
@@ -4216,48 +4216,48 @@
     panel.innerHTML = `
       <div class="swift-v52-chart-head">
         <div>
-          <div class="swift-v52-title">的中率モニター <span style="font-size:10px;color:#93c5fd;">NOAA / ISEE 切替</span></div>
-          <div class="swift-v52-sub" id="swiftV52HistoryNote">全格子で学習し、18地域に集約した的中率を過去2年分表示します。</div>
+          <div class="swift-v52-title">Accuracy Monitor <span style="font-size:10px;color:#93c5fd;">NOAA / ISEE selector</span></div>
+          <div class="swift-v52-sub" id="swiftV52HistoryNote">Training covers all grid cells. Hit rates are summarized across 18 regions for the past two years.</div>
         </div>
         <div class="swift-v52-head-actions">
-          <span style="font-size:10px;color:#9fb0cc;align-self:center;">検証表示</span>
+          <span style="font-size:10px;color:#9fb0cc;align-self:center;">Validation source</span>
           <select id="swiftV52MetricsSource" class="swift-v52-select" style="width:130px;"
                   onchange="window.swiftV52SetMetricsSource(this.value)">
             <option value="noaa" selected>NOAA / Global</option>
             <option value="isee">ISEE Japan</option>
           </select>
           <select id="swiftV52Span" class="swift-v52-select" style="width:118px;" onchange="window.swiftV52RenderAll()">
-            <option value="90">90日</option>
-            <option value="365">1年</option>
-            <option value="730" selected>2年</option>
+            <option value="90">90 days</option>
+            <option value="365">1 year</option>
+            <option value="730" selected>2 years</option>
           </select>
           <select id="swiftV52Month" class="swift-v52-select" style="width:80px;" onchange="window.swiftV52RenderAll()">
-            ${Array.from({ length: 12 }, (_, i) => `<option value="${i+1}" ${(i+1)===(new Date()).getUTCMonth()+1 ? "selected" : ""}>${i+1}月</option>`).join("")}
+            ${Array.from({ length: 12 }, (_, i) => `<option value="${i+1}" ${(i+1)===(new Date()).getUTCMonth()+1 ? "selected" : ""}>${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i]}</option>`).join("")}
           </select>
-          <button class="swift-v52-btn secondary" style="padding:7px 10px;" onclick="window.swiftV52LoadData()">更新</button>
+          <button class="swift-v52-btn secondary" style="padding:7px 10px;" onclick="window.swiftV52LoadData()">Refresh</button>
         </div>
       </div>
 
       <div class="swift-v52-kpi-row">
         <div class="swift-v52-kpi">
-          <div class="swift-v52-kpi-label">最新Hit raw→AI</div>
+          <div class="swift-v52-kpi-label">Latest hit rate: raw → AI</div>
           <div class="swift-v52-kpi-value" id="swiftV52MainHit">--</div>
-          <div class="swift-v52-kpi-note">AI補正で上がるか確認</div>
+          <div class="swift-v52-kpi-note">Compare hit rate before and after AI correction</div>
         </div>
         <div class="swift-v52-kpi">
-          <div class="swift-v52-kpi-label">最新RMSE raw→AI</div>
+          <div class="swift-v52-kpi-label">Latest RMSE: raw → AI</div>
           <div class="swift-v52-kpi-value" id="swiftV52MainRmse">--</div>
-          <div class="swift-v52-kpi-note">小さいほど良い</div>
+          <div class="swift-v52-kpi-note">Lower is better</div>
         </div>
         <div class="swift-v52-kpi">
-          <div class="swift-v52-kpi-label">2年内学習回数</div>
+          <div class="swift-v52-kpi-label">Training runs in 2 years</div>
           <div class="swift-v52-kpi-value" id="swiftV52MainRuns">--</div>
-          <div class="swift-v52-kpi-note">最大730回</div>
+          <div class="swift-v52-kpi-note">Up to 730 runs</div>
         </div>
         <div class="swift-v52-kpi">
-          <div class="swift-v52-kpi-label">最新サンプル数</div>
+          <div class="swift-v52-kpi-label">Latest sample count</div>
           <div class="swift-v52-kpi-value" id="swiftV52MainSamples">--</div>
-          <div class="swift-v52-kpi-note">学習に使った点数</div>
+          <div class="swift-v52-kpi-note">Data points used for training</div>
         </div>
       </div>
 
@@ -4317,7 +4317,7 @@
       loadV52Data().catch(e => {
         console.warn(e);
         renderV52All();
-        setV52Status("AI学習結果をまだ読めません。Train Kp AI Correctorを実行してください。");
+        setV52Status("AI training results unavailable. Run Train Kp AI Corrector.");
       });
       window.addEventListener("resize", () => {
         clearTimeout(window.__swiftV52ResizeTimer);
@@ -4643,7 +4643,7 @@
 
   function updatePointPanelV55(text) {
     const rawEl = q55("swiftV55PointRaw");
-    if (rawEl) rawEl.textContent = text || "地図をクリックしてください。";
+    if (rawEl) rawEl.textContent = text || "Click the map.";
     const p = parsePointInfoV55(text);
     const set = (id, val) => { const el = q55(id); if (el) el.textContent = val || "--"; };
     set("swiftV55PointTec", p.tec && p.tec !== "NaN" ? `${p.tec} TECU` : "--");
@@ -4665,14 +4665,14 @@
     option.innerHTML = `
       <label class="swift-v55-switch">
         <input id="swiftV55AutoNoaa3DayKp" type="checkbox" checked>
-        予報時にNOAA 3-Day Kpを自動取得
+        Automatically fetch NOAA 3-Day Kp when forecasting
       </label>
       <div class="swift-v52-mini-note" style="margin-top:4px;">
-        TEC入力API取得 → NOAA 3-Day Forecast API取得 → 予報計算 の順で実行
+        Execution order: fetch TEC input → fetch NOAA 3-Day Forecast → calculate forecast
       </div>
     `;
 
-    const runBtn = [...side.querySelectorAll("button")].find(b => String(b.textContent || "").includes("予報実行"));
+    const runBtn = [...side.querySelectorAll("button")].find(b => String(b.textContent || "").includes("Run forecast"));
     if (runBtn && runBtn.parentElement) runBtn.insertAdjacentElement("beforebegin", option);
     else side.appendChild(option);
 
@@ -4681,17 +4681,17 @@
     card.className = "swift-v55-point-card";
     card.innerHTML = `
       <div class="swift-v55-point-title">
-        <span>クリック地点の値</span>
-        <span class="swift-v52-pill">TEC / 誤差</span>
+        <span>Selected Point Values</span>
+        <span class="swift-v52-pill">TEC / Error</span>
       </div>
-      <div class="swift-v55-point-hint">地図をクリックすると、その場所に一番近い格子の値を表示します。</div>
+      <div class="swift-v55-point-hint">Click the map to view values at the nearest grid cell.</div>
       <div class="swift-v55-point-grid">
         <div class="swift-v55-metric">
           <div class="swift-v55-metric-label">TEC</div>
           <div class="swift-v55-metric-value" id="swiftV55PointTec">--</div>
         </div>
         <div class="swift-v55-metric">
-          <div class="swift-v55-metric-label">L1電離圏誤差</div>
+          <div class="swift-v55-metric-label">L1 ionospheric error</div>
           <div class="swift-v55-metric-value" id="swiftV55PointL1">--</div>
         </div>
         <div class="swift-v55-metric">
@@ -4699,16 +4699,16 @@
           <div class="swift-v55-metric-value" id="swiftV55PointPdop">--</div>
         </div>
         <div class="swift-v55-metric">
-          <div class="swift-v55-metric-label">PDOP×L1誤差</div>
+          <div class="swift-v55-metric-label">PDOP × L1 error</div>
           <div class="swift-v55-metric-value" id="swiftV55PointPdopL1">--</div>
         </div>
       </div>
       <div class="swift-v55-point-hint" style="margin-top:7px;">
         <span id="swiftV55PointPos">--</span><br>
         <span id="swiftV55PointTime">--</span><br>
-        可視衛星数: <span id="swiftV55PointSats">--</span>
+        Visible satellites: <span id="swiftV55PointSats">--</span>
       </div>
-      <div class="swift-v55-point-detail" id="swiftV55PointRaw">地図をクリックしてください。</div>
+      <div class="swift-v55-point-detail" id="swiftV55PointRaw">Click the map.</div>
     `;
     side.appendChild(card);
 
@@ -4724,10 +4724,10 @@
     const enabled = q55("swiftV55AutoNoaa3DayKp")?.checked !== false;
     if (!enabled) return;
     const status = q55("swiftV52Status") || q55("swiftV55ForecastStatus");
-    if (status) status.textContent = "NOAA 3-Day Kp Forecast APIを取得中…";
+    if (status) status.textContent = "Fetching NOAA 3-Day Kp Forecast API…";
     if (typeof window.fetchNoaa3DayGeomagToTextarea === "function") {
       await window.fetchNoaa3DayGeomagToTextarea();
-      if (status) status.textContent = "NOAA 3-Day Kp Forecast API取得OK。予報計算へ進みます…";
+      if (status) status.textContent = "NOAA 3-Day Kp Forecast fetched. Calculating forecast…";
       return;
     }
 
@@ -4738,7 +4738,7 @@
     const txt = await res.text();
     const ta = q55("noaaKpText");
     if (ta) ta.value = txt;
-    if (status) status.textContent = "NOAA 3-Day Kp Forecast API取得OK。予報計算へ進みます…";
+    if (status) status.textContent = "NOAA 3-Day Kp Forecast fetched. Calculating forecast…";
   }
 
   function patchForecastButtonV55() {
@@ -4756,8 +4756,8 @@
       } catch (e) {
         console.error(e);
         const status = q55("swiftV52Status") || q55("swiftV55ForecastStatus");
-        if (status) status.textContent = "予報失敗: " + e.message;
-        try { window.logInfo?.("予報失敗: " + e.message); } catch {}
+        if (status) status.textContent = "Forecast failed: " + e.message;
+        try { window.logInfo?.("Forecast failed: " + e.message); } catch {}
       }
     };
   }
@@ -4929,21 +4929,21 @@
     const set = (id, val) => { const el = q56(id); if (el) el.textContent = val; };
     const isIsee = isIseeForecastV56();
     set("swiftV56KpF", fmt56(kpF));
-    set("swiftV56KpB", isIsee ? "なし" : fmt56(kpB));
+    set("swiftV56KpB", isIsee ? "None" : fmt56(kpB));
     const kpBLabel = q56("swiftV56KpB")?.closest(".swift-v56-kp-metric")?.querySelector(".swift-v56-kp-label");
-    if (kpBLabel) kpBLabel.textContent = isIsee ? "KpB（ISEEでは未使用）" : "KpB Base";
+    if (kpBLabel) kpBLabel.textContent = isIsee ? "KpB（not used for ISEE）" : "KpB Base";
     const hasForecastTimeline = Array.isArray(gForecastTimes) &&
       gForecastTimes[currentStepIndex] instanceof Date &&
       !isNaN(gForecastTimes[currentStepIndex].getTime());
     set(
       "swiftV56KpTime",
-      `${iso56(t)}${(!isIsee && !hasForecastTimeline) ? "（Base日・現在UTC時刻帯）" : ""}`
+      `${iso56(t)}${(!isIsee && !hasForecastTimeline) ? "（Base day / current UTC time slot）" : ""}`
     );
 
     const srcEl = q56("swiftV56KpBSource");
     if (srcEl) {
       srcEl.textContent = isIsee
-        ? "KpB source: ISEEでは未使用"
+        ? "KpB source: not used for ISEE"
         : `KpB source: ${noaaBaseKpStateV826.source || "--"}` +
           (noaaBaseKpStateV826.baseDayUtc ? ` / ${noaaBaseKpStateV826.baseDayUtc}` : "");
     }
@@ -4951,7 +4951,7 @@
     const next = nextKpChangeV56(t);
     set("swiftV56KpNext", next ? `${iso56(next.t)} / KpF=${fmt56(next.kp)}` : "--");
     const diff = (!isIsee && finite56(kpF) && finite56(kpB)) ? Number(kpF) - Number(kpB) : NaN;
-    set("swiftV56KpDiff", isIsee ? "なし" : (finite56(diff) ? `${diff >= 0 ? "+" : ""}${diff.toFixed(2)}` : "--"));
+    set("swiftV56KpDiff", isIsee ? "None" : (finite56(diff) ? `${diff >= 0 ? "+" : ""}${diff.toFixed(2)}` : "--"));
 
     const steps = q56("swiftV56KpSteps");
     if (steps && Array.isArray(gKpSeries) && gKpSeries.length) {
@@ -5012,7 +5012,7 @@
     if (!(t instanceof Date) || isNaN(t.getTime())) {
       if (isIseeForecastV56()) {
         const el = q56("kpNowLabel");
-        if (el) el.textContent = "KpF=-- / KpB=なし";
+        if (el) el.textContent = "KpF=-- / KpB=None";
         updateKpPanelV56(new Date(), NaN, NaN);
         return;
       }
@@ -5027,7 +5027,7 @@
     const el = q56("kpNowLabel");
     if (el) {
       el.textContent = isIseeForecastV56()
-        ? `KpF=${fmt56(kpF)} / KpB=なし`
+        ? `KpF=${fmt56(kpF)} / KpB=None`
         : `KpF=${fmt56(kpF)} / KpB=${fmt56(kpB)}`;
     }
 
@@ -5205,18 +5205,18 @@
     if (isIseeForecastV56()) return true;
 
     const status = q56("swiftV52Status");
-    if (status) status.textContent = "NOAA Base Kpをモデルへ読み込み中…";
+    if (status) status.textContent = "Loading NOAA Base Kp into the model…";
 
     const ok = await ensureNoaaBaseKpStateV826(false);
     if (ok) {
       if (status) {
-        const day = noaaBaseKpStateV826.baseDayUtc ? ` / Base日=${noaaBaseKpStateV826.baseDayUtc}` : "";
-        status.textContent = `NOAA Base Kp読込OK: ${noaaBaseKpStateV826.rowCount}点${day}`;
+        const day = noaaBaseKpStateV826.baseDayUtc ? ` / Base day=${noaaBaseKpStateV826.baseDayUtc}` : "";
+        status.textContent = `NOAA Base Kp loaded: ${noaaBaseKpStateV826.rowCount} points${day}`;
       }
       return true;
     }
 
-    if (status) status.textContent = "警告: Base Kp未取得。KpF代用でNOAA予報を継続します。";
+    if (status) status.textContent = "Warning: Base Kp unavailable. Continuing NOAA forecast with KpF as fallback.";
     return false;
   }
 
@@ -5228,12 +5228,12 @@
     card.className = "swift-v56-kp-card";
     card.innerHTML = `
       <div class="swift-v56-kp-title">
-        <span>Kp 現在値</span>
+        <span>Current Kp Values</span>
         <span class="swift-v52-pill">KpF / KpB</span>
       </div>
       <div class="swift-v56-kp-grid">
         <div class="swift-v56-kp-metric">
-          <div class="swift-v56-kp-label">KpF 予報</div>
+          <div class="swift-v56-kp-label">KpF forecast</div>
           <div class="swift-v56-kp-value" id="swiftV56KpF">--</div>
         </div>
         <div class="swift-v56-kp-metric">
@@ -5241,20 +5241,20 @@
           <div class="swift-v56-kp-value" id="swiftV56KpB">--</div>
         </div>
         <div class="swift-v56-kp-metric">
-          <div class="swift-v56-kp-label">差 KpF-KpB</div>
+          <div class="swift-v56-kp-label">Difference: KpF − KpB</div>
           <div class="swift-v56-kp-value" id="swiftV56KpDiff">--</div>
         </div>
         <div class="swift-v56-kp-metric">
-          <div class="swift-v56-kp-label">次のKpF変化</div>
+          <div class="swift-v56-kp-label">Next KpF change</div>
           <div class="swift-v56-kp-value" style="font-size:12px;" id="swiftV56KpNext">--</div>
         </div>
       </div>
       <div class="swift-v56-kp-note">
-        KpFはNOAA 3-Day Forecast、KpBはBase抽出用の実測Kpです。KpFは3時間単位なので、30分スライダーでは6コマごとに変わります。
+        KpF is from NOAA 3-Day Forecast; KpB is observed Kp for Base extraction. KpF updates every 3 hours, or every six 30-minute timeline steps.
       </div>
       <div class="swift-v56-kp-note" id="swiftV56KpBSource">KpB source: --</div>
-      <div class="swift-v56-kp-note">時刻: <span id="swiftV56KpTime">--</span></div>
-      <div class="swift-v56-kp-steps" id="swiftV56KpSteps">予報実行後に表示</div>
+      <div class="swift-v56-kp-note">Time: <span id="swiftV56KpTime">--</span></div>
+      <div class="swift-v56-kp-steps" id="swiftV56KpSteps">Available after running a forecast</div>
     `;
     const point = q56("swiftV55PointCard");
     if (point) point.insertAdjacentElement("beforebegin", card);
@@ -5299,11 +5299,11 @@
         patchedUpdateKpLabelsV56();
         const steps = q56("swiftV56KpSteps");
         if (steps && (!Array.isArray(gKpSeries) || !gKpSeries.length)) {
-          steps.textContent = "KpBは読込済み / KpFは予報実行後に表示";
+          steps.textContent = "KpB loaded / KpF available after running a forecast";
         }
       } else {
         const src = q56("swiftV56KpBSource");
-        if (src) src.textContent = `KpB source: 読込失敗 / ${noaaBaseKpStateV826.error || "--"}`;
+        if (src) src.textContent = `KpB source: Loading failed / ${noaaBaseKpStateV826.error || "--"}`;
       }
       return ok;
     } catch (e) {
@@ -5368,8 +5368,8 @@
     if (!el) return;
     const isIsee = String(document.getElementById("swiftV52TecSource")?.value || "") === "isee_japan_highres";
     el.innerHTML = isIsee
-      ? "ISEE: <b>BaseTECなし / KpBなし</b><br>Forecast VTEC = 時間別平均VTEC + F(KpF)"
-      : "NOAA: <b>BaseTEC = 実測TEC − F(KpB)</b><br>ForecastTEC = BaseTEC + F(KpF)";
+      ? "ISEE: <b>No BaseTEC / no KpB</b><br>Forecast VTEC = time-of-day mean VTEC + F(KpF)"
+      : "NOAA: <b>BaseTEC = observed TEC − F(KpB)</b><br>ForecastTEC = BaseTEC + F(KpF)";
   }
 
   function bootV57() {
@@ -5381,13 +5381,13 @@
       note.className = "swift-v56-kp-card";
       note.innerHTML = `
         <div class="swift-v56-kp-title">
-          <span>AIモデルルール</span>
+          <span>AI Model Rules</span>
           <span class="swift-v52-pill">v5.7</span>
         </div>
         <div class="swift-v56-kp-note" id="swiftV57ModelRuleText">
-          NOAA: BaseTEC = 実測TEC − F(KpB)<br>
+          NOAA: BaseTEC = observed TEC − F(KpB)<br>
           NOAA: ForecastTEC = BaseTEC + F(KpF)<br>
-          ISEE: BaseTECなし / 時間別平均VTEC + F(KpF)
+          ISEE: No BaseTEC / time-of-day mean VTEC + F(KpF)
         </div>
       `;
       const kpCard = q57("swiftV56KpCard");
@@ -5541,8 +5541,8 @@
     const fallback = document.querySelector(".map-card")?.classList.contains("swift-fs-fallback");
     const on = !!document.fullscreenElement || fallback;
     btn.innerHTML = on
-      ? '<span class="swift-fs-icon">↙</span> 通常表示'
-      : '<span class="swift-fs-icon">⛶</span> 全画面';
+      ? '<span class="swift-fs-icon">↙</span> Normal view'
+      : '<span class="swift-fs-icon">⛶</span> Fullscreen';
   }
 
   function ensureFullscreenButtonV58() {
@@ -5552,8 +5552,8 @@
     const btn = document.createElement("button");
     btn.id = "swiftHeatmapFullscreenBtn";
     btn.type = "button";
-    btn.innerHTML = '<span class="swift-fs-icon">⛶</span> 全画面';
-    btn.title = "ヒートマップを全画面表示";
+    btn.innerHTML = '<span class="swift-fs-icon">⛶</span> Fullscreen';
+    btn.title = "Show heatmap fullscreen";
     btn.addEventListener("click", toggleHeatmapFullscreenV58);
     mapCard.appendChild(btn);
 
@@ -5720,8 +5720,8 @@
     const fallback = q59("tecMap")?.classList.contains("swift-fs-fallback");
     const on = !!document.fullscreenElement || fallback;
     btn.innerHTML = on
-      ? '<span class="swift-fs-icon">↙</span> 通常表示'
-      : '<span class="swift-fs-icon">⛶</span> 全画面';
+      ? '<span class="swift-fs-icon">↙</span> Normal view'
+      : '<span class="swift-fs-icon">⛶</span> Fullscreen';
   }
 
   function ensureButtonV59() {
@@ -5733,8 +5733,8 @@
       btn = document.createElement("button");
       btn.id = "swiftHeatmapFullscreenBtn";
       btn.type = "button";
-      btn.title = "ヒートマップを全画面表示";
-      btn.innerHTML = '<span class="swift-fs-icon">⛶</span> 全画面';
+      btn.title = "Show heatmap fullscreen";
+      btn.innerHTML = '<span class="swift-fs-icon">⛶</span> Fullscreen';
       map.appendChild(btn);
     }
 
@@ -5862,8 +5862,8 @@
     const target = document.getElementById("tecMap") || document.querySelector(".map-card");
     const on = !!document.fullscreenElement || !!target?.classList.contains("swift-fs-fallback");
     const labels = on
-      ? { top: "↙ 通常表示", map: '<span class="swift-fs-icon">↙</span> 通常表示' }
-      : { top: "⛶ ヒートマップ全画面", map: '<span class="swift-fs-icon">⛶</span> 全画面' };
+      ? { top: "↙ Normal view", map: '<span class="swift-fs-icon">↙</span> Normal view' }
+      : { top: "⛶ Heatmap fullscreen", map: '<span class="swift-fs-icon">⛶</span> Fullscreen' };
     const topBtn = q60("swiftHeatmapFullscreenTopBtn");
     if (topBtn) topBtn.textContent = labels.top;
     const mapBtn = q60("swiftHeatmapFullscreenBtn");
@@ -5879,7 +5879,7 @@
       topBtn = document.createElement("button");
       topBtn.id = "swiftHeatmapFullscreenTopBtn";
       topBtn.type = "button";
-      topBtn.textContent = "⛶ ヒートマップ全画面";
+      topBtn.textContent = "⛶ Heatmap fullscreen";
       topBtn.style.fontWeight = "900";
       topBtn.style.borderColor = "#60a5fa";
       topBtn.style.background = "#1d4ed8";
@@ -6035,11 +6035,11 @@
   function updateLabelsV61() {
     const on = document.body.classList.contains("swift-map-fs-on");
     const top = q61("swiftHeatmapFullscreenTopBtn");
-    if (top) top.textContent = on ? "↙ 通常表示に戻す" : "⛶ ヒートマップ全画面";
+    if (top) top.textContent = on ? "↙ Exit fullscreen" : "⛶ Heatmap fullscreen";
     const map = q61("swiftHeatmapFullscreenBtn");
     if (map) map.innerHTML = on
-      ? '<span class="swift-fs-icon">↙</span> 通常表示'
-      : '<span class="swift-fs-icon">⛶</span> 全画面';
+      ? '<span class="swift-fs-icon">↙</span> Normal view'
+      : '<span class="swift-fs-icon">⛶</span> Fullscreen';
   }
 
   function toggleForcedFullscreenV61() {
@@ -6056,7 +6056,7 @@
       topBtn = document.createElement("button");
       topBtn.id = "swiftHeatmapFullscreenTopBtn";
       topBtn.type = "button";
-      topBtn.textContent = "⛶ ヒートマップ全画面";
+      topBtn.textContent = "⛶ Heatmap fullscreen";
       row.insertBefore(topBtn, row.firstChild);
     }
     if (topBtn) {
@@ -6070,7 +6070,7 @@
       mapBtn = document.createElement("button");
       mapBtn.id = "swiftHeatmapFullscreenBtn";
       mapBtn.type = "button";
-      mapBtn.innerHTML = '<span class="swift-fs-icon">⛶</span> 全画面';
+      mapBtn.innerHTML = '<span class="swift-fs-icon">⛶</span> Fullscreen';
       tecMap.appendChild(mapBtn);
     }
     if (mapBtn) {
@@ -6132,7 +6132,7 @@
   function verificationSwitchHtmlV824() {
     const isIsee = isIseeV62();
     return `<div class="swift-v62-source-switch">
-      <span class="swift-v62-switch-label">検証切替</span>
+      <span class="swift-v62-switch-label">Validation source</span>
       <button class="swift-v62-switch-btn ${!isIsee ? "active" : ""}"
               onclick="window.swiftSetVerificationSourceV824('noaa')">NOAA / Global</button>
       <button class="swift-v62-switch-btn ${isIsee ? "active" : ""}"
@@ -6170,13 +6170,13 @@
           key:"isee",
           url:"data/ai/isee_japan/forecast_verification.json",
           label:"ISEE Japan",
-          sub:"時間別平均 + Kp補正の予報を、後から取得できた実測ISEE VTECと比較",
+          sub:"Compare time-of-day mean + Kp-corrected forecasts with subsequently observed ISEE VTEC",
         }
       : {
           key:"global",
           url:"data/ai/kp_performance.json",
           label:"NOAA / Global",
-          sub:"TEC誤差閾値別・Kp帯別に的中率を見ることで、どの条件で外れるかを確認",
+          sub:"Inspect hit rates by TEC error threshold and Kp band to identify conditions with forecast errors",
         };
   }
 
@@ -6305,7 +6305,7 @@
       }
 
       if (!failPerfV62) {
-        failErrorV62 = String(e?.message || e || "読込失敗");
+        failErrorV62 = String(e?.message || e || "Loading failed");
         console.warn("forecast verification load failed", info.url, e);
       }
     }
@@ -6322,7 +6322,7 @@
     const hit = Number(s.corrected_hit_rate ?? s.hit_rate);
     const n = Number(s.sample_count || 0);
     return `<div class="swift-v62-kpis">
-      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">実測−予報 Bias</div><div class="swift-v62-kpi-value">${num62(bias)} TECU</div></div>
+      <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">Observed−Forecast Bias</div><div class="swift-v62-kpi-value">${num62(bias)} TECU</div></div>
       <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">MAE</div><div class="swift-v62-kpi-value">${num62(mae)} TECU</div></div>
       <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">RMSE</div><div class="swift-v62-kpi-value">${num62(rmse)} TECU</div></div>
       <div class="swift-v62-kpi"><div class="swift-v62-kpi-label">±5 TECU Hit / N</div><div class="swift-v62-kpi-value">${pct62(hit)} / ${n || 0}</div></div>
@@ -6333,7 +6333,7 @@
     const th = failPerfV62?.thresholds || failPerfV62?.summary?.thresholds || {};
     const keys = ["5","10","15","20"];
     return `<table class="swift-v62-table">
-      <thead><tr><th>閾値</th><th>平均のみ</th><th>Kp補正後</th><th>改善</th><th>RMSE</th><th>N</th></tr></thead>
+      <thead><tr><th>Threshold</th><th>Mean only</th><th>After Kp correction</th><th>Improvement</th><th>RMSE</th><th>N</th></tr></thead>
       <tbody>${keys.map(k => {
         const r=th[k]||{};
         const raw=Number(r.raw_hit_rate), corr=Number(r.corrected_hit_rate);
@@ -6375,7 +6375,7 @@
 
     return `<div>
       <div class="swift-v62-sub">
-        KpFごとの ±5 TECU 的中率。過去${days}日・全有効格子ケースをN/Hitだけ軽量保存${range} / 総N=${totalN||0}。
+        Hit rate within ±5 TECU by KpF. Past ${days} days; all valid grid-cell cases stored as N/Hit counts${range} / Total N=${totalN||0}.
       </div>
       ${rows.map(r=>`<div class="swift-v62-kp-row">
         <div>Kp ${r.k}</div>
@@ -6426,8 +6426,8 @@
         worst={k,hit,n,rmse:Number(t.corrected_rmse ?? r.corrected_rmse)};
       }
     }
-    if (!worst) return "Kp帯別の的中率データはまだ不足しています。";
-    return `現時点で一番外れやすいKp帯: Kp ${worst.k} / Hit ${pct62(worst.hit)} / RMSE ${num62(worst.rmse)} / N=${worst.n}`;
+    if (!worst) return "Insufficient hit-rate data by Kp band.";
+    return `Kp band with the lowest current hit rate: Kp ${worst.k} / Hit ${pct62(worst.hit)} / RMSE ${num62(worst.rmse)} / N=${worst.n}`;
   }
 
   function renderRecentV62() {
@@ -6435,10 +6435,10 @@
     const rows = Array.isArray(failPerfV62?.recent) ? failPerfV62.recent.slice(-12).reverse() : [];
     if (!rows.length) return "";
     return `<div style="margin-top:10px;">
-      <div class="swift-v62-title">最近の実測ISEEとの差</div>
+      <div class="swift-v62-title">Recent Differences from Observed ISEE</div>
       <div class="swift-v62-recent">
         <table class="swift-v62-table">
-          <thead><tr><th>UTC</th><th>Kp</th><th>実測平均</th><th>予報平均</th><th>Bias</th><th>MAE</th><th>RMSE</th></tr></thead>
+          <thead><tr><th>UTC</th><th>Kp</th><th>Observed mean</th><th>Forecast mean</th><th>Bias</th><th>MAE</th><th>RMSE</th></tr></thead>
           <tbody>${rows.map(r=>`<tr>
             <td>${String(r.time_utc||"").replace("T"," ").slice(0,16)}</td>
             <td>${num62(r.kp,1)}</td>
@@ -6462,8 +6462,8 @@
       if (n<=0 || !Number.isFinite(rmse)) continue;
       if (!worst || rmse>worst.rmse) worst={k,n,rmse,bias:r.corrected_bias};
     }
-    if (!worst) return "Kp帯別の実測検証データはまだ不足しています。";
-    return `現在RMSEが最大のKp帯: Kp ${worst.k} / RMSE ${num62(worst.rmse)} TECU / Bias ${num62(worst.bias)} / N=${worst.n}`;
+    if (!worst) return "Insufficient observation validation data by Kp band.";
+    return `Kp band with the highest current RMSE: Kp ${worst.k} / RMSE ${num62(worst.rmse)} TECU / Bias ${num62(worst.bias)} / N=${worst.n}`;
   }
 
   function ensureFailPanelV62() {
@@ -6482,48 +6482,48 @@
     const info=sourceInfoV62();
 
     if (!failPerfV62) {
-      panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
+      panel.innerHTML=`<div class="swift-v62-title">Observation Differences / Forecast Errors by Kp <span class="swift-v62-source">${info.label}</span></div>
         <div class="swift-v62-sub">${info.sub}</div>
         ${verificationSwitchHtmlV824()}
         <div class="swift-v62-actions">
-          <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">再読込</button>
-          <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">検証Excel出力</button>
+          <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">Reload</button>
+          <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">Export validation to Excel</button>
         </div>
         <div class="swift-v62-error">
-          読込失敗${failErrorV62 ? `: ${failErrorV62}` : ""}<br>
+          Loading failed${failErrorV62 ? `: ${failErrorV62}` : ""}<br>
           ${isIseeV62()
-            ? "ISEE検証JSONが未生成の場合は Update ISEE Japan VTEC and AI を実行してください。"
-            : "一時的なPages反映遅延でもこの表示になるため、再読込を試してください。"}
+            ? "If ISEE validation JSON is missing, run Update ISEE Japan VTEC and AI."
+            : "A temporary Pages deployment delay may cause this message. Try reloading."}
         </div>`;
       return;
     }
 
     const s=failPerfV62.summary||{};
-    const latest = s.latest_isee_time_utc ? ` / ISEE最新=${s.latest_isee_time_utc}` : "";
+    const latest = s.latest_isee_time_utc ? ` / Latest ISEE=${s.latest_isee_time_utc}` : "";
     const note = failPerfV62.verification_note ? `<div class="swift-v62-sub">${failPerfV62.verification_note}</div>` : "";
 
-    panel.innerHTML=`<div class="swift-v62-title">実測値とのずれ・Kp別予報誤差 <span class="swift-v62-source">${info.label}</span></div>
+    panel.innerHTML=`<div class="swift-v62-title">Observation Differences / Forecast Errors by Kp <span class="swift-v62-source">${info.label}</span></div>
       <div class="swift-v62-sub">${info.sub}${latest}</div>
       ${verificationSwitchHtmlV824()}
       <div class="swift-v62-actions">
-        <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">再読込</button>
-        <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">NOAA + ISEE 検証Excel出力</button>
+        <button class="swift-v62-btn secondary" onclick="window.swiftLoadFailureAnalysis(true)">Reload</button>
+        <button class="swift-v62-btn" onclick="window.swiftExportAccuracyExcelV821()">Export NOAA + ISEE validation to Excel</button>
       </div>
       ${renderSummaryKpisV62()}
       <div class="swift-v62-grid">
         <div>
-          <div class="swift-v62-title">誤差閾値別 的中率</div>
+          <div class="swift-v62-title">Hit Rate by Error Threshold</div>
           ${renderThresholdTableV62()}
         </div>
         <div>
-          <div class="swift-v62-title">Kp別 的中率（過去1年・全ケース・±5 TECU）</div>
+          <div class="swift-v62-title">Hit Rate by Kp (past year / all cases / ±5 TECU)</div>
           ${renderKpHitRateV62()}
           <div class="swift-v62-sub" style="margin-top:8px;">${worstKpTextV62()}</div>
         </div>
       </div>
       <div style="margin-top:10px;">
-        <div class="swift-v62-title">Kp別 予報のずれ</div>
-        <div class="swift-v62-sub">上の的中率を残したまま、Bias / MAE / RMSEも追加表示します。</div>
+        <div class="swift-v62-title">Forecast Error by Kp</div>
+        <div class="swift-v62-sub">Bias / MAE / RMSE supplement the hit rates shown above.</div>
         ${renderKpErrorV62()}
       </div>
       ${renderRecentV62()}
@@ -6541,7 +6541,7 @@
       let i = 0;
       const next = () => {
         if (window.XLSX) return resolve();
-        if (i >= urls.length) return reject(new Error("SheetJSの読み込みに失敗しました。"));
+        if (i >= urls.length) return reject(new Error("SheetJS failed to load."));
         const s = document.createElement("script");
         s.src = urls[i++];
         s.async = true;
@@ -6720,7 +6720,7 @@
       ]);
 
       if (!noaaPerf && !iseeVerify) {
-        throw new Error("NOAA / ISEE の検証データをどちらも取得できません。");
+        throw new Error("Could not fetch either NOAA or ISEE validation data.");
       }
 
       const wb=XLSX.utils.book_new();
@@ -6772,7 +6772,7 @@
       XLSX.writeFile(wb,`swifttec_accuracy_NOAA_ISEE_${dt}.xlsx`);
     } catch (e) {
       console.error(e);
-      alert("検証Excel出力失敗: "+e.message);
+      alert("Validation Excel export failed: "+e.message);
     }
   }
 
@@ -6785,7 +6785,7 @@
 
     const wrap = document.createElement("span");
     wrap.innerHTML = `
-      <span style="font-size:10px;color:#9fb0cc;margin-right:4px;">検証表示</span>
+      <span style="font-size:10px;color:#9fb0cc;margin-right:4px;">Validation source</span>
       <select id="swiftV52MetricsSource" class="swift-v52-select" style="width:130px;">
         <option value="noaa">NOAA / Global</option>
         <option value="isee">ISEE Japan</option>
@@ -6843,7 +6843,7 @@
     const on = document.documentElement.classList.contains("swift-map-focus");
     const b = q63("swiftMapFocusButton");
     if (b) {
-      b.textContent = on ? "↙ 通常表示" : "⛶ 地図だけ拡大";
+      b.textContent = on ? "↙ Normal view" : "⛶ Expand map";
       b.onclick = on ? window.swiftExitMapFocusMode : window.swiftEnterMapFocusMode;
     }
   }
@@ -7051,25 +7051,25 @@
     dock.id = "swiftTimelineDockV64";
     dock.innerHTML = `
       <div class="swift-v64-timeline-row">
-        <button class="danger" type="button" id="swiftV64ExitFocusBtn">↙ 通常表示</button>
-        <span class="swift-v64-label">時間</span>
+        <button class="danger" type="button" id="swiftV64ExitFocusBtn">↙ Normal view</button>
+        <span class="swift-v64-label">Time</span>
         <input id="swiftTimelineSliderV64" type="range" min="0" max="192" value="0">
         <span id="swiftTimelineFrameV64" class="swift-v64-label">frame --</span>
         <span id="swiftTimelineUtcV64" class="swift-v64-label">UTC: --</span>
         <span id="swiftTimelineKpV64" class="swift-v64-label">KpF=-- / KpB=--</span>
       </div>
       <div class="swift-v64-timeline-row">
-        <button class="primary" type="button" id="swiftV64PlayBtn">▶ 再生</button>
-        <button type="button" id="swiftV64StopBtn">⏸ 停止</button>
-        <span class="swift-v64-muted">速度</span>
+        <button class="primary" type="button" id="swiftV64PlayBtn">▶ Play</button>
+        <button type="button" id="swiftV64StopBtn">⏸ Stop</button>
+        <span class="swift-v64-muted">Speed</span>
         <select id="swiftV64SpeedSelect">
           <option value="1">x1</option>
           <option value="2">x2</option>
           <option value="4">x4</option>
         </select>
-        <span class="swift-v64-muted">表示</span>
+        <span class="swift-v64-muted">Display</span>
         <select id="swiftV64MapModeSelect"></select>
-        <button type="button" id="swiftV64HideDockBtn">下部バーを隠す</button>
+        <button type="button" id="swiftV64HideDockBtn">Hide bottom bar</button>
       </div>
     `;
     document.body.appendChild(dock);
@@ -7209,7 +7209,7 @@
     if (!side || document.getElementById("swiftGnssLoadStatusV64")) return;
     const s = document.createElement("div");
     s.id = "swiftGnssLoadStatusV64";
-    s.textContent = "GNSS: local data/gnss → 失敗時CelesTrak liveで読込";
+    s.textContent = "GNSS: local data/gnss → CelesTrak live fallback";
     side.appendChild(s);
   }
 
@@ -7253,19 +7253,19 @@
   let lastSeriesV65 = null;
 
   const METRICS_V65 = {
-    count: "可視衛星数",
+    count: "Visible satellites",
     gdop: "GDOP",
     pdop: "PDOP",
     hdop: "HDOP",
     vdop: "VDOP",
     tdop: "TDOP",
     tec: "TEC [TECU]",
-    l1: "L1電離圏誤差 [m]",
-    gdoptec: "GDOP × L1誤差 [m]",
-    pdoptec: "PDOP × L1誤差 [m]",
-    hdoptec: "HDOP × L1誤差 [m]",
-    vdoptec: "VDOP × L1誤差 [m]",
-    tdoptec: "TDOP × L1誤差 [m]",
+    l1: "L1 ionospheric error [m]",
+    gdoptec: "GDOP × L1 error [m]",
+    pdoptec: "PDOP × L1 error [m]",
+    hdoptec: "HDOP × L1 error [m]",
+    vdoptec: "VDOP × L1 error [m]",
+    tdoptec: "TDOP × L1 error [m]",
   };
 
   function readyV65(fn) {
@@ -7382,34 +7382,34 @@
     panel.id = "swiftPointDopPanelV65";
     panel.className = "swift-v65-card";
     panel.innerHTML = `
-      <div class="swift-v65-title">選択地点 5分DOPグラフ</div>
+      <div class="swift-v65-title">Selected Point: 5-Minute DOP Chart</div>
       <div class="swift-v65-sub">
-        地図をクリックした緯度経度について、5分間隔でDOP/TEC×DOPを時系列表示します。
+        Click a location on the map to plot DOP / TEC × DOP time series at 5-minute intervals.
       </div>
       <div class="swift-v65-row">
         <select id="swiftPointDopMetricV65" class="swift-v65-select">
           ${Object.entries(METRICS_V65).map(([k, v]) => `<option value="${k}" ${k === "pdoptec" ? "selected" : ""}>${v}</option>`).join("")}
         </select>
         <select id="swiftPointDopStepV65" class="swift-v65-select">
-          <option value="5" selected>5分</option>
-          <option value="10">10分</option>
-          <option value="15">15分</option>
-          <option value="30">30分</option>
+          <option value="5" selected>5 min</option>
+          <option value="10">10 min</option>
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
         </select>
-        <button class="swift-v65-btn" onclick="window.swiftRenderPointDopGraphV65()">グラフ更新</button>\n        <button class="swift-v65-btn secondary" onclick="window.swiftExportPointDopExcelV66 && window.swiftExportPointDopExcelV66()">Excel出力</button>
+        <button class="swift-v65-btn" onclick="window.swiftRenderPointDopGraphV65()">Refresh chart</button>\n        <button class="swift-v65-btn secondary" onclick="window.swiftExportPointDopExcelV66 && window.swiftExportPointDopExcelV66()">Export Excel</button>
       </div>
-      <div class="swift-v65-sub" id="swiftPointDopSelectedV65">地点: 未選択。地図をクリックしてください。</div>
+      <div class="swift-v65-sub" id="swiftPointDopSelectedV65">Point: not selected. Click the map.</div>
       <canvas id="swiftPointDopCanvasV65"></canvas>
       <div class="swift-v65-kpi">
-        <div class="swift-v65-mini"><div class="swift-v65-mini-label">最小</div><div class="swift-v65-mini-value" id="swiftPointDopMinV65">--</div></div>
-        <div class="swift-v65-mini"><div class="swift-v65-mini-label">平均</div><div class="swift-v65-mini-value" id="swiftPointDopAvgV65">--</div></div>
-        <div class="swift-v65-mini"><div class="swift-v65-mini-label">最大</div><div class="swift-v65-mini-value" id="swiftPointDopMaxV65">--</div></div>
+        <div class="swift-v65-mini"><div class="swift-v65-mini-label">Minimum</div><div class="swift-v65-mini-value" id="swiftPointDopMinV65">--</div></div>
+        <div class="swift-v65-mini"><div class="swift-v65-mini-label">Mean</div><div class="swift-v65-mini-value" id="swiftPointDopAvgV65">--</div></div>
+        <div class="swift-v65-mini"><div class="swift-v65-mini-label">Maximum</div><div class="swift-v65-mini-value" id="swiftPointDopMaxV65">--</div></div>
       </div>
       <div class="swift-v65-row">
-        <button class="swift-v65-btn secondary" onclick="window.swiftLoadGpsYumaHealthV65()">GPS Almanac Health読込</button>
+        <button class="swift-v65-btn secondary" onclick="window.swiftLoadGpsYumaHealthV65()">Load GPS almanac health</button>
       </div>
       <div class="swift-v65-sub" id="swiftAlmanacStatusV65">
-        Almanac healthはGPS Yumaを取得できる場合のみ反映。TLE運用グループは従来通りlocal→CelesTrakで読込。
+        Almanac health is applied when GPS Yuma is available. TLE groups load from local files with a CelesTrak fallback.
       </div>
     `;
     side.appendChild(panel);
@@ -7439,11 +7439,11 @@
 
     ctx.font = `${12 * dpr}px system-ui`;
     ctx.fillStyle = "#dbeafe";
-    ctx.fillText(metricLabel + ` / ${series?.step_min || 5}分間隔`, 12 * dpr, 18 * dpr);
+    ctx.fillText(metricLabel + ` / ${series?.step_min || 5}-minute intervals`, 12 * dpr, 18 * dpr);
 
     if (!vals.length) {
       ctx.fillStyle = "#94a3b8";
-      ctx.fillText("データなし。予報作成とGNSS読込後に地図をクリックしてください。", 14 * dpr, 55 * dpr);
+      ctx.fillText("No data. Generate a forecast, load GNSS, then click the map.", 14 * dpr, 55 * dpr);
       return;
     }
 
@@ -7497,7 +7497,7 @@
     ensurePanelV65();
     const status = q65("swiftPointDopSelectedV65");
     if (!selectedPointV65) {
-      if (status) status.textContent = "地点: 未選択。地図をクリックしてください。";
+      if (status) status.textContent = "Point: not selected. Click the map.";
       drawSeriesV65({ rows: [] });
       return;
     }
@@ -7509,12 +7509,12 @@
       lastSeriesV65 = series;
       window.swiftPointDopLastSeriesV65 = series;
       if (status) {
-        status.textContent = `地点: click lat=${selectedPointV65.lat.toFixed(3)}, lon=${selectedPointV65.lon.toFixed(3)} / grid lat=${num65(series.cell.lat)}, lon=${num65(series.cell.lon)} / GNSS使用=${series.gnss_active_selected}`;
+        status.textContent = `Point: click lat=${selectedPointV65.lat.toFixed(3)}, lon=${selectedPointV65.lon.toFixed(3)} / grid lat=${num65(series.cell.lat)}, lon=${num65(series.cell.lon)} / GNSS in use=${series.gnss_active_selected}`;
       }
       drawSeriesV65(series);
     } catch (e) {
       console.error(e);
-      if (status) status.textContent = "グラフ作成失敗: " + e.message;
+      if (status) status.textContent = "Chart generation failed: " + e.message;
       drawSeriesV65({ rows: [] });
     }
   }
@@ -7527,7 +7527,7 @@
       if (p && Number.isFinite(p.lat) && Number.isFinite(p.lon)) {
         selectedPointV65 = p;
         const el = q65("swiftPointDopSelectedV65");
-        if (el) el.textContent = `地点: lat=${p.lat.toFixed(3)}, lon=${p.lon.toFixed(3)} / グラフ更新を押してください`;
+        if (el) el.textContent = `Point: lat=${p.lat.toFixed(3)}, lon=${p.lon.toFixed(3)} / Click Refresh chart`;
         // Light auto refresh only if a previous graph exists.
         if (lastSeriesV65) setTimeout(renderPointDopGraphV65, 0);
       }
@@ -7550,7 +7550,7 @@
 
   async function loadGpsYumaHealthV65() {
     const el = q65("swiftAlmanacStatusV65");
-    if (el) el.textContent = "GPS Yuma almanac health取得中…";
+    if (el) el.textContent = "Fetching GPS Yuma almanac health…";
     const urls = [
       "https://celestrak.org/GPS/almanac/Yuma/current.al3",
       "https://celestrak.org/GPS/almanac/Yuma/current.txt",
@@ -7569,17 +7569,17 @@
       } catch {}
     }
     if (!text) {
-      if (el) el.textContent = "GPS Almanac health取得失敗。CelesTrak Yuma current URLにアクセスできません。";
+      if (el) el.textContent = "GPS almanac health fetch failed. Cannot access the current CelesTrak Yuma URL.";
       return;
     }
     const map = parseYumaHealthV65(text);
     const n = Object.keys(map).length;
     if (!n) {
-      if (el) el.textContent = "GPS Almanacは取得できたがHealth値を解析できませんでした。";
+      if (el) el.textContent = "GPS almanac fetched, but health values could not be parsed.";
       return;
     }
     const result = window.swiftApplyGnssPrnHealthMap?.(map) || { applied: 0, inactive: 0 };
-    if (el) el.textContent = `GPS Almanac health反映: PRN=${n}, 適用=${result.applied}, inactive=${result.inactive} / ${used}`;
+    if (el) el.textContent = `GPS almanac health applied: PRN=${n}, Applied=${result.applied}, inactive=${result.inactive} / ${used}`;
     setTimeout(renderPointDopGraphV65, 0);
   }
 
@@ -7711,10 +7711,10 @@
     panel.id = "swiftGnssVisiblePanelV66";
     panel.className = "swift-v66-card";
     panel.innerHTML = `
-      <div class="swift-v66-title">GNSS / DOP 可視パネル</div>
+      <div class="swift-v66-title">GNSS / DOP Satellite Panel</div>
       <div class="swift-v66-sub">
-        TLEは <b>satellite.js の twoline2satrec + propagate</b> でSGP4伝搬しています。
-        表示されない原因は、旧GNSSカードが新UIで非表示になっていたためです。
+        TLEs use <b>satellite.js: twoline2satrec + propagate</b> for SGP4 propagation.
+        This panel exposes the GNSS controls hidden by the newer UI.
       </div>
       <div class="swift-v66-row" id="swiftGnssConstBoxV66">
         ${GNSS_KEYS_V66.map(([k, label]) => `
@@ -7722,24 +7722,24 @@
         `).join("")}
       </div>
       <div class="swift-v66-row">
-        <button class="swift-v66-btn" id="swiftGnssLoadBtnV66">GNSS TLE読込 / DOP準備</button>
-        <button class="swift-v66-btn secondary" onclick="window.setAllSatSelected && window.setAllSatSelected(true)">全衛星使用</button>
-        <button class="swift-v66-btn secondary" onclick="window.setAllSatSelected && window.setAllSatSelected(false)">全衛星解除</button>
-        <button class="swift-v66-btn secondary" onclick="window.setAllSatActive && window.setAllSatActive(true)">全Active</button>
-        <button class="swift-v66-btn secondary" onclick="window.setAllSatActive && window.setAllSatActive(false)">全Inactive</button>
+        <button class="swift-v66-btn" id="swiftGnssLoadBtnV66">Load GNSS TLE / Prepare DOP</button>
+        <button class="swift-v66-btn secondary" onclick="window.setAllSatSelected && window.setAllSatSelected(true)">Select all satellites</button>
+        <button class="swift-v66-btn secondary" onclick="window.setAllSatSelected && window.setAllSatSelected(false)">Deselect all satellites</button>
+        <button class="swift-v66-btn secondary" onclick="window.setAllSatActive && window.setAllSatActive(true)">All active</button>
+        <button class="swift-v66-btn secondary" onclick="window.setAllSatActive && window.setAllSatActive(false)">All inactive</button>
       </div>
       <div class="swift-v66-row">
-        <button class="swift-v66-btn warn" id="swiftApplySavedAlmanacBtnV66">保存済Almanac Health反映</button>
-        <button class="swift-v66-btn secondary" onclick="window.swiftLoadGpsYumaHealthV65 && window.swiftLoadGpsYumaHealthV65()">Live Yuma Health取得</button>
+        <button class="swift-v66-btn warn" id="swiftApplySavedAlmanacBtnV66">Apply saved almanac health</button>
+        <button class="swift-v66-btn secondary" onclick="window.swiftLoadGpsYumaHealthV65 && window.swiftLoadGpsYumaHealthV65()">Fetch live Yuma health</button>
       </div>
-      <div id="swiftGnssVisibleStatusV66">GNSS未読込</div>
+      <div id="swiftGnssVisibleStatusV66">GNSS not loaded</div>
       <div id="swiftGnssVisibleListV66"></div>
     `;
     side.appendChild(panel);
 
     q66("swiftGnssLoadBtnV66").onclick = async () => {
       const st = q66("swiftGnssVisibleStatusV66");
-      if (st) st.textContent = "GNSS TLE読込中…";
+      if (st) st.textContent = "Loading GNSS TLE…";
       try {
         await window.loadGnssDopData?.();
         await applySavedAlmanacHealthV66(false);
@@ -7762,7 +7762,7 @@
     if (!list) {
       list = document.createElement("div");
       list.id = "satelliteSelectionList";
-      list.innerHTML = '<div class="small">未読込。GNSS TLE読込を押してください。</div>';
+      list.innerHTML = '<div class="small">Not loaded. Click Load GNSS TLE.</div>';
     }
     if (list.parentElement !== holder) holder.appendChild(list);
 
@@ -7784,7 +7784,7 @@
       .filter(([k]) => q66(`gnssConstV66_${k}`)?.checked)
       .map(([, label]) => label)
       .join(", ");
-    st.textContent = `選択: ${chosen || "なし"} / ${quick || "未読込"}${extra ? " / " + extra : ""}`;
+    st.textContent = `Selected: ${chosen || "None"} / ${quick || "Not loaded"}${extra ? " / " + extra : ""}`;
   }
 
   async function applySavedAlmanacHealthV66(showMissing) {
@@ -7792,7 +7792,7 @@
     try {
       const res = await fetch("data/gnss/gps_almanac_health.json", { cache: "no-store" });
       if (!res.ok) {
-        if (showMissing && st) st.textContent = "保存済Almanac Healthなし。先にDaily GNSS Almanac workflowを実行してください。";
+        if (showMissing && st) st.textContent = "No saved almanac health. Run the Daily GNSS Almanac workflow first.";
         return;
       }
       const doc = await res.json();
@@ -7801,7 +7801,7 @@
       relocateSatelliteListV66();
       updateVisibleGnssStatusV66(`Almanac ${doc.updated_utc || ""} / applied=${result.applied}, inactive=${result.inactive}`);
     } catch (e) {
-      if (st) st.textContent = "保存済Almanac Health反映失敗: " + e.message;
+      if (st) st.textContent = "Failed to apply saved almanac health: " + e.message;
     }
   }
 
@@ -7812,7 +7812,7 @@
       s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
       s.async = true;
       s.onload = () => resolve();
-      s.onerror = () => reject(new Error("SheetJSの読み込みに失敗しました。"));
+      s.onerror = () => reject(new Error("SheetJS failed to load."));
       document.head.appendChild(s);
     });
   }
@@ -7830,7 +7830,7 @@
     }
     const series = window.swiftPointDopLastSeriesV65;
     if (!series || !Array.isArray(series.rows) || !series.rows.length) {
-      alert("出力するグラフデータがありません。地図をクリックして「グラフ更新」を押してください。");
+      alert("No chart data to export. Click the map, then click Refresh chart.");
       return;
     }
 
@@ -7894,7 +7894,7 @@
     btn.id = "swiftPointDopExcelBtnV66";
     btn.className = "swift-v65-btn secondary";
     btn.type = "button";
-    btn.textContent = "Excel出力";
+    btn.textContent = "Export Excel";
     btn.onclick = exportPointDopExcelV66;
     row.appendChild(btn);
   }
@@ -7974,22 +7974,22 @@
     const row = document.createElement("div");
     row.className = "swift-v66-row";
     row.innerHTML = `
-      <button class="swift-v66-btn secondary" id="swiftGnssReadTestBtnV67">TLE読取テスト</button>
-      <button class="swift-v66-btn secondary" id="swiftGnssForceListBtnV67">衛星リスト再表示</button>
+      <button class="swift-v66-btn secondary" id="swiftGnssReadTestBtnV67">Test TLE loading</button>
+      <button class="swift-v66-btn secondary" id="swiftGnssForceListBtnV67">Refresh satellite list</button>
     `;
     const status = q67("swiftGnssVisibleStatusV66");
     panel.insertBefore(row, status || panel.lastChild);
 
     const box = document.createElement("div");
     box.id = "swiftGnssDebugBoxV67";
-    box.textContent = "TLE読取テストを押すと、local/live/satellite.js/parse件数を表示します。";
+    box.textContent = "Click Test TLE loading to inspect local/live sources, satellite.js and parsed counts.";
     panel.appendChild(box);
 
     q67("swiftGnssReadTestBtnV67").onclick = runDebugV67;
     q67("swiftGnssForceListBtnV67").onclick = () => {
       try { window.renderSatelliteSelection?.(); } catch {}
       relocateListV67();
-      setDebugV67("衛星リスト再表示を実行しました。");
+      setDebugV67("Satellite list refreshed.");
     };
   }
 
@@ -8025,21 +8025,21 @@
         }
       }
     }
-    if (!d.sources?.length) lines.push("GNSSが1つも選択されていません。GPSなどをチェックしてください。");
+    if (!d.sources?.length) lines.push("No GNSS constellation selected. Select GPS or another constellation.");
     return lines.join("\n");
   }
 
   async function runDebugV67() {
-    setDebugV67("TLE読取テスト中…");
+    setDebugV67("Testing TLE loading…");
     try {
       const d = await window.swiftDebugGnssLoadTest?.();
       if (!d) {
-        setDebugV67("swiftDebugGnssLoadTestが見つかりません。JSが古い可能性があります。Ctrl+F5してください。");
+        setDebugV67("swiftDebugGnssLoadTest not found. JavaScript may be outdated. Press Ctrl+F5.");
         return;
       }
       setDebugV67(formatDebugV67(d));
     } catch (e) {
-      setDebugV67("TLE読取テスト失敗: " + e.message);
+      setDebugV67("TLE loading test failed: " + e.message);
     }
   }
 
@@ -8049,12 +8049,12 @@
     btn.dataset.v67Patched = "1";
     const old = btn.onclick;
     btn.onclick = async () => {
-      setDebugV67("GNSS読込中… satellite.js → TLE local/live → parse → SGP4準備");
+      setDebugV67("Loading GNSS… satellite.js → local/live TLE → parse → prepare SGP4");
       try {
         if (typeof old === "function") await old();
         else await window.loadGnssDopData?.();
       } catch (e) {
-        setDebugV67("GNSS読込エラー: " + e.message);
+        setDebugV67("GNSS loading error: " + e.message);
       }
       setTimeout(async () => {
         relocateListV67();
@@ -8089,7 +8089,7 @@
 (function () {
   const PALETTES_V68 = {
     classic: {
-      label: "Classic（従来）",
+      label: "Classic (legacy)",
       colors: null,
     },
     turbo: {
@@ -8309,13 +8309,13 @@
     panel.id = "swiftHeatmapPalettePanelV68";
     panel.className = "swift-v68-card";
     panel.innerHTML = `
-      <div class="swift-v68-title">ヒートマップ色設定</div>
-      <div class="swift-v68-sub">TEC / DOP / TEC×DOPの色だけ変更します。閾値や計算値は変えません。</div>
+      <div class="swift-v68-title">Heatmap Colors</div>
+      <div class="swift-v68-sub">Change colors for TEC / DOP / TEC × DOP. Thresholds and calculated values stay unchanged.</div>
       <div class="swift-v68-row">
         <select id="swiftHeatmapPaletteSelectV68" class="swift-v68-select">
           ${Object.entries(PALETTES_V68).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join("")}
         </select>
-        <label class="swift-v68-check"><input id="swiftHeatmapPaletteReverseV68" type="checkbox"> 反転</label>
+        <label class="swift-v68-check"><input id="swiftHeatmapPaletteReverseV68" type="checkbox"> Reverse</label>
       </div>
       <div class="swift-v68-row">
         <div id="swiftHeatmapPalettePreviewV68" class="swift-v68-preview"></div>
@@ -8344,13 +8344,13 @@
     const row = dock.querySelector(".swift-v64-timeline-row:last-child") || dock;
     const label = document.createElement("span");
     label.className = "swift-v64-muted";
-    label.textContent = "色";
+    label.textContent = "Color";
     const sel = document.createElement("select");
     sel.id = "swiftDockPaletteSelectV68";
     for (const [k, p] of Object.entries(PALETTES_V68)) {
       const o = document.createElement("option");
       o.value = k;
-      o.textContent = p.label.replace("（従来）", "");
+      o.textContent = p.label.replace(" (legacy)", "");
       sel.appendChild(o);
     }
     sel.value = getPaletteNameV68();
@@ -8395,7 +8395,7 @@
       colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
     },
     gps: {
-      label: "L1電離圏誤差 [m]",
+      label: "L1 ionospheric error [m]",
       unit: "m",
       defaults: [5, 10, 20, 40],
       colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
@@ -8407,14 +8407,14 @@
       colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
     },
     doptec: {
-      label: "DOP × L1誤差 [m]",
+      label: "DOP × L1 error [m]",
       unit: "m",
       defaults: [5, 10, 20, 40],
       colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
     },
     satcount: {
-      label: "可視衛星数",
-      unit: "機",
+      label: "Visible satellites",
+      unit: "satellites",
       defaults: [4, 6, 8, 16],
       colors: ["#ff0000", "#ff9900", "#ffff00", "#00ff00"],
     },
@@ -8461,9 +8461,9 @@
 
   function setLimitsForGroupV69(group, arr) {
     const nums = arr.map(Number).filter(Number.isFinite).slice(0, 4);
-    if (nums.length !== 4) throw new Error("しきい値は4つ必要です。");
+    if (nums.length !== 4) throw new Error("Enter four thresholds.");
     for (let i = 1; i < nums.length; i++) {
-      if (nums[i] <= nums[i - 1]) throw new Error("しきい値は小さい順にしてください。");
+      if (nums[i] <= nums[i - 1]) throw new Error("Enter thresholds in ascending order.");
     }
     const all = loadAllLimitsV69();
     all[group] = nums;
@@ -8686,15 +8686,15 @@
     panel.id = "swiftHeatmapThresholdPanelV69";
     panel.className = "swift-v69-card";
     panel.innerHTML = `
-      <div class="swift-v69-title">ヒートマップ数値設定</div>
+      <div class="swift-v69-title">Heatmap Thresholds</div>
       <div class="swift-v69-sub">
-        色に対応するしきい値を変更します。低→高の順に入力してください。計算値そのものは変えません。
+        Set color thresholds from low to high. Calculated values stay unchanged.
       </div>
       <div class="swift-v69-row">
         <select id="swiftHeatmapThresholdGroupV69" class="swift-v69-select">
           ${Object.entries(GROUPS_V69).map(([k, g]) => `<option value="${k}">${g.label}</option>`).join("")}
         </select>
-        <button class="swift-v69-btn secondary" id="swiftHeatmapThresholdCurrentV69">現在モード</button>
+        <button class="swift-v69-btn secondary" id="swiftHeatmapThresholdCurrentV69">Current mode</button>
       </div>
       <div class="swift-v69-row">
         <span class="swift-v69-chip">1</span><input id="swiftHeatmapThreshold1V69" class="swift-v69-input" type="number" step="0.1">
@@ -8704,8 +8704,8 @@
         <span class="swift-v69-chip" id="swiftHeatmapThresholdUnitV69"></span>
       </div>
       <div class="swift-v69-row">
-        <button class="swift-v69-btn" id="swiftHeatmapThresholdApplyV69">反映</button>
-        <button class="swift-v69-btn secondary" id="swiftHeatmapThresholdResetV69">初期値</button>
+        <button class="swift-v69-btn" id="swiftHeatmapThresholdApplyV69">Apply</button>
+        <button class="swift-v69-btn secondary" id="swiftHeatmapThresholdResetV69">Defaults</button>
       </div>
       <div class="swift-v69-row">
         <div id="swiftHeatmapThresholdPreviewV69" class="swift-v69-mini-preview"></div>
@@ -8853,7 +8853,7 @@
     const btn = q70("swiftPointDopFsBtnV70");
     if (!btn) return;
     const on = document.body.classList.contains("swift-dop-graph-fs-on");
-    btn.textContent = on ? "↙ 通常表示" : "⛶ グラフ全画面";
+    btn.textContent = on ? "↙ Normal view" : "⛶ Chart fullscreen";
   }
 
   function toggleDopGraphFullscreenV70() {
@@ -8873,7 +8873,7 @@
     const btn = document.createElement("button");
     btn.id = "swiftPointDopFsBtnV70";
     btn.type = "button";
-    btn.textContent = "⛶ グラフ全画面";
+    btn.textContent = "⛶ Chart fullscreen";
     btn.onclick = toggleDopGraphFullscreenV70;
     row.appendChild(btn);
   }
@@ -8922,10 +8922,10 @@
 
   const GROUPS_V71 = {
     tec: { label: "TEC [TECU]", unit: "TECU" },
-    gps: { label: "L1電離圏誤差 [m]", unit: "m" },
+    gps: { label: "L1 ionospheric error [m]", unit: "m" },
     dop: { label: "DOP", unit: "" },
-    doptec: { label: "DOP × L1誤差 [m]", unit: "m" },
-    satcount: { label: "可視衛星数", unit: "機" },
+    doptec: { label: "DOP × L1 error [m]", unit: "m" },
+    satcount: { label: "Visible satellites", unit: "satellites" },
   };
 
   function readyV71(fn) {
@@ -9038,10 +9038,10 @@
     const div = document.createElement("div");
     div.id = "swiftLinkedColorScaleV71";
     div.innerHTML = `
-      <div class="swift-v71-title">色・数値対応</div>
+      <div class="swift-v71-title">Color / Value Mapping</div>
       <div id="swiftLinkedScaleSegmentsV71" class="swift-v71-scale"></div>
       <div class="swift-v71-note">
-        上の色パレットと、下の数値しきい値がこの対応でヒートマップに反映されます。
+        The heatmap uses the palette and thresholds according to this mapping.
       </div>
     `;
     thresholdPanel.appendChild(div);
@@ -9229,7 +9229,7 @@
   function updateButtonV72() {
     const on = document.body.classList.contains("swift-accuracy-fs-on");
     const btn = q72("swiftAccuracyFsBtnV72");
-    if (btn) btn.textContent = on ? "↙ 通常表示" : "⛶ 的中率モニター全画面";
+    if (btn) btn.textContent = on ? "↙ Normal view" : "⛶ Accuracy monitor fullscreen";
   }
 
   function toggleAccuracyFullscreenV72() {
@@ -9254,7 +9254,7 @@
     const btn = document.createElement("button");
     btn.id = "swiftAccuracyFsBtnV72";
     btn.type = "button";
-    btn.textContent = "⛶ 的中率モニター全画面";
+    btn.textContent = "⛶ Accuracy monitor fullscreen";
     btn.onclick = toggleAccuracyFullscreenV72;
 
     if (firstTitle && firstTitle.parentElement) {
@@ -9266,7 +9266,7 @@
     const exit = document.createElement("button");
     exit.id = "swiftAccuracyFsExitBtnV72";
     exit.type = "button";
-    exit.textContent = "↙ 通常表示";
+    exit.textContent = "↙ Normal view";
     exit.onclick = exitAccuracyFullscreenV72;
     document.body.appendChild(exit);
 
@@ -9411,7 +9411,7 @@
       let i = 0;
       const next = () => {
         if (window.XLSX) return resolve();
-        if (i >= urls.length) return reject(new Error("SheetJSの読み込みに失敗しました。"));
+        if (i >= urls.length) return reject(new Error("SheetJS failed to load."));
         const s = document.createElement("script");
         s.src = urls[i++];
         s.async = true;
@@ -9442,7 +9442,7 @@
     const lonArr = doc?.lon_arr || doc?.lonArr || [];
     const nLat = Number(doc?.n_lat || doc?.nLat || latArr.length || 0);
     const nLon = Number(doc?.n_lon || doc?.nLon || lonArr.length || 0);
-    if (!nLat || !nLon) throw new Error("kp_grid_coefficients.json に lat/lon 格子情報がありません。");
+    if (!nLat || !nLon) throw new Error("No latitude/longitude grid information in kp_grid_coefficients.json.");
 
     const rows = [];
     for (let month = 1; month <= 12; month++) {
@@ -9500,15 +9500,15 @@
   async function exportGridCoefficientsExcelV73() {
     const status = q73("swiftCoeffExcelStatusV73");
     try {
-      if (status) status.textContent = "格子別経験係数を読み込み中…";
+      if (status) status.textContent = "Loading grid-cell empirical coefficients…";
       await loadSheetJsV73();
 
       const res = await fetch("data/ai/kp_grid_coefficients.json", { cache: "no-store" });
-      if (!res.ok) throw new Error(`kp_grid_coefficients.json が読めません: HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`kp_grid_coefficients.json  cannot be read: HTTP ${res.status}`);
       const doc = await res.json();
 
       const rows = buildCoefficientRowsV73(doc);
-      if (!rows.length) throw new Error("出力できる係数データがありません。Train Kp AI Correctorを実行してください。");
+      if (!rows.length) throw new Error("No coefficient data to export. Run Train Kp AI Corrector.");
 
       const summary = [
         ["version", doc.version || ""],
@@ -9533,11 +9533,11 @@
 
       const dt = new Date().toISOString().slice(0, 10).replaceAll("-", "");
       XLSX.writeFile(wb, `swifttec_grid_kp_coefficients_monthly_${dt}.xlsx`);
-      if (status) status.textContent = `Excel出力完了: ${rows.length}行 / updated=${doc.updated_utc || "--"}`;
+      if (status) status.textContent = `Excel export complete: ${rows.length} rows / updated=${doc.updated_utc || "--"}`;
     } catch (e) {
       console.error(e);
-      if (status) status.textContent = "Excel出力失敗: " + e.message;
-      alert("Excel出力失敗: " + e.message);
+      if (status) status.textContent = "Excel export failed: " + e.message;
+      alert("Excel export failed: " + e.message);
     }
   }
 
@@ -9553,19 +9553,19 @@
   async function loadOperationalHitRateV73() {
     const status = q73("swiftOperationalHitStatusV73");
     try {
-      if (status) status.textContent = "運用的中率データ読み込み中…";
+      if (status) status.textContent = "Loading operational hit-rate data…";
       const res = await fetch("data/ai/operational_hit_rate.json", { cache: "no-store" });
-      if (!res.ok) throw new Error(`operational_hit_rate.json がありません: HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`operational_hit_rate.json  is unavailable: HTTP ${res.status}`);
       operationalHitDataV73 = await res.json();
       if (status) {
-        const cold = operationalHitDataV73.cold_start_backfill_used_in_score ? " / 初回Kp履歴補完あり" : "";
+        const cold = operationalHitDataV73.cold_start_backfill_used_in_score ? " / initial Kp history backfill included" : "";
         const akp = operationalHitDataV73.actual_kp_count ? ` / actualKp=${operationalHitDataV73.actual_kp_count}` : "";
         const reason = operationalHitDataV73.reason ? ` / ${operationalHitDataV73.reason}` : "";
         status.textContent = `updated=${operationalHitDataV73.updated_utc || "--"} / issue=${operationalHitDataV73.forecast_issue_count || 0}${akp}${cold}${reason}`;
       }
     } catch (e) {
       operationalHitDataV73 = null;
-      if (status) status.textContent = "未作成: Fetch Kp Forecast Archive and Score を実行してください。";
+      if (status) status.textContent = "Not generated. Run Fetch Kp Forecast Archive and Score.";
     }
     renderOperationalHitGraphV73();
   }
@@ -9607,7 +9607,7 @@
       };
     });
 
-    const title = `予報Kp使用 運用的中率 ±${threshold} TECU`;
+    const title = `Operational hit rate using forecast Kp ±${threshold} TECU`;
     ctx.font = `${13 * dpr}px system-ui`;
     ctx.fillStyle = "#dbeafe";
     ctx.fillText(title, 12 * dpr, 20 * dpr);
@@ -9615,7 +9615,7 @@
     if (!operationalHitDataV73) {
       ctx.fillStyle = "#94a3b8";
       ctx.font = `${11 * dpr}px system-ui`;
-      ctx.fillText("データ未作成。Actionsで Fetch Kp Forecast Archive and Score を実行してください。", 14 * dpr, 60 * dpr);
+      ctx.fillText("No data generated. Run Fetch Kp Forecast Archive and Score in Actions.", 14 * dpr, 60 * dpr);
       updateOperationalKpisV73(rows);
       return;
     }
@@ -9645,7 +9645,7 @@
       ctx.fillRect(cx - barW / 2, y1 - bh, barW, bh);
       ctx.fillStyle = "#dbeafe";
       ctx.font = `${10 * dpr}px system-ui`;
-      ctx.fillText(`${r.lead}日後`, cx - 16 * dpr, y1 + 15 * dpr);
+      ctx.fillText(`${r.lead} days ahead`, cx - 16 * dpr, y1 + 15 * dpr);
       ctx.fillStyle = "#f8fafc";
       ctx.font = `${10 * dpr}px system-ui`;
       ctx.fillText(r.n > 0 ? pctV73(r.hit) : "N=0", cx - 18 * dpr, y1 - bh - 5 * dpr);
@@ -9659,7 +9659,7 @@
       const el = q73(`swiftOperationalLead${r.lead}V73`);
       if (!el) continue;
       el.innerHTML = `
-        <div class="swift-v73-kpi-label">${r.lead}日後</div>
+        <div class="swift-v73-kpi-label">${r.lead} days ahead</div>
         <div class="swift-v73-kpi-value">${r.n > 0 ? pctV73(r.hit) : "--"}</div>
         <div class="swift-v73-sub">N=${r.n || 0} / RMSE=${Number.isFinite(r.rmse) ? numV73(r.rmse) : "--"}</div>
       `;
@@ -9674,14 +9674,14 @@
     panel.id = "swiftCoeffExcelPanelV73";
     panel.className = "swift-v73-card";
     panel.innerHTML = `
-      <div class="swift-v73-title">格子別経験係数 Excel出力</div>
+      <div class="swift-v73-title">Export Grid-Cell Empirical Coefficients to Excel</div>
       <div class="swift-v73-sub">
-        現在の kp_grid_coefficients.json から、月別・格子別の k0/k1/k2/k3 をExcel出力します。
+        Export monthly grid-cell k0/k1/k2/k3 coefficients from kp_grid_coefficients.json to Excel.
       </div>
       <div class="swift-v73-row">
-        <button class="swift-v73-btn" id="swiftCoeffExcelBtnV73">格子係数Excel出力</button>
+        <button class="swift-v73-btn" id="swiftCoeffExcelBtnV73">Export grid coefficients to Excel</button>
       </div>
-      <div id="swiftCoeffExcelStatusV73">未出力</div>
+      <div id="swiftCoeffExcelStatusV73">Not exported</div>
     `;
 
     const after = q73("swiftFailureAnalysisV62") || q73("swiftV57ModelRuleNote") || q73("swiftHeatmapThresholdPanelV69");
@@ -9699,19 +9699,19 @@
     panel.id = "swiftOperationalHitPanelV73";
     panel.className = "swift-v73-card";
     panel.innerHTML = `
-      <div class="swift-v73-title">運用的中率（予報Kp使用／初回Kp履歴補完）</div>
+      <div class="swift-v73-title">Operational Hit Rate (Forecast Kp / Initial Kp History Backfill)</div>
       <div class="swift-v73-sub">
-        実測Kpで見るモデル的中率とは別に、保存済みの予報Kpを使った実運用の的中率を1〜4日後別に表示します。初回はN=0回避のため過去Kp履歴で暫定補完し、以後はActionsで蓄積した予報Kpに置き換わります。
+        Operational hit rates use archived forecast Kp for lead times of 1–4 days, separately from model scores using observed Kp. Initial scores use provisional historical Kp backfill to avoid N=0; archived forecast Kp from Actions replaces it as data accumulates.
       </div>
       <div class="swift-v73-row">
-        <span class="swift-v73-sub">誤差しきい値</span>
+        <span class="swift-v73-sub">Error threshold</span>
         <select id="swiftOperationalThresholdV73" class="swift-v73-select">
           <option value="5" selected>±5 TECU</option>
           <option value="10">±10 TECU</option>
           <option value="15">±15 TECU</option>
           <option value="20">±20 TECU</option>
         </select>
-        <button class="swift-v73-btn secondary" id="swiftOperationalReloadV73">再読込</button>
+        <button class="swift-v73-btn secondary" id="swiftOperationalReloadV73">Reload</button>
       </div>
       <canvas id="swiftOperationalHitCanvasV73"></canvas>
       <div class="swift-v73-kpi-grid">
@@ -9720,7 +9720,7 @@
         <div class="swift-v73-kpi" id="swiftOperationalLead3V73"></div>
         <div class="swift-v73-kpi" id="swiftOperationalLead4V73"></div>
       </div>
-      <div id="swiftOperationalHitStatusV73">未読込</div>
+      <div id="swiftOperationalHitStatusV73">Not loaded</div>
     `;
     main.appendChild(panel);
 
@@ -9736,8 +9736,8 @@
     div.id = "swiftForecastLengthNoteV73";
     div.className = "swift-v73-card";
     div.innerHTML = `
-      <div class="swift-v73-title">予報期間</div>
-      <div class="swift-v73-sub">v7.3で予報期間を前版から+1日延長しました。</div>
+      <div class="swift-v73-title">Forecast Period</div>
+      <div class="swift-v73-sub">Version 7.3 extends the forecast period by one day.</div>
     `;
     side.appendChild(div);
   }
@@ -9774,7 +9774,7 @@
       colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
     },
     gps: {
-      label: "L1電離圏誤差 [m]",
+      label: "L1 ionospheric error [m]",
       unit: "m",
       limits: [5, 10, 20, 40],
       colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
@@ -9786,14 +9786,14 @@
       colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
     },
     doptec: {
-      label: "DOP × L1誤差 [m]",
+      label: "DOP × L1 error [m]",
       unit: "m",
       limits: [5, 10, 20, 40],
       colors: ["#00ff00", "#ffff00", "#ff9900", "#ff0000"],
     },
     satcount: {
-      label: "可視衛星数",
-      unit: "機",
+      label: "Visible satellites",
+      unit: "satellites",
       limits: [4, 6, 8, 16],
       colors: ["#ff0000", "#ff9900", "#ffff00", "#00ff00"],
     },
@@ -9866,12 +9866,12 @@
   function setScaleForGroupV74(group, limits, colors) {
     const def = DEFAULT_SCALES_V74[group] || DEFAULT_SCALES_V74.tec;
     const l = limits.map(Number);
-    if (l.length !== 4 || l.some(v => !Number.isFinite(v))) throw new Error("数値は4つすべて入力してください。");
+    if (l.length !== 4 || l.some(v => !Number.isFinite(v))) throw new Error("Enter all four numeric values.");
     for (let i = 1; i < l.length; i++) {
-      if (l[i] <= l[i - 1]) throw new Error("数値は左から小さい順にしてください。");
+      if (l[i] <= l[i - 1]) throw new Error("Enter values in ascending order from left to right.");
     }
     const c = colors.map(String).slice(0, 4);
-    if (c.length !== 4 || c.some(x => !/^#[0-9a-f]{6}$/i.test(x))) throw new Error("色が不正です。");
+    if (c.length !== 4 || c.some(x => !/^#[0-9a-f]{6}$/i.test(x))) throw new Error("Invalid color.");
 
     const store = loadScaleStoreV74();
     store[group] = { limits: l, colors: c, label: def.label, unit: def.unit };
@@ -10105,7 +10105,7 @@
       const div = document.createElement("div");
       div.className = "swift-v74-scale-cell";
       div.innerHTML = `
-        <div class="swift-v74-cell-label">色${i + 1}</div>
+        <div class="swift-v74-cell-label">Color ${i + 1}</div>
         <div style="height:16px;border-radius:8px;background:${col};border:1px solid #20395d;"></div>
         <div class="swift-v74-sub" style="text-align:center;margin-top:5px;">${lim} ${unit}</div>
       `;
@@ -10122,7 +10122,7 @@
       updateUnifiedPreviewV74();
       refreshHeatmapV74();
       const st = q74("swiftUnifiedScaleStatusV74");
-      if (st) st.textContent = `反映済み: ${DEFAULT_SCALES_V74[group]?.label || group}`;
+      if (st) st.textContent = `Applied: ${DEFAULT_SCALES_V74[group]?.label || group}`;
     } catch (e) {
       alert(e.message);
     }
@@ -10134,7 +10134,7 @@
     loadGroupIntoInputsV74();
     refreshHeatmapV74();
     const st = q74("swiftUnifiedScaleStatusV74");
-    if (st) st.textContent = `初期値に戻しました: ${DEFAULT_SCALES_V74[group]?.label || group}`;
+    if (st) st.textContent = `Defaults restored: ${DEFAULT_SCALES_V74[group]?.label || group}`;
   }
 
   function syncGroupToModeV74() {
@@ -10151,15 +10151,15 @@
     panel.id = "swiftUnifiedScalePanelV74";
     panel.className = "swift-v74-card";
     panel.innerHTML = `
-      <div class="swift-v74-title">ヒートマップ 色・数値設定</div>
+      <div class="swift-v74-title">Heatmap Colors & Thresholds</div>
       <div class="swift-v74-sub">
-        色と数値を同じ場所で編集します。ここで設定した4点が、ヒートマップと凡例にそのまま反映されます。
+        Edit colors and values together. These four control points define the heatmap and legend.
       </div>
       <div class="swift-v74-row">
         <select id="swiftUnifiedGroupV74" class="swift-v74-select">
           ${Object.entries(DEFAULT_SCALES_V74).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("")}
         </select>
-        <button class="swift-v74-btn secondary" id="swiftUnifiedCurrentModeV74">現在モード</button>
+        <button class="swift-v74-btn secondary" id="swiftUnifiedCurrentModeV74">Current mode</button>
       </div>
       <div class="swift-v74-row">
         <select id="swiftUnifiedPaletteV74" class="swift-v74-select">
@@ -10174,25 +10174,25 @@
           <option value="monoBlue">Mono blue</option>
           <option value="purpleGold">Purple → Gold</option>
         </select>
-        <label class="swift-v74-sub"><input type="checkbox" id="swiftUnifiedReverseV74"> 反転</label>
-        <button class="swift-v74-btn secondary" id="swiftUnifiedApplyPaletteV74">パレットを色に反映</button>
+        <label class="swift-v74-sub"><input type="checkbox" id="swiftUnifiedReverseV74"> Reverse</label>
+        <button class="swift-v74-btn secondary" id="swiftUnifiedApplyPaletteV74">Apply palette colors</button>
       </div>
       <div class="swift-v74-scale-grid">
         ${[1, 2, 3, 4].map(i => `
           <div class="swift-v74-scale-cell">
-            <div class="swift-v74-cell-label">色${i} / 数値${i}</div>
+            <div class="swift-v74-cell-label">Color ${i} / Value${i}</div>
             <input id="swiftUnifiedColor${i}V74" class="swift-v74-input swift-v74-color" type="color">
             <input id="swiftUnifiedLimit${i}V74" class="swift-v74-input swift-v74-num" type="number" step="0.1">
           </div>
         `).join("")}
       </div>
       <div class="swift-v74-row">
-        <button class="swift-v74-btn" id="swiftUnifiedApplyV74">反映</button>
-        <button class="swift-v74-btn secondary" id="swiftUnifiedResetV74">初期値</button>
+        <button class="swift-v74-btn" id="swiftUnifiedApplyV74">Apply</button>
+        <button class="swift-v74-btn secondary" id="swiftUnifiedResetV74">Defaults</button>
         <span id="swiftUnifiedUnitV74" class="swift-v74-sub"></span>
       </div>
       <div id="swiftUnifiedPreviewV74" class="swift-v74-scale-grid"></div>
-      <div id="swiftUnifiedScaleStatusV74" class="swift-v74-sub">未反映</div>
+      <div id="swiftUnifiedScaleStatusV74" class="swift-v74-sub">Not applied</div>
     `;
     const after = q74("swiftHeatmapThresholdPanelV69") || q74("swiftHeatmapPalettePanelV68") || q74("swiftGnssVisiblePanelV66");
     if (after && after.parentElement) after.insertAdjacentElement("afterend", panel);
@@ -10228,11 +10228,11 @@
     const lat = Number(q74("swiftPointLatInputV74")?.value);
     let lon = Number(q74("swiftPointLonInputV74")?.value);
     if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
-      alert("緯度は -90〜90 で入力してください。");
+      alert("Enter latitude between -90 and 90.");
       return;
     }
     if (!Number.isFinite(lon)) {
-      alert("経度を入力してください。");
+      alert("Enter longitude.");
       return;
     }
     while (lon < -180) lon += 360;
@@ -10245,7 +10245,7 @@
     updatePointInputsV74(lat, lon);
 
     const selected = q74("swiftPointDopSelectedV65");
-    if (selected) selected.textContent = `地点: lat=${lat.toFixed(4)}, lon=${lon.toFixed(4)} / グラフ更新中…`;
+    if (selected) selected.textContent = `Point: lat=${lat.toFixed(4)}, lon=${lon.toFixed(4)} / Updating chart…`;
 
     setTimeout(() => {
       try { window.swiftRenderPointDopGraphV65?.(); } catch (e) { alert(e.message); }
@@ -10258,10 +10258,10 @@
     const row = document.createElement("div");
     row.className = "swift-v65-row swift-v74-point-card";
     row.innerHTML = `
-      <span class="swift-v65-sub">地点入力</span>
+      <span class="swift-v65-sub">Point Coordinates</span>
       <input id="swiftPointLatInputV74" class="swift-v65-input swift-v74-point-input" type="number" step="0.0001" min="-90" max="90" placeholder="lat">
       <input id="swiftPointLonInputV74" class="swift-v65-input swift-v74-point-input" type="number" step="0.0001" min="-180" max="180" placeholder="lon">
-      <button class="swift-v65-btn" id="swiftPointApplyLatLonV74">この緯度経度でグラフ</button>
+      <button class="swift-v65-btn" id="swiftPointApplyLatLonV74">Plot these coordinates</button>
     `;
     const status = q74("swiftPointDopSelectedV65");
     if (status && status.parentElement) status.insertAdjacentElement("beforebegin", row);
@@ -10437,25 +10437,25 @@
         tries.push(`${url} => ${e.message}`);
       }
     }
-    throw new Error("Yuma Almanacを取得できません。\n" + tries.join("\n"));
+    throw new Error("Cannot fetch Yuma Almanac.\n" + tries.join("\n"));
   }
 
   async function loadSavedAlmanacHealthV75(showAlert = false) {
     try {
-      setStatusV75("保存済Almanac Health読込中…");
+      setStatusV75("Loading saved almanac health…");
       const res = await fetch("data/gnss/gps_almanac_health.json", { cache: "no-store" });
       if (!res.ok) throw new Error(`gps_almanac_health.json HTTP ${res.status}`);
       const doc = await res.json();
       const map = doc.health_by_prn || doc.health || {};
       const n = Object.keys(map).length;
-      if (!n) throw new Error("health_by_prnが空です。Daily workflow側のYuma URL/解析を更新してください。");
+      if (!n) throw new Error("health_by_prn is empty. Update the Yuma URL/parser in the daily workflow.");
       const result = window.swiftApplyGnssPrnHealthMap?.(map) || { applied: 0, inactive: 0 };
-      let msg = `保存済Almanac反映: PRN=${n}, applied=${result.applied}, inactive=${result.inactive}\nupdated=${doc.updated_utc || "--"}\nsource=${doc.source_url || "--"}`;
-      if (result.applied === 0) msg += "\n注意: GNSS TLE読込後にもう一度反映してください。TLE名からPRNが取れない場合もあります。";
+      let msg = `Saved almanac applied: PRN=${n}, applied=${result.applied}, inactive=${result.inactive}\nupdated=${doc.updated_utc || "--"}\nsource=${doc.source_url || "--"}`;
+      if (result.applied === 0) msg += "\nNote: apply again after loading GNSS TLE. Some TLE names may not contain a readable PRN.";
       setStatusV75(msg);
       return { doc, map, result };
     } catch (e) {
-      const msg = "保存済Almanac読込失敗: " + e.message;
+      const msg = "Failed to load saved almanac: " + e.message;
       setStatusV75(msg);
       if (showAlert) alert(msg);
       return null;
@@ -10464,19 +10464,19 @@
 
   async function loadLiveYumaHealthV75() {
     try {
-      setStatusV75("Live/Local Yuma Almanac取得中…");
+      setStatusV75("Fetching live/local Yuma Almanac…");
       const got = await fetchTextFirstOkV75(YUMA_URLS_V75);
       const map = parseYumaHealthV75(got.text);
       const n = Object.keys(map).length;
-      if (!n) throw new Error("Yuma Almanacは取得できましたがHealthを解析できませんでした。");
+      if (!n) throw new Error("Yuma Almanac fetched, but health data could not be parsed.");
       const result = window.swiftApplyGnssPrnHealthMap?.(map) || { applied: 0, inactive: 0 };
-      let msg = `Live Yuma Almanac反映: PRN=${n}, applied=${result.applied}, inactive=${result.inactive}\nsource=${got.url}`;
-      if (result.applied === 0) msg += "\n注意: 先にGNSS TLE読込 / DOP準備を実行してください。";
+      let msg = `Live Yuma Almanac applied: PRN=${n}, applied=${result.applied}, inactive=${result.inactive}\nsource=${got.url}`;
+      if (result.applied === 0) msg += "\nNote: load GNSS TLE / Prepare DOP first.";
       setStatusV75(msg);
       try { window.swiftRenderPointDopGraphV65?.(); } catch {}
       return { map, result, source: got.url };
     } catch (e) {
-      const msg = "Live Yuma Almanac反映失敗: " + e.message;
+      const msg = "Failed to apply live Yuma Almanac: " + e.message;
       setStatusV75(msg);
       alert(msg);
       return null;
@@ -10527,14 +10527,14 @@
     panel.innerHTML = `
       <div class="swift-v75-title">GPS Almanac Health</div>
       <div class="swift-v75-sub">
-        CelesTrak Latest Yuma AlmanacからHealthを取得し、GPS PRNのactive/inactiveに反映します。
+        Fetch health from the latest CelesTrak Yuma Almanac and apply it to GPS PRN active/inactive states.
       </div>
       <div class="swift-v75-row">
-        <button class="swift-v75-btn" id="swiftSavedAlmanacApplyBtnV75">保存済Almanac反映</button>
-        <button class="swift-v75-btn secondary" id="swiftLiveAlmanacApplyBtnV75">Live Yuma反映</button>
-        <button class="swift-v75-btn secondary" id="swiftAlmanacTestBtnV75">読込テスト</button>
+        <button class="swift-v75-btn" id="swiftSavedAlmanacApplyBtnV75">Saved almanac applied</button>
+        <button class="swift-v75-btn secondary" id="swiftLiveAlmanacApplyBtnV75">Apply live Yuma</button>
+        <button class="swift-v75-btn secondary" id="swiftAlmanacTestBtnV75">Test loading</button>
       </div>
-      <div id="swiftAlmanacStatusV75">Almanac未確認</div>
+      <div id="swiftAlmanacStatusV75">Almanac not checked</div>
     `;
 
     if (gnssPanel && gnssPanel.parentElement) gnssPanel.insertAdjacentElement("afterend", panel);
@@ -10680,7 +10680,7 @@
 
   function applyHealthMapV76(map, sourceLabel, silent = false) {
     const n = Object.keys(map || {}).length;
-    if (!n) throw new Error("Health mapが空です。");
+    if (!n) throw new Error("Health map is empty.");
     const result = window.swiftApplyGnssPrnHealthMap?.(map) || { applied: 0, inactive: 0 };
     const msg = `${sourceLabel}: PRN=${n}, applied=${result.applied}, inactive=${result.inactive}`;
     if (!silent) setStatusV76(msg);
@@ -10691,17 +10691,17 @@
   async function applyLocalHealthFastV76(options = {}) {
     const silent = !!options.silent;
     try {
-      if (!silent) setStatusV76("ローカルAlmanac Healthを即時読込中…");
+      if (!silent) setStatusV76("Loading local almanac health immediately…");
       const text = await fetchTextTimeoutV76(LOCAL_HEALTH_V76, 900);
       const doc = JSON.parse(text);
       const map = doc.health_by_prn || doc.health || {};
-      const out = applyHealthMapV76(map, `保存済Almanac反映 updated=${doc.updated_utc || "--"}`, silent);
+      const out = applyHealthMapV76(map, `Saved almanac applied updated=${doc.updated_utc || "--"}`, silent);
       if (!silent) {
         setStatusV76(`${out.msg}\nsource=${doc.source_url || LOCAL_HEALTH_V76}`);
       }
       return { ok: true, doc, map, ...out };
     } catch (e) {
-      if (!silent) setStatusV76("保存済Almanacは未反映: " + e.message);
+      if (!silent) setStatusV76("Saved almanac not applied: " + e.message);
       return { ok: false, error: e.message };
     }
   }
@@ -10709,7 +10709,7 @@
   async function fetchLiveHealthWithTimeoutV76(options = {}) {
     const silent = !!options.silent;
     const tries = [];
-    if (!silent) setStatusV76("Live Almanacを短時間で確認中…");
+    if (!silent) setStatusV76("Checking live almanac with a short timeout…");
 
     for (const item of LIVE_ALMANAC_URLS_V76) {
       try {
@@ -10718,7 +10718,7 @@
         const n = Object.keys(map).length;
         tries.push(`${item.label}: OK bytes=${text.length} PRN=${n}`);
         if (n) {
-          const out = applyHealthMapV76(map, `Live Almanac反映 ${item.label}`, silent);
+          const out = applyHealthMapV76(map, `Live almanac applied ${item.label}`, silent);
           if (!silent) setStatusV76(`${out.msg}\nsource=${item.url}\n${tries.join("\n")}`);
           return { ok: true, source: item.url, label: item.label, map, tries, ...out };
         }
@@ -10727,24 +10727,24 @@
       }
     }
 
-    const msg = "Live Almanacは短時間では取得できませんでした。保存済みキャッシュを使用します。\n" + tries.join("\n");
+    const msg = "Live almanac timed out. Using the saved cache.\n" + tries.join("\n");
     if (!silent) setStatusV76(msg);
     return { ok: false, error: msg, tries };
   }
 
   async function refreshAlmanacNonBlockingV76() {
-    setStatusV76("Almanac: 保存済みを優先して即時反映します。Live取得は裏で短時間だけ試行します。");
+    setStatusV76("Almanac: applying saved data immediately, then briefly checking live data in the background.");
     const local = await applyLocalHealthFastV76({ silent: false });
 
     // Fire live update in the background; do not block UI or GNSS/DOP graph.
     setTimeout(async () => {
       const live = await fetchLiveHealthWithTimeoutV76({ silent: true });
       if (live.ok) {
-        setStatusV76(`バックグラウンドLive更新OK: PRN=${live.n}, applied=${live.result.applied}, inactive=${live.result.inactive}\nsource=${live.source}`, true);
+        setStatusV76(`Background live update complete: PRN=${live.n}, applied=${live.result.applied}, inactive=${live.result.inactive}\nsource=${live.source}`, true);
       } else if (!local.ok) {
-        setStatusV76("保存済みもLiveも取得できませんでした。\nActionsで Fetch GNSS TLE and Almanac を実行してください。", true);
+        setStatusV76("Neither saved nor live data is available.\nRun Fetch GNSS TLE and Almanac in Actions.", true);
       } else {
-        setStatusV76("Live更新はスキップ/失敗。保存済みキャッシュを継続使用中。", true);
+        setStatusV76("Live update skipped or failed. Continuing with the saved cache.", true);
       }
     }, 80);
 
@@ -10782,15 +10782,15 @@
     }
     const sub = panel.querySelector(".swift-v75-sub");
     if (sub) {
-      sub.innerHTML = `保存済みAlmanac Healthを即時反映し、Live取得はバックグラウンドで短時間だけ試します。UIを待たせません。`;
+      sub.innerHTML = `Apply saved almanac health immediately, then briefly check live data in the background without blocking the UI.`;
     }
 
     const row = panel.querySelector(".swift-v75-row");
     if (row && !q76("swiftAlmanacCacheFirstBtnV76")) {
       row.innerHTML = `
-        <button class="swift-v75-btn" id="swiftAlmanacCacheFirstBtnV76">保存済み優先で反映</button>
-        <button class="swift-v75-btn secondary" id="swiftAlmanacLiveShortBtnV76">Live短時間更新</button>
-        <button class="swift-v75-btn secondary" id="swiftAlmanacTestBtnV76">読込テスト</button>
+        <button class="swift-v75-btn" id="swiftAlmanacCacheFirstBtnV76">Apply cached data first</button>
+        <button class="swift-v75-btn secondary" id="swiftAlmanacLiveShortBtnV76">Quick live update</button>
+        <button class="swift-v75-btn secondary" id="swiftAlmanacTestBtnV76">Test loading</button>
       `;
       q76("swiftAlmanacCacheFirstBtnV76").onclick = refreshAlmanacNonBlockingV76;
       q76("swiftAlmanacLiveShortBtnV76").onclick = () => fetchLiveHealthWithTimeoutV76({ silent: false });
@@ -10801,7 +10801,7 @@
       const note = document.createElement("div");
       note.id = "swiftAlmanacV76Note";
       note.className = "swift-v76-note";
-      note.textContent = "通常運用はGitHub Actionsで1日1回保存した gps_almanac_health.json を使います。";
+      note.textContent = "Normal operation uses gps_almanac_health.json saved daily by GitHub Actions.";
       panel.appendChild(note);
     }
   }
@@ -10811,12 +10811,12 @@
     if (!btn || btn.dataset.v76AlmanacAsync) return;
     btn.dataset.v76AlmanacAsync = "1";
     btn.onclick = async function () {
-      setStatusV76("GNSS TLE読込中… Almanacは読込完了後に保存済みを非同期反映します。");
+      setStatusV76("Loading GNSS TLE… Saved almanac health will be applied asynchronously after loading.");
       try {
         if (typeof window.loadGnssDopData === "function") await window.loadGnssDopData();
-        else throw new Error("loadGnssDopDataが見つかりません。");
+        else throw new Error("loadGnssDopData not found.");
       } catch (e) {
-        setStatusV76("GNSS TLE読込失敗: " + e.message);
+        setStatusV76("Failed to load GNSS TLE: " + e.message);
         return;
       }
       setTimeout(() => refreshAlmanacNonBlockingV76(), 0);
@@ -10877,7 +10877,7 @@
       let i = 0;
       const next = () => {
         if (window.JSZip) return resolve();
-        if (i >= urls.length) return reject(new Error("JSZipの読み込みに失敗しました。"));
+        if (i >= urls.length) return reject(new Error("JSZip failed to load."));
         const s = document.createElement("script");
         s.src = urls[i++];
         s.async = true;
@@ -11049,7 +11049,7 @@
   <c:roundedCorners val="0"/>
   <c:chart>
     <c:title>
-      <c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="ja-JP" sz="1200"/><a:t>${xmlV77(title)}</a:t></a:r></a:p></c:rich></c:tx>
+      <c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" sz="1200"/><a:t>${xmlV77(title)}</a:t></a:r></a:p></c:rich></c:tx>
       <c:layout/>
     </c:title>
     <c:plotArea>
@@ -11214,7 +11214,7 @@
 
     const series = window.swiftPointDopLastSeriesV65;
     if (!series || !Array.isArray(series.rows) || !series.rows.length) {
-      alert("出力するグラフデータがありません。緯度経度を選択して「グラフ更新」を押してください。");
+      alert("No chart data to export. Select coordinates and click Refresh chart.");
       return;
     }
 
@@ -11306,8 +11306,8 @@
     const oldBtn = q77("swiftPointDopExcelBtnV66");
     if (oldBtn && !oldBtn.dataset.v77Patched) {
       oldBtn.dataset.v77Patched = "1";
-      oldBtn.textContent = "Excel出力";
-      oldBtn.title = "従来のデータ表Excel";
+      oldBtn.textContent = "Export Excel";
+      oldBtn.title = "Legacy Excel data table";
     }
 
     if (q77("swiftPointDopExcelChartBtnV77")) return;
@@ -11318,8 +11318,8 @@
     btn.id = "swiftPointDopExcelChartBtnV77";
     btn.className = "swift-v65-btn";
     btn.type = "button";
-    btn.textContent = "Excel出力（グラフ付）";
-    btn.title = "Dataシートと各DOP/L1測位誤差のExcelネイティブグラフを出力";
+    btn.textContent = "Export Excel with charts";
+    btn.title = "Export the Data sheet and native Excel charts for DOP / L1 positioning errors";
     btn.onclick = exportPointDopExcelWithChartsV77;
     row.appendChild(btn);
   }

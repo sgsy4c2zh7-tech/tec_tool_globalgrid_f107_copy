@@ -38,7 +38,7 @@
     const grid = obj.grid || obj.tec || [];
     const t = new Date(obj.time_utc || entry?.time_utc || 0);
     if (!latArr.length || !lonArr.length || !grid.length || isNaN(t.getTime())) {
-      throw new Error("ISEE JSONの格子/時刻形式が不正です");
+      throw new Error("Invalid ISEE JSON grid/time format");
     }
     return {
       validTime: t,
@@ -55,13 +55,13 @@
   }
 
   async function loadLatest(showOnMap = false) {
-    status("ISEE Japan High-Res VTEC [TECU]（30日保存）を読込中…");
+    status("Loading ISEE Japan High-Res VTEC [TECU] (30-day archive)…");
     const idx = await getJson(TEC_INDEX_URL);
     const entries = Array.isArray(idx.frames) ? idx.frames.slice() : [];
     const latency = Number(idx.source_latency_hours_at_fetch);
     const latestSource = idx.latest_source_hour_utc || "--";
     entries.sort((a,b) => String(a.time_utc).localeCompare(String(b.time_utc)));
-    if (!entries.length) throw new Error("data/isee_tec/index.json にframeがありません");
+    if (!entries.length) throw new Error("No frames in data/isee_tec/index.json");
 
     // Latest 24h of the newest actually-published ISEE product for observation/replay.
     const latestMs = new Date(entries[entries.length - 1].time_utc).getTime();
@@ -74,7 +74,7 @@
     for (const e of selected) {
       loaded.push(normalizeFrame(await getJson(TEC_BASE_URL + e.file), e));
     }
-    if (!loaded.length) throw new Error("ISEEフレームを読み込めませんでした");
+    if (!loaded.length) throw new Error("Could not load ISEE frames");
 
     window.swiftIseeFrames = loaded;
     window.swiftIseeTimes = loaded.map(f => f.validTime);
@@ -86,8 +86,8 @@
 
     const first = loaded[0], last = loaded[loaded.length - 1];
     status(
-      `ISEE VTEC読込OK: ${loaded.length}枚 / ${first.nLat}×${first.nLon} / VTEC [TECU] / ` +
-      `最新source=${latestSource}${Number.isFinite(latency) ? ` / ISEE遅延≈${latency.toFixed(1)}h` : ""}`
+      `ISEE VTEC loaded: ${loaded.length} frames / ${first.nLat}×${first.nLon} / VTEC [TECU] / ` +
+      `Latest source=${latestSource}${Number.isFinite(latency) ? ` / ISEE latency≈${latency.toFixed(1)}h` : ""}`
     );
 
     if (showOnMap) showLatestOnMap();
@@ -97,7 +97,7 @@
   function showLatestOnMap() {
     const loaded = window.swiftIseeFrames || [];
     if (!loaded.length) {
-      loadLatest(true).catch(e => status("ISEE日本表示失敗: " + e.message));
+      loadLatest(true).catch(e => status("ISEE Japan display failed: " + e.message));
       return;
     }
     const f = loaded[loaded.length - 1];
@@ -126,7 +126,7 @@
       }
     } catch (e) {
       console.error(e);
-      status("ISEE日本表示に失敗: " + e.message);
+      status("ISEE Japan display failed: " + e.message);
     }
   }
 
@@ -161,7 +161,7 @@
   async function loadMeanIndex() {
     meanIndexCache = await getJson(MEAN_INDEX_URL);
     if (!Array.isArray(meanIndexCache.slots) || !meanIndexCache.slots.length) {
-      throw new Error("docs/data/isee_mean/index.json にISEE時間別平均VTECがありません。Update ISEE Japan VTEC and AIを先に実行してください。");
+      throw new Error("No ISEE time-of-day mean VTEC in docs/data/isee_mean/index.json. Run Update ISEE Japan VTEC and AI first.");
     }
     return meanIndexCache;
   }
@@ -307,7 +307,7 @@
     // Never silently use constant Kp=3. That hides a broken Kp input and makes
     // the Japan forecast look frozen.
     throw new Error(
-      "予報Kpを生成できません。『予報時にNOAA 3-Day Kpを自動取得』をONにして、もう一度予報実行してください。"
+      "Cannot generate forecast Kp. Enable automatic NOAA 3-Day Kp fetching and run the forecast again."
     );
   }
 
@@ -370,7 +370,7 @@
   }
 
   async function runIseeMeanForecast() {
-    status("ISEE時間別平均VTEC・Japan AI係数を読み込み中…");
+    status("Loading ISEE time-of-day mean VTEC and Japan AI coefficients…");
 
     const [meanIndex, coeffDoc] = await Promise.all([
       loadMeanIndex(),
@@ -382,10 +382,10 @@
 
     if (coverage.halfHourCount < 40) {
       throw new Error(
-        `ISEE時間別平均の時刻スロット不足: ${coverage.count}/288 (5分), ` +
-        `${coverage.halfHourCount}/48 (30分)。` +
-        `現在の時間別平均が1時間分などしか無いため、同じ格子を別時刻へ使い回してヒートマップが止まって見えます。` +
-        `Update ISEE Japan VTEC and AI を実行して、少なくとも24時間分のISEE frameを取得してください。`
+        `Insufficient ISEE time-of-day mean slots: ${coverage.count}/288 (5 min), ` +
+        `${coverage.halfHourCount}/48 (30 min)。` +
+        `Limited time-of-day coverage causes the same grid to be reused, making the heatmap appear static.` +
+        `Run Update ISEE Japan VTEC and AI to obtain at least 24 hours of ISEE frames.`
       );
     }
 
@@ -421,9 +421,9 @@
       const slotEntry = resolved.entry;
       if (!slotEntry) {
         throw new Error(
-          `ISEE時間別平均のUTC ${String(t.getUTCHours()).padStart(2,"0")}:` +
-          `${String(t.getUTCMinutes()).padStart(2,"0")} slotがありません。` +
-          `最寄りでも${Number.isFinite(resolved.diffMin) ? resolved.diffMin.toFixed(0) : "--"}分離れています。`
+          `ISEE time-of-day mean UTC ${String(t.getUTCHours()).padStart(2,"0")}:` +
+          `${String(t.getUTCMinutes()).padStart(2,"0")} slot is missing.` +
+          `Nearest slot is ${Number.isFinite(resolved.diffMin) ? resolved.diffMin.toFixed(0) : "--"} minutes away.`
         );
       }
 
@@ -432,7 +432,7 @@
       const latArr = meanDoc.lat_arr || [];
       const lonArr = meanDoc.lon_arr || [];
       if (!latArr.length || !lonArr.length || !meanGrid.length) {
-        throw new Error(`ISEE平均VTEC格子が不正: ${slotEntry.file}`);
+        throw new Error(`Invalid ISEE mean VTEC grid: ${slotEntry.file}`);
       }
       if (!gridMeta) {
         gridMeta = { latArr, lonArr, nLat:latArr.length, nLon:lonArr.length };
@@ -504,7 +504,7 @@
       });
     }
 
-    if (!frames.length) throw new Error("ISEE 10日Base予報フレームを生成できませんでした。");
+    if (!frames.length) throw new Error("Could not generate ISEE forecast frames from the 10-day Base.");
 
     // Verify that the produced map itself changes over time.
     // Compare +0h, +6h, +12h and +24h when available.
@@ -518,13 +518,13 @@
     }
 
     if (typeof window.swiftInstallIsee10DayBaseForecast !== "function") {
-      throw new Error("swifttec_v4_archive_dop.js がv8.10ではありません。");
+      throw new Error("swifttec_v4_archive_dop.js is not version v8.10.");
     }
 
     window.swiftInstallIsee10DayBaseForecast(frames, kpSeries, {gridMeta});
 
     const daysTxt = Number.isFinite(minDaysUsed)
-      ? (minDaysUsed === maxDaysUsed ? `${minDaysUsed}日` : `${minDaysUsed}〜${maxDaysUsed}日`)
+      ? (minDaysUsed === maxDaysUsed ? `${minDaysUsed} days` : `${minDaysUsed}〜${maxDaysUsed} days`)
       : "--";
     const deltaSpan = (Number.isFinite(minAppliedDelta) && Number.isFinite(maxAppliedDelta))
       ? `${minAppliedDelta.toFixed(2)}〜${maxAppliedDelta.toFixed(2)} TECU`
@@ -536,17 +536,17 @@
 
     if (useAi && activeCoeffCells === 0) {
       status(
-        `⚠ Japan予報は生成しましたが、Japan AI係数が全格子0です。` +
-        `KpF=${kpTxt} / ISEE平均=${daysTxt} / 平均時刻=${coverage.halfHourCount}/48 / ` +
-        `地図変化 max=${variationMax.toFixed(2)} TECU。`
+        `⚠ Japan forecast generated, but Japan AI coefficients are zero in all grid cells.` +
+        `KpF=${kpTxt} / ISEE mean=${daysTxt} / Mean time slots=${coverage.halfHourCount}/48 / ` +
+        `Map variation max=${variationMax.toFixed(2)} TECU。`
       );
     } else {
       status(
-        `Japan予報OK: ISEE平均=${daysTxt} / KpF=${kpTxt} / ` +
-        `AI有効格子=${activeCoeffCells} / Kp補正=${deltaSpan} / ` +
-        `平均時刻=${coverage.halfHourCount}/48 / ` +
-        `地図変化 max=${variationMax.toFixed(2)} TECU, mean=${variationMeanMax.toFixed(2)} / ` +
-        `+0〜+4日 / VTEC [TECU]`
+        `Japan forecast complete: ISEE mean=${daysTxt} / KpF=${kpTxt} / ` +
+        `Active AI grid cells=${activeCoeffCells} / Kp correction=${deltaSpan} / ` +
+        `Mean time slots=${coverage.halfHourCount}/48 / ` +
+        `Map variation max=${variationMax.toFixed(2)} TECU, mean=${variationMeanMax.toFixed(2)} / ` +
+        `+0〜+4 days / VTEC [TECU]`
       );
     }
     return frames;
