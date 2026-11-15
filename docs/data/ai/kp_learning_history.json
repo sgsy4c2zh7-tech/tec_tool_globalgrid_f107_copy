@@ -7824,6 +7824,57 @@
           "corrected_hit_rate": 0.9987
         }
       }
+    },
+    {
+      "time_utc": "2026-11-15T11:31:22Z",
+      "sample_count": 2024568,
+      "raw_rmse": 3.1197,
+      "corrected_rmse": 3.0481,
+      "raw_bias": 0.1033,
+      "corrected_bias": 0.1382,
+      "raw_hit_rate": 0.9228,
+      "corrected_hit_rate": 0.9252,
+      "threshold_tecu": 5.0,
+      "updated_cells": 6552,
+      "training_pairs": 309,
+      "thresholds": {
+        "5": {
+          "sample_count": 2024568,
+          "raw_rmse": 3.1197,
+          "corrected_rmse": 3.0481,
+          "raw_bias": 0.1033,
+          "corrected_bias": 0.1382,
+          "raw_hit_rate": 0.9228,
+          "corrected_hit_rate": 0.9252
+        },
+        "10": {
+          "sample_count": 2024568,
+          "raw_rmse": 3.1197,
+          "corrected_rmse": 3.0481,
+          "raw_bias": 0.1033,
+          "corrected_bias": 0.1382,
+          "raw_hit_rate": 0.9812,
+          "corrected_hit_rate": 0.9825
+        },
+        "15": {
+          "sample_count": 2024568,
+          "raw_rmse": 3.1197,
+          "corrected_rmse": 3.0481,
+          "raw_bias": 0.1033,
+          "corrected_bias": 0.1382,
+          "raw_hit_rate": 0.9935,
+          "corrected_hit_rate": 0.9941
+        },
+        "20": {
+          "sample_count": 2024568,
+          "raw_rmse": 3.1197,
+          "corrected_rmse": 3.0481,
+          "raw_bias": 0.1033,
+          "corrected_bias": 0.1382,
+          "raw_hit_rate": 0.9977,
+          "corrected_hit_rate": 0.9979
+        }
+      }
     }
   ],
   "model_rule": "BaseTEC = PrevObservedTEC - F(KpB); ForecastTEC = BaseTEC + F(KpF)"
