@@ -1,14 +1,14 @@
 {
   "version": "swifttec-isee-japan-index-v4-daily30d-vtec",
-  "updated_utc": "2026-11-21T12:37:09.535086Z",
+  "updated_utc": "2026-11-22T12:33:05.397065Z",
   "quantity": "VTEC",
   "units": "TECU",
   "tec_definition": "Vertical Total Electron Content",
   "source_product": "ISEE Global GNSS Vertical TEC / AGRID2",
   "source_base_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/",
-  "latest_source_hour_utc": "2026-11-14T23:00:00Z",
-  "latest_source_file": "2026111423_atec.nc",
-  "source_latency_hours_at_fetch": 157.62,
+  "latest_source_hour_utc": "2026-11-15T23:00:00Z",
+  "latest_source_file": "2026111523_atec.nc",
+  "source_latency_hours_at_fetch": 157.55,
   "note": "ISEE data can be published with latency; latest_source_hour_utc is the newest actually available upstream product, not necessarily current UTC.",
   "region": {
     "lat_min": 24.0,
@@ -18,1098 +18,10 @@
   },
   "backfill_hours": 240,
   "keep_days": 30,
-  "new_hourly_files_processed": 56,
-  "new_frames_written": 672,
+  "new_hourly_files_processed": 24,
+  "new_frames_written": 288,
   "failed_hourly_files": [],
   "frames": [
-    {
-      "time_utc": "2026-10-22T12:40:00Z",
-      "file": "20261022T124000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102212_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102212_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T12:45:00Z",
-      "file": "20261022T124500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102212_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102212_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T12:50:00Z",
-      "file": "20261022T125000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102212_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102212_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T12:55:00Z",
-      "file": "20261022T125500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102212_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102212_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:00:00Z",
-      "file": "20261022T130000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:05:00Z",
-      "file": "20261022T130500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:10:00Z",
-      "file": "20261022T131000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:15:00Z",
-      "file": "20261022T131500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:20:00Z",
-      "file": "20261022T132000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:25:00Z",
-      "file": "20261022T132500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:30:00Z",
-      "file": "20261022T133000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:35:00Z",
-      "file": "20261022T133500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:40:00Z",
-      "file": "20261022T134000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:45:00Z",
-      "file": "20261022T134500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:50:00Z",
-      "file": "20261022T135000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T13:55:00Z",
-      "file": "20261022T135500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102213_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102213_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:00:00Z",
-      "file": "20261022T140000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:05:00Z",
-      "file": "20261022T140500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:10:00Z",
-      "file": "20261022T141000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:15:00Z",
-      "file": "20261022T141500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:20:00Z",
-      "file": "20261022T142000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:25:00Z",
-      "file": "20261022T142500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:30:00Z",
-      "file": "20261022T143000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:35:00Z",
-      "file": "20261022T143500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:40:00Z",
-      "file": "20261022T144000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:45:00Z",
-      "file": "20261022T144500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:50:00Z",
-      "file": "20261022T145000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T14:55:00Z",
-      "file": "20261022T145500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102214_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102214_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:00:00Z",
-      "file": "20261022T150000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:05:00Z",
-      "file": "20261022T150500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:10:00Z",
-      "file": "20261022T151000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:15:00Z",
-      "file": "20261022T151500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:20:00Z",
-      "file": "20261022T152000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:25:00Z",
-      "file": "20261022T152500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:30:00Z",
-      "file": "20261022T153000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:35:00Z",
-      "file": "20261022T153500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:40:00Z",
-      "file": "20261022T154000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:45:00Z",
-      "file": "20261022T154500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:50:00Z",
-      "file": "20261022T155000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T15:55:00Z",
-      "file": "20261022T155500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102215_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102215_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:00:00Z",
-      "file": "20261022T160000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:05:00Z",
-      "file": "20261022T160500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:10:00Z",
-      "file": "20261022T161000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:15:00Z",
-      "file": "20261022T161500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:20:00Z",
-      "file": "20261022T162000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:25:00Z",
-      "file": "20261022T162500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:30:00Z",
-      "file": "20261022T163000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:35:00Z",
-      "file": "20261022T163500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:40:00Z",
-      "file": "20261022T164000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:45:00Z",
-      "file": "20261022T164500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:50:00Z",
-      "file": "20261022T165000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T16:55:00Z",
-      "file": "20261022T165500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102216_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102216_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:00:00Z",
-      "file": "20261022T170000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:05:00Z",
-      "file": "20261022T170500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:10:00Z",
-      "file": "20261022T171000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:15:00Z",
-      "file": "20261022T171500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:20:00Z",
-      "file": "20261022T172000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:25:00Z",
-      "file": "20261022T172500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:30:00Z",
-      "file": "20261022T173000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:35:00Z",
-      "file": "20261022T173500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:40:00Z",
-      "file": "20261022T174000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:45:00Z",
-      "file": "20261022T174500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:50:00Z",
-      "file": "20261022T175000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T17:55:00Z",
-      "file": "20261022T175500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102217_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102217_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:00:00Z",
-      "file": "20261022T180000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:05:00Z",
-      "file": "20261022T180500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:10:00Z",
-      "file": "20261022T181000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:15:00Z",
-      "file": "20261022T181500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:20:00Z",
-      "file": "20261022T182000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:25:00Z",
-      "file": "20261022T182500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:30:00Z",
-      "file": "20261022T183000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:35:00Z",
-      "file": "20261022T183500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:40:00Z",
-      "file": "20261022T184000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:45:00Z",
-      "file": "20261022T184500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:50:00Z",
-      "file": "20261022T185000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T18:55:00Z",
-      "file": "20261022T185500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102218_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102218_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:00:00Z",
-      "file": "20261022T190000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:05:00Z",
-      "file": "20261022T190500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:10:00Z",
-      "file": "20261022T191000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:15:00Z",
-      "file": "20261022T191500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:20:00Z",
-      "file": "20261022T192000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:25:00Z",
-      "file": "20261022T192500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:30:00Z",
-      "file": "20261022T193000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:35:00Z",
-      "file": "20261022T193500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:40:00Z",
-      "file": "20261022T194000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:45:00Z",
-      "file": "20261022T194500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:50:00Z",
-      "file": "20261022T195000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T19:55:00Z",
-      "file": "20261022T195500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102219_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102219_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:00:00Z",
-      "file": "20261022T200000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:05:00Z",
-      "file": "20261022T200500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:10:00Z",
-      "file": "20261022T201000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:15:00Z",
-      "file": "20261022T201500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:20:00Z",
-      "file": "20261022T202000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:25:00Z",
-      "file": "20261022T202500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:30:00Z",
-      "file": "20261022T203000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:35:00Z",
-      "file": "20261022T203500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:40:00Z",
-      "file": "20261022T204000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:45:00Z",
-      "file": "20261022T204500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:50:00Z",
-      "file": "20261022T205000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T20:55:00Z",
-      "file": "20261022T205500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102220_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102220_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:00:00Z",
-      "file": "20261022T210000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:05:00Z",
-      "file": "20261022T210500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:10:00Z",
-      "file": "20261022T211000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:15:00Z",
-      "file": "20261022T211500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:20:00Z",
-      "file": "20261022T212000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:25:00Z",
-      "file": "20261022T212500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:30:00Z",
-      "file": "20261022T213000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:35:00Z",
-      "file": "20261022T213500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:40:00Z",
-      "file": "20261022T214000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:45:00Z",
-      "file": "20261022T214500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:50:00Z",
-      "file": "20261022T215000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T21:55:00Z",
-      "file": "20261022T215500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102221_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102221_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:00:00Z",
-      "file": "20261022T220000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:05:00Z",
-      "file": "20261022T220500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:10:00Z",
-      "file": "20261022T221000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:15:00Z",
-      "file": "20261022T221500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:20:00Z",
-      "file": "20261022T222000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:25:00Z",
-      "file": "20261022T222500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:30:00Z",
-      "file": "20261022T223000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:35:00Z",
-      "file": "20261022T223500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:40:00Z",
-      "file": "20261022T224000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:45:00Z",
-      "file": "20261022T224500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:50:00Z",
-      "file": "20261022T225000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T22:55:00Z",
-      "file": "20261022T225500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102222_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102222_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:00:00Z",
-      "file": "20261022T230000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:05:00Z",
-      "file": "20261022T230500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:10:00Z",
-      "file": "20261022T231000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:15:00Z",
-      "file": "20261022T231500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:20:00Z",
-      "file": "20261022T232000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:25:00Z",
-      "file": "20261022T232500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:30:00Z",
-      "file": "20261022T233000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:35:00Z",
-      "file": "20261022T233500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:40:00Z",
-      "file": "20261022T234000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:45:00Z",
-      "file": "20261022T234500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:50:00Z",
-      "file": "20261022T235000Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
-    {
-      "time_utc": "2026-10-22T23:55:00Z",
-      "file": "20261022T235500Z.json",
-      "quantity": "VTEC",
-      "units": "TECU",
-      "source_file": "2026102223_atec.nc",
-      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/295/2026102223_atec.nc"
-    },
     {
       "time_utc": "2026-10-25T00:00:00Z",
       "file": "20261025T000000Z.json",
@@ -31061,6 +29973,2310 @@
       "units": "TECU",
       "source_file": "2026111423_atec.nc",
       "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/318/2026111423_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:00:00Z",
+      "file": "20261115T000000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:05:00Z",
+      "file": "20261115T000500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:10:00Z",
+      "file": "20261115T001000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:15:00Z",
+      "file": "20261115T001500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:20:00Z",
+      "file": "20261115T002000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:25:00Z",
+      "file": "20261115T002500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:30:00Z",
+      "file": "20261115T003000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:35:00Z",
+      "file": "20261115T003500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:40:00Z",
+      "file": "20261115T004000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:45:00Z",
+      "file": "20261115T004500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:50:00Z",
+      "file": "20261115T005000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T00:55:00Z",
+      "file": "20261115T005500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111500_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111500_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:00:00Z",
+      "file": "20261115T010000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:05:00Z",
+      "file": "20261115T010500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:10:00Z",
+      "file": "20261115T011000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:15:00Z",
+      "file": "20261115T011500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:20:00Z",
+      "file": "20261115T012000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:25:00Z",
+      "file": "20261115T012500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:30:00Z",
+      "file": "20261115T013000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:35:00Z",
+      "file": "20261115T013500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:40:00Z",
+      "file": "20261115T014000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:45:00Z",
+      "file": "20261115T014500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:50:00Z",
+      "file": "20261115T015000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T01:55:00Z",
+      "file": "20261115T015500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111501_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111501_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:00:00Z",
+      "file": "20261115T020000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:05:00Z",
+      "file": "20261115T020500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:10:00Z",
+      "file": "20261115T021000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:15:00Z",
+      "file": "20261115T021500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:20:00Z",
+      "file": "20261115T022000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:25:00Z",
+      "file": "20261115T022500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:30:00Z",
+      "file": "20261115T023000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:35:00Z",
+      "file": "20261115T023500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:40:00Z",
+      "file": "20261115T024000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:45:00Z",
+      "file": "20261115T024500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:50:00Z",
+      "file": "20261115T025000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T02:55:00Z",
+      "file": "20261115T025500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111502_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111502_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:00:00Z",
+      "file": "20261115T030000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:05:00Z",
+      "file": "20261115T030500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:10:00Z",
+      "file": "20261115T031000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:15:00Z",
+      "file": "20261115T031500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:20:00Z",
+      "file": "20261115T032000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:25:00Z",
+      "file": "20261115T032500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:30:00Z",
+      "file": "20261115T033000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:35:00Z",
+      "file": "20261115T033500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:40:00Z",
+      "file": "20261115T034000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:45:00Z",
+      "file": "20261115T034500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:50:00Z",
+      "file": "20261115T035000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T03:55:00Z",
+      "file": "20261115T035500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111503_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111503_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:00:00Z",
+      "file": "20261115T040000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:05:00Z",
+      "file": "20261115T040500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:10:00Z",
+      "file": "20261115T041000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:15:00Z",
+      "file": "20261115T041500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:20:00Z",
+      "file": "20261115T042000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:25:00Z",
+      "file": "20261115T042500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:30:00Z",
+      "file": "20261115T043000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:35:00Z",
+      "file": "20261115T043500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:40:00Z",
+      "file": "20261115T044000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:45:00Z",
+      "file": "20261115T044500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:50:00Z",
+      "file": "20261115T045000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T04:55:00Z",
+      "file": "20261115T045500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111504_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111504_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:00:00Z",
+      "file": "20261115T050000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:05:00Z",
+      "file": "20261115T050500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:10:00Z",
+      "file": "20261115T051000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:15:00Z",
+      "file": "20261115T051500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:20:00Z",
+      "file": "20261115T052000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:25:00Z",
+      "file": "20261115T052500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:30:00Z",
+      "file": "20261115T053000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:35:00Z",
+      "file": "20261115T053500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:40:00Z",
+      "file": "20261115T054000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:45:00Z",
+      "file": "20261115T054500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:50:00Z",
+      "file": "20261115T055000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T05:55:00Z",
+      "file": "20261115T055500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111505_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111505_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:00:00Z",
+      "file": "20261115T060000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:05:00Z",
+      "file": "20261115T060500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:10:00Z",
+      "file": "20261115T061000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:15:00Z",
+      "file": "20261115T061500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:20:00Z",
+      "file": "20261115T062000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:25:00Z",
+      "file": "20261115T062500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:30:00Z",
+      "file": "20261115T063000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:35:00Z",
+      "file": "20261115T063500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:40:00Z",
+      "file": "20261115T064000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:45:00Z",
+      "file": "20261115T064500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:50:00Z",
+      "file": "20261115T065000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T06:55:00Z",
+      "file": "20261115T065500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111506_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111506_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:00:00Z",
+      "file": "20261115T070000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:05:00Z",
+      "file": "20261115T070500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:10:00Z",
+      "file": "20261115T071000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:15:00Z",
+      "file": "20261115T071500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:20:00Z",
+      "file": "20261115T072000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:25:00Z",
+      "file": "20261115T072500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:30:00Z",
+      "file": "20261115T073000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:35:00Z",
+      "file": "20261115T073500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:40:00Z",
+      "file": "20261115T074000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:45:00Z",
+      "file": "20261115T074500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:50:00Z",
+      "file": "20261115T075000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T07:55:00Z",
+      "file": "20261115T075500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111507_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111507_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:00:00Z",
+      "file": "20261115T080000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:05:00Z",
+      "file": "20261115T080500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:10:00Z",
+      "file": "20261115T081000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:15:00Z",
+      "file": "20261115T081500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:20:00Z",
+      "file": "20261115T082000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:25:00Z",
+      "file": "20261115T082500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:30:00Z",
+      "file": "20261115T083000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:35:00Z",
+      "file": "20261115T083500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:40:00Z",
+      "file": "20261115T084000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:45:00Z",
+      "file": "20261115T084500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:50:00Z",
+      "file": "20261115T085000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T08:55:00Z",
+      "file": "20261115T085500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111508_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111508_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:00:00Z",
+      "file": "20261115T090000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:05:00Z",
+      "file": "20261115T090500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:10:00Z",
+      "file": "20261115T091000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:15:00Z",
+      "file": "20261115T091500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:20:00Z",
+      "file": "20261115T092000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:25:00Z",
+      "file": "20261115T092500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:30:00Z",
+      "file": "20261115T093000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:35:00Z",
+      "file": "20261115T093500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:40:00Z",
+      "file": "20261115T094000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:45:00Z",
+      "file": "20261115T094500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:50:00Z",
+      "file": "20261115T095000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T09:55:00Z",
+      "file": "20261115T095500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111509_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111509_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:00:00Z",
+      "file": "20261115T100000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:05:00Z",
+      "file": "20261115T100500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:10:00Z",
+      "file": "20261115T101000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:15:00Z",
+      "file": "20261115T101500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:20:00Z",
+      "file": "20261115T102000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:25:00Z",
+      "file": "20261115T102500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:30:00Z",
+      "file": "20261115T103000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:35:00Z",
+      "file": "20261115T103500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:40:00Z",
+      "file": "20261115T104000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:45:00Z",
+      "file": "20261115T104500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:50:00Z",
+      "file": "20261115T105000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T10:55:00Z",
+      "file": "20261115T105500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111510_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111510_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:00:00Z",
+      "file": "20261115T110000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:05:00Z",
+      "file": "20261115T110500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:10:00Z",
+      "file": "20261115T111000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:15:00Z",
+      "file": "20261115T111500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:20:00Z",
+      "file": "20261115T112000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:25:00Z",
+      "file": "20261115T112500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:30:00Z",
+      "file": "20261115T113000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:35:00Z",
+      "file": "20261115T113500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:40:00Z",
+      "file": "20261115T114000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:45:00Z",
+      "file": "20261115T114500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:50:00Z",
+      "file": "20261115T115000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T11:55:00Z",
+      "file": "20261115T115500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111511_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111511_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:00:00Z",
+      "file": "20261115T120000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:05:00Z",
+      "file": "20261115T120500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:10:00Z",
+      "file": "20261115T121000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:15:00Z",
+      "file": "20261115T121500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:20:00Z",
+      "file": "20261115T122000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:25:00Z",
+      "file": "20261115T122500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:30:00Z",
+      "file": "20261115T123000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:35:00Z",
+      "file": "20261115T123500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:40:00Z",
+      "file": "20261115T124000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:45:00Z",
+      "file": "20261115T124500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:50:00Z",
+      "file": "20261115T125000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T12:55:00Z",
+      "file": "20261115T125500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111512_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111512_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:00:00Z",
+      "file": "20261115T130000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:05:00Z",
+      "file": "20261115T130500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:10:00Z",
+      "file": "20261115T131000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:15:00Z",
+      "file": "20261115T131500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:20:00Z",
+      "file": "20261115T132000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:25:00Z",
+      "file": "20261115T132500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:30:00Z",
+      "file": "20261115T133000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:35:00Z",
+      "file": "20261115T133500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:40:00Z",
+      "file": "20261115T134000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:45:00Z",
+      "file": "20261115T134500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:50:00Z",
+      "file": "20261115T135000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T13:55:00Z",
+      "file": "20261115T135500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111513_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111513_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:00:00Z",
+      "file": "20261115T140000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:05:00Z",
+      "file": "20261115T140500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:10:00Z",
+      "file": "20261115T141000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:15:00Z",
+      "file": "20261115T141500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:20:00Z",
+      "file": "20261115T142000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:25:00Z",
+      "file": "20261115T142500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:30:00Z",
+      "file": "20261115T143000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:35:00Z",
+      "file": "20261115T143500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:40:00Z",
+      "file": "20261115T144000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:45:00Z",
+      "file": "20261115T144500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:50:00Z",
+      "file": "20261115T145000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T14:55:00Z",
+      "file": "20261115T145500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111514_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111514_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:00:00Z",
+      "file": "20261115T150000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:05:00Z",
+      "file": "20261115T150500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:10:00Z",
+      "file": "20261115T151000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:15:00Z",
+      "file": "20261115T151500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:20:00Z",
+      "file": "20261115T152000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:25:00Z",
+      "file": "20261115T152500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:30:00Z",
+      "file": "20261115T153000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:35:00Z",
+      "file": "20261115T153500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:40:00Z",
+      "file": "20261115T154000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:45:00Z",
+      "file": "20261115T154500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:50:00Z",
+      "file": "20261115T155000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T15:55:00Z",
+      "file": "20261115T155500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111515_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111515_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:00:00Z",
+      "file": "20261115T160000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:05:00Z",
+      "file": "20261115T160500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:10:00Z",
+      "file": "20261115T161000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:15:00Z",
+      "file": "20261115T161500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:20:00Z",
+      "file": "20261115T162000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:25:00Z",
+      "file": "20261115T162500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:30:00Z",
+      "file": "20261115T163000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:35:00Z",
+      "file": "20261115T163500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:40:00Z",
+      "file": "20261115T164000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:45:00Z",
+      "file": "20261115T164500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:50:00Z",
+      "file": "20261115T165000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T16:55:00Z",
+      "file": "20261115T165500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111516_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111516_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:00:00Z",
+      "file": "20261115T170000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:05:00Z",
+      "file": "20261115T170500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:10:00Z",
+      "file": "20261115T171000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:15:00Z",
+      "file": "20261115T171500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:20:00Z",
+      "file": "20261115T172000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:25:00Z",
+      "file": "20261115T172500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:30:00Z",
+      "file": "20261115T173000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:35:00Z",
+      "file": "20261115T173500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:40:00Z",
+      "file": "20261115T174000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:45:00Z",
+      "file": "20261115T174500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:50:00Z",
+      "file": "20261115T175000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T17:55:00Z",
+      "file": "20261115T175500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111517_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111517_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:00:00Z",
+      "file": "20261115T180000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:05:00Z",
+      "file": "20261115T180500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:10:00Z",
+      "file": "20261115T181000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:15:00Z",
+      "file": "20261115T181500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:20:00Z",
+      "file": "20261115T182000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:25:00Z",
+      "file": "20261115T182500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:30:00Z",
+      "file": "20261115T183000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:35:00Z",
+      "file": "20261115T183500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:40:00Z",
+      "file": "20261115T184000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:45:00Z",
+      "file": "20261115T184500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:50:00Z",
+      "file": "20261115T185000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T18:55:00Z",
+      "file": "20261115T185500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111518_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111518_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:00:00Z",
+      "file": "20261115T190000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:05:00Z",
+      "file": "20261115T190500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:10:00Z",
+      "file": "20261115T191000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:15:00Z",
+      "file": "20261115T191500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:20:00Z",
+      "file": "20261115T192000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:25:00Z",
+      "file": "20261115T192500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:30:00Z",
+      "file": "20261115T193000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:35:00Z",
+      "file": "20261115T193500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:40:00Z",
+      "file": "20261115T194000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:45:00Z",
+      "file": "20261115T194500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:50:00Z",
+      "file": "20261115T195000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T19:55:00Z",
+      "file": "20261115T195500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111519_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111519_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:00:00Z",
+      "file": "20261115T200000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:05:00Z",
+      "file": "20261115T200500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:10:00Z",
+      "file": "20261115T201000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:15:00Z",
+      "file": "20261115T201500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:20:00Z",
+      "file": "20261115T202000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:25:00Z",
+      "file": "20261115T202500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:30:00Z",
+      "file": "20261115T203000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:35:00Z",
+      "file": "20261115T203500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:40:00Z",
+      "file": "20261115T204000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:45:00Z",
+      "file": "20261115T204500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:50:00Z",
+      "file": "20261115T205000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T20:55:00Z",
+      "file": "20261115T205500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111520_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111520_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:00:00Z",
+      "file": "20261115T210000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:05:00Z",
+      "file": "20261115T210500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:10:00Z",
+      "file": "20261115T211000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:15:00Z",
+      "file": "20261115T211500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:20:00Z",
+      "file": "20261115T212000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:25:00Z",
+      "file": "20261115T212500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:30:00Z",
+      "file": "20261115T213000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:35:00Z",
+      "file": "20261115T213500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:40:00Z",
+      "file": "20261115T214000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:45:00Z",
+      "file": "20261115T214500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:50:00Z",
+      "file": "20261115T215000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T21:55:00Z",
+      "file": "20261115T215500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111521_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111521_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:00:00Z",
+      "file": "20261115T220000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:05:00Z",
+      "file": "20261115T220500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:10:00Z",
+      "file": "20261115T221000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:15:00Z",
+      "file": "20261115T221500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:20:00Z",
+      "file": "20261115T222000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:25:00Z",
+      "file": "20261115T222500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:30:00Z",
+      "file": "20261115T223000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:35:00Z",
+      "file": "20261115T223500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:40:00Z",
+      "file": "20261115T224000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:45:00Z",
+      "file": "20261115T224500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:50:00Z",
+      "file": "20261115T225000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T22:55:00Z",
+      "file": "20261115T225500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111522_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111522_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:00:00Z",
+      "file": "20261115T230000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:05:00Z",
+      "file": "20261115T230500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:10:00Z",
+      "file": "20261115T231000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:15:00Z",
+      "file": "20261115T231500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:20:00Z",
+      "file": "20261115T232000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:25:00Z",
+      "file": "20261115T232500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:30:00Z",
+      "file": "20261115T233000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:35:00Z",
+      "file": "20261115T233500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:40:00Z",
+      "file": "20261115T234000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:45:00Z",
+      "file": "20261115T234500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:50:00Z",
+      "file": "20261115T235000Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
+    },
+    {
+      "time_utc": "2026-11-15T23:55:00Z",
+      "file": "20261115T235500Z.json",
+      "quantity": "VTEC",
+      "units": "TECU",
+      "source_file": "2026111523_atec.nc",
+      "source_url": "https://stdb2.isee.nagoya-u.ac.jp/GPS/shinbori/AGRID2/nc/2026/319/2026111523_atec.nc"
     }
   ]
 }
